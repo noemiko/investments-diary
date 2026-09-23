@@ -1,0 +1,20 @@
+{
+  "env": {
+    "CLAUDE_CODE_NEW_INIT": "1"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_response.filePath // .tool_input.file_path' | { read -r f; case \"$f\" in \"\"|null) exit 0;; esac; if [ -x ./node_modules/.bin/prettier ]; then ./node_modules/.bin/prettier --write --ignore-unknown \"$f\"; else npx prettier --write --ignore-unknown \"$f\"; fi; } 2>/dev/null || true",
+            "timeout": 30,
+            "statusMessage": "Formatting with Prettier..."
+          }
+        ]
+      }
+    ]
+  }
+}
