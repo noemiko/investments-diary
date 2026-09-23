@@ -11,7 +11,7 @@ A modern, opinionated starter template for building fast, accessible web applica
 - [TypeScript](https://www.typescriptlang.org/) v6 - Type-safe JavaScript
 - [Tailwind CSS](https://tailwindcss.com/) v4 - Utility-first CSS framework
 - [Supabase](https://supabase.com/) - Authentication and backend-as-a-service
-- [Cloudflare Workers](https://workers.cloudflare.com/) - Edge deployment runtime
+- [Vercel](https://vercel.com/) - Serverless deployment platform
 
 ## Prerequisites
 
@@ -35,13 +35,7 @@ npm install
 
 3. Set up Supabase and configure environment variables — see [Supabase Configuration](#supabase-configuration) below.
 
-4. Create a `.dev.vars` file for local Cloudflare dev secrets:
-
-```bash
-cp .env.example .dev.vars
-```
-
-5. Run the development server:
+4. Run the development server:
 
 ```bash
 npm run dev
@@ -49,9 +43,9 @@ npm run dev
 
 ## Available Scripts
 
-- `npm run dev` - Start development server (Cloudflare workerd runtime)
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
+- `npm run dev` - Start development server
+- `npm run build` - Build for production into `.vercel/output/`
+- `npm run preview` - Not supported by the Vercel adapter; use `npm run dev` or `npx vercel dev`
 - `npm run lint` - Run ESLint with type-checked rules
 - `npm run lint:fix` - Auto-fix ESLint issues
 - `npm run format` - Run Prettier
@@ -68,7 +62,6 @@ npm run dev
 │ ├── components/ # UI components (Astro & React)
 │ └── assets/ # Static assets
 ├── public/ # Public assets
-├── wrangler.jsonc # Cloudflare Workers config
 ```
 
 ## Supabase Configuration
@@ -97,7 +90,7 @@ npx supabase init
 npx supabase start
 ```
 
-4. Copy the credentials printed by the CLI into your `.env` and `.dev.vars`:
+4. Copy the credentials printed by the CLI into your `.env`:
 
 ```
 SUPABASE_URL=http://127.0.0.1:54321
@@ -116,7 +109,7 @@ No database tables or migrations are required — this project uses Supabase Aut
 
 ### Using a cloud Supabase project instead
 
-If you prefer to use a hosted Supabase project, add these variables to your `.env` and `.dev.vars` files:
+If you prefer to use a hosted Supabase project, add these variables to your `.env` file:
 
 | Variable       | Description                                                |
 | -------------- | ---------------------------------------------------------- |
@@ -151,41 +144,48 @@ Route protection is handled in `src/middleware.ts`. Add paths to the `PROTECTED_
 
 ## Deployment
 
-This project deploys to [Cloudflare Workers](https://workers.cloudflare.com/).
+This project deploys to [Vercel](https://vercel.com/).
 
-1. Build the project:
-
-```bash
-npm run build
-```
-
-2. Deploy with Wrangler:
+1. Link the project (first time only):
 
 ```bash
-npx wrangler deploy
+npx vercel link
 ```
 
-Set `SUPABASE_URL` and `SUPABASE_KEY` as secrets in your Cloudflare dashboard or via `npx wrangler secret put`.
+2. Set the production secrets:
+
+```bash
+npx vercel env add SUPABASE_URL production
+npx vercel env add SUPABASE_KEY production
+```
+
+3. Deploy:
+
+```bash
+npx vercel deploy --prod
+```
+
+Pushing to the connected GitHub repository deploys automatically — the commands above are the manual path. Pull the configured values into a local `.env` with `npx vercel env pull .env.local`.
 
 ## Smoke test
 
 `scripts/smoke.mjs` is a dependency-free Node script that walks the whole auth flow (sign-up, sign-in, protected page, sign-out) over HTTP. Run it against the dev server or the production preview after dependency upgrades:
 
 ```bash
-npm run dev            # or: npm run build && npm run preview
+npm run dev
 BASE_URL=http://localhost:4321 npm run smoke
 ```
 
 It needs a reachable Supabase instance (local or cloud) with email confirmation disabled.
 
-> **Note:** this script exists primarily to guard the development of the starter itself — it is a fast sanity check that dependency upgrades did not break the build, the Cloudflare adapter or the Supabase auth flow. It is **not** a substitute for a real test suite. Once you build your own product on top of this starter, add proper tests (unit, integration, end-to-end) suited to your application.
+> **Note:** this script exists primarily to guard the development of the starter itself — it is a fast sanity check that dependency upgrades did not break the build or the Supabase auth flow. It is **not** a substitute for a real test suite. Once you build your own product on top of this starter, add proper tests (unit, integration, end-to-end) suited to your application.
 
 ## CI
 
 GitHub Actions runs two jobs on every push and PR to `master`:
 
 - **ci** — lint, `astro check` and build. Configure `SUPABASE_URL` and `SUPABASE_KEY` as repository secrets for the build step.
-- **smoke** — starts a local Supabase via the Supabase CLI, builds, serves the production preview on the Cloudflare runtime and runs `npm run smoke` against it. No secrets required.
+- **smoke** — starts a local Supabase via the Supabase CLI, builds, serves the app with `npm run dev` and runs `npm run smoke` against it. No secrets required.
 
 ## License
 

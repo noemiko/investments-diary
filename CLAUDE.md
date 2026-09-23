@@ -49,8 +49,8 @@ auth works, no domain model exists yet.
   three together or prod drifts from local without an error.
 - **`npm run preview` does not work.** `@astrojs/vercel` ships no preview entrypoint, so
   `astro preview` dies with "Preview server process exited before becoming ready." Use
-  `npm run dev`, or `npx vercel dev` for a runtime-faithful server. The `smoke` CI job still calls
-  it and is broken until that changes.
+  `npm run dev`, or `npx vercel dev` for a runtime-faithful server. The `smoke` CI job serves the
+  app with `npm run dev` for this reason, so it exercises the auth flow but not the built bundle.
 - **No test framework exists.** `npm run smoke` is a starter-integrity HTTP walk, not a test
   suite. Verify changes with `npm run lint` → `npx astro check` → `npm run build`.
 - **Pre-commit runs the whole-repo lint, not `lint-staged`.** @.husky/pre-commit calls
@@ -118,17 +118,14 @@ longer exists.
 ## Environment
 
 Node 24.21.0, pinned in `.nvmrc` (fnm switches on `cd`) and declared in `package.json`
-`engines.node`. Setup is otherwise in @README.md, with two corrections:
-
-- The README's "Email confirmation in local development" section walks you through disabling
-  confirmations by hand in Studio, but `supabase/config.toml` already ships
-  `enable_confirmations = false`. Skip those steps; signup completes without a mailbox.
-- The README still documents Cloudflare Workers, `wrangler deploy` and `.dev.vars` throughout. All
-  of that is stale — see the deploy tripwire above.
+`engines.node`. Setup is otherwise in @README.md, with one correction: its "Email confirmation in
+local development" section walks you through disabling confirmations by hand in Studio, but
+`supabase/config.toml` already ships `enable_confirmations = false`. Skip those steps; signup
+completes without a mailbox.
 
 ## CI
 
 @.github/workflows/ci.yml runs on push/PR to `master`, both jobs taking their Node version from
 `.nvmrc` via `node-version-file`. The `ci` job needs `SUPABASE_URL` and `SUPABASE_KEY` repo
-secrets; the `smoke` job needs none — it boots its own local Supabase, but is currently broken
-because it serves the app with `npm run preview`.
+secrets; the `smoke` job needs none — it boots its own local Supabase and serves the app with
+`npm run dev`, so it covers the auth flow but never exercises the production bundle.
