@@ -10,8 +10,9 @@ if (import.meta.env.DEV && SUPABASE_URL && !/^https?:\/\/(127\.0\.0\.1|localhost
 }
 
 export function createClient(requestHeaders: Headers, cookies: AstroCookies) {
+  // env.schema marks both as required, but an empty string still gets past it.
   if (!SUPABASE_URL || !SUPABASE_KEY) {
-    return null;
+    throw new Error("SUPABASE_URL and SUPABASE_KEY must be non-empty, see README.");
   }
   return createServerClient(SUPABASE_URL, SUPABASE_KEY, {
     cookies: {

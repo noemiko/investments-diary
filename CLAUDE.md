@@ -8,7 +8,8 @@ Copilot read the same bytes.
 **Investments Diary** — a private, single-user investment journal that records the *reason*
 behind each buy/sell and confronts the author with comparable past positions at decision time.
 Product context: @context/foundation/prd.md (requirements), @context/foundation/tech-stack.md
-(why this stack). Read the PRD before adding domain features; do not invent domain rules.
+(why this stack). Every domain behaviour must trace to an `FR-NNN` in the PRD. If a change needs
+behaviour the PRD leaves undecided (its `## Open Questions`), stop and ask instead of picking one.
 
 The code is the `10x-astro-starter` scaffold, renamed and migrated from Cloudflare to Vercel.
 
@@ -18,10 +19,9 @@ The code is the `10x-astro-starter` scaffold, renamed and migrated from Cloudfla
   The diary is single-user but the data is private by design, and a missing policy fails silently —
   nothing errors, the rows are just readable. This fires on the first domain migration.
 - **Supabase env vars are required, not optional.** `SUPABASE_URL`/`SUPABASE_KEY` are
-  `optional: false` in `astro.config.mjs` `env.schema`, so a missing value fails at startup rather
-  than degrading. The `null` return in @src/lib/supabase.ts, the caller guards in
-  @src/middleware.ts, and the banner in @src/lib/config-status.ts date from when both were optional
-  and can now only fire on an empty-string value. Treat them as dead, not load-bearing.
+  `optional: false` in `astro.config.mjs` `env.schema`, and `createClient()` in @src/lib/supabase.ts
+  throws on an empty value. Do not reintroduce a nullable client, `if (!supabase)` guards, or a
+  "not configured" banner — the starter shipped those and they were removed deliberately.
 - **Dev runs against local Supabase only.** `npm run dev` needs `npx supabase start` (Docker) and
   `.env` pointing at `http://127.0.0.1:54321`; @src/lib/supabase.ts throws in dev on any other host.
   Production keys live only in Vercel (Production/Preview scope, never Development), so
@@ -31,7 +31,8 @@ The code is the `10x-astro-starter` scaffold, renamed and migrated from Cloudfla
   `env.schema`. Vercel's Cloudflare-migration guide instructs replacing `locals.runtime.env` with
   `process.env`; this codebase never used `locals.runtime.env`, so that step does not apply here.
   Following it anyway trades a validated schema for untyped globals. There are zero `process.env`
-  reads in `src/` — keep it that way.
+  reads in `src/` — keep it that way. Adding a variable means editing `env.schema`, then `.env`,
+  then `npx astro sync`.
 - **Run `npx astro sync` before `npm run lint`** on a fresh checkout or after changing
   `env.schema`. ESLint is `strictTypeChecked` + `projectService`; missing generated `.astro/`
   types produce a wall of unrelated type errors.
@@ -64,11 +65,10 @@ The code is the `10x-astro-starter` scaffold, renamed and migrated from Cloudfla
 
 ## Commands
 
-- `npm run dev` — Astro dev server on Node (port 4321)
+Scripts are in @package.json; only the non-obvious ones are listed here.
+
 - `npm run build` — production SSR build into `.vercel/output/`. `npm run preview` is broken with
   this adapter — see tripwires
-- `npm run lint` · `npm run lint:fix` — ESLint, type-aware rules (slow)
-- `npm run format` — Prettier (astro + tailwind class-sorting plugins)
 - `npx astro check` — type-checks `.astro` files; CI runs it, there is no npm script
 - `npm run smoke` — walks sign-up → sign-in → protected page → sign-out over HTTP against a
   **running** server. Needs `BASE_URL` (default `http://localhost:4321`) and the local Supabase
@@ -96,15 +96,8 @@ back as `?error=<message>` and are rendered server-side into the React island's 
 polish over a flow that works without JS. Keep new auth-adjacent forms on this pattern rather than
 switching to client fetch.
 
-### Env access
-
-Secrets come from `astro:env/server`. Adding a variable means editing `env.schema` in
-`astro.config.mjs`, then `.env`, then `npx astro sync`. `.dev.vars` was Cloudflare-only and no
-longer exists.
-
 ## Conventions
 
-- **Path alias** `@/*` → `./src/*`.
 - **Astro components** for layout/static markup. A `.tsx` component must carry a `client:*`
   directive on at least one usage — if it renders without one it has no interactivity and belongs
   in `.astro`. No Next.js directives (`"use client"`).
@@ -116,10 +109,8 @@ longer exists.
 - **Supabase migrations**: `supabase/migrations/YYYYMMDDHHmmss_short_description.sql`.
   Use `/migration` to scaffold one — it applies the RLS tripwire above.
 - **Formatting** is enforced, not stylistic — @.prettierrc.json is the source of truth, run
-  `npm run format` rather than matching it by hand. `no-console` is a warning, and
-  `scripts/**/*.mjs` is exempt from it.
-- **UI copy is English.** The one exception is the config banner in `src/lib/config-status.ts`,
-  which is still Polish — translate it when it is next touched.
+  `npm run format` rather than matching it by hand.
+- **UI copy is English.**
 
 ## Environment
 
@@ -131,7 +122,5 @@ completes without a mailbox.
 
 ## CI
 
-@.github/workflows/ci.yml runs on push/PR to `master`, both jobs taking their Node version from
-`.nvmrc` via `node-version-file`. The `ci` job needs `SUPABASE_URL` and `SUPABASE_KEY` repo
-secrets; the `smoke` job needs none — it boots its own local Supabase and serves the app with
-`npm run dev`, so it covers the auth flow but never exercises the production bundle.
+@.github/workflows/ci.yml — the `ci` job needs `SUPABASE_URL`/`SUPABASE_KEY` repo secrets; `smoke`
+needs none (it boots local Supabase).
