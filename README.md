@@ -107,9 +107,9 @@ The local Studio UI is available at `http://localhost:54323`.
 
 No database tables or migrations are required — this project uses Supabase Auth's built-in `auth.users` table only.
 
-### Using a cloud Supabase project instead
+### Hosted Supabase project (production only)
 
-If you prefer to use a hosted Supabase project, add these variables to your `.env` file:
+The hosted project is the production database. Its values go into Vercel environment variables (Production/Preview scope), never into a local `.env` — `npm run dev` throws if `SUPABASE_URL` is not a local address.
 
 | Variable       | Description                                                |
 | -------------- | ---------------------------------------------------------- |
@@ -165,7 +165,7 @@ npx vercel env add SUPABASE_KEY production
 npx vercel deploy --prod
 ```
 
-Pushing to the connected GitHub repository deploys automatically — the commands above are the manual path. Pull the configured values into a local `.env` with `npx vercel env pull .env.local`.
+Pushing to the connected GitHub repository deploys automatically — the commands above are the manual path. Do not pull production values into a local env file: local development uses the local Supabase stack (see above), and the dev server refuses to start against a hosted Supabase URL.
 
 ## Smoke test
 

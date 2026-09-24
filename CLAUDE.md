@@ -10,8 +10,7 @@ behind each buy/sell and confronts the author with comparable past positions at 
 Product context: @context/foundation/prd.md (requirements), @context/foundation/tech-stack.md
 (why this stack). Read the PRD before adding domain features; do not invent domain rules.
 
-The code is the `10x-astro-starter` scaffold, renamed and migrated from Cloudflare to Vercel —
-auth works, no domain model exists yet.
+The code is the `10x-astro-starter` scaffold, renamed and migrated from Cloudflare to Vercel.
 
 ## Tripwires (read before editing)
 
@@ -23,6 +22,10 @@ auth works, no domain model exists yet.
   than degrading. The `null` return in @src/lib/supabase.ts, the caller guards in
   @src/middleware.ts, and the banner in @src/lib/config-status.ts date from when both were optional
   and can now only fire on an empty-string value. Treat them as dead, not load-bearing.
+- **Dev runs against local Supabase only.** `npm run dev` needs `npx supabase start` (Docker) and
+  `.env` pointing at `http://127.0.0.1:54321`; @src/lib/supabase.ts throws in dev on any other host.
+  Production keys live only in Vercel (Production/Preview scope, never Development), so
+  `vercel env pull` must not bring them into `.env.local`, which overrides `.env`.
 - **Config is read through `astro:env/server` — never `process.env`.** @src/lib/supabase.ts imports
   `SUPABASE_URL`/`SUPABASE_KEY` from `astro:env/server`, which is typed and validated against
   `env.schema`. Vercel's Cloudflare-migration guide instructs replacing `locals.runtime.env` with
@@ -34,12 +37,13 @@ auth works, no domain model exists yet.
   types produce a wall of unrelated type errors.
 - **Deploy target is Vercel serverless, not Cloudflare.** `astro.config.mjs` uses
   `@astrojs/vercel` with `output: "server"`; `wrangler.jsonc` is deleted. Build writes
-  `.vercel/output/`; deploy is `npx vercel deploy --prod` or the git integration. `tech-stack.md`
-  still says `cloudflare-pages` — it is stale.
+  `.vercel/output/`; deploy is the git integration (push to `master`) or
+  `npx vercel deploy --prod`. Deploy procedure, rollback target and who may run what:
+  @context/deployment/deploy-plan.md.
 - **Never take adapter config from Vercel's own Astro docs.**
-  `vercel.com/docs/frameworks/frontend/astro` still shows the `@astrojs/vercel/serverless` subpath
-  and `output: 'hybrid'`, both removed in Astro 5. A config copied from it fails to build, and the
-  error reads as an Astro problem rather than a documentation one. `docs.astro.build` is the only
+  `vercel.com/docs/frameworks/frontend/astro` shows the `@astrojs/vercel/serverless` subpath and
+  `output: 'hybrid'` (checked 2026-09-23), both removed in Astro 5. A config copied from it fails
+  to build, and the error reads as an Astro problem rather than a documentation one. `docs.astro.build` is the only
   authority for adapter config; the import is the single default export,
   `import vercel from "@astrojs/vercel"`.
 - **The function's Node runtime comes from the build machine, not from a config file.** The adapter
@@ -51,8 +55,9 @@ auth works, no domain model exists yet.
   `astro preview` dies with "Preview server process exited before becoming ready." Use
   `npm run dev`, or `npx vercel dev` for a runtime-faithful server. The `smoke` CI job serves the
   app with `npm run dev` for this reason, so it exercises the auth flow but not the built bundle.
-- **No test framework exists.** `npm run smoke` is a starter-integrity HTTP walk, not a test
-  suite. Verify changes with `npm run lint` → `npx astro check` → `npm run build`.
+- **The verification bar is the `verify` skill** (@.claude/skills/verify/SKILL.md), not a single
+  command. Run it before declaring work done; it owns the step order and when to add the smoke
+  walk. `npm run smoke` is a starter-integrity HTTP walk, not a test suite.
 - **Pre-commit runs the whole-repo lint, not `lint-staged`.** @.husky/pre-commit calls
   `npm run lint` — type-aware and slow. `package.json` carries a `lint-staged` config that nothing
   invokes, so a commit is blocked by an error anywhere in the repo, not only in staged files.
@@ -66,8 +71,9 @@ auth works, no domain model exists yet.
 - `npm run format` — Prettier (astro + tailwind class-sorting plugins)
 - `npx astro check` — type-checks `.astro` files; CI runs it, there is no npm script
 - `npm run smoke` — walks sign-up → sign-in → protected page → sign-out over HTTP against a
-  **running** server. Needs `BASE_URL` (default `http://localhost:4321`) and a reachable Supabase
-  with email confirmation disabled. Run after dependency upgrades.
+  **running** server. Needs `BASE_URL` (default `http://localhost:4321`) and the local Supabase
+  stack (`npx supabase start`). Creates an account per run — never point it at production. Run
+  after dependency upgrades.
 
 ## Architecture
 
@@ -107,7 +113,7 @@ longer exists.
   hooks belong in `src/hooks/` (`@/hooks`), not under `src/components/`.
 - **Services / business logic** go in `src/lib/` (`src/lib/services/` once extracted); shared
   entities and DTOs in `src/types.ts` (create it when the domain model lands).
-- **Supabase migrations** (none yet): `supabase/migrations/YYYYMMDDHHmmss_short_description.sql`.
+- **Supabase migrations**: `supabase/migrations/YYYYMMDDHHmmss_short_description.sql`.
   Use `/migration` to scaffold one — it applies the RLS tripwire above.
 - **Formatting** is enforced, not stylistic — @.prettierrc.json is the source of truth, run
   `npm run format` rather than matching it by hand. `no-console` is a warning, and

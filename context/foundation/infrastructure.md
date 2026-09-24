@@ -213,7 +213,7 @@ than product depth and never more important.
   migrations do not roll back with the code. Reverting the application onto a
   forward-migrated database can break in ways the rollback cannot fix, so any deploy
   containing a migration needs a tested down-path before it ships.
-- **Approval**: promotion to production must be approved by human, any changes of env keys are  provided by human
+- **Approval**: promotion to production can be auto deploy on merge, any changes of env keys are  provided by human
 - **Logs**: `vercel logs <deployment-url> --follow` for runtime logs (retained **1 hour**
   on Hobby — treat as a live tail, not an archive), and `vercel inspect --logs <url>` for
   build logs. Both are read-only and safe for an agent to run unattended. The Vercel MCP

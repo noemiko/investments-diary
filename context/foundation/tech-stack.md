@@ -30,8 +30,11 @@ stack before. Every hour spent wiring a login to a database by hand is an hour n
 on the confrontation logic that makes the product worth building. The stack is explicitly
 typed from the database through to the interface, follows conventions an agent will
 recognize, and is well represented in training data, which serves the author's stated
-goal of learning to work with coding agents. Cloudflare Pages is the starter's own
-deployment default, making the first deploy the shortest path available. Scaffolding
-confidence is first-class rather than verified: the setup command is registered and
-expected to work, but has not been exercised end to end, so occasional manual steps are
-likely. The edge runtime limits long-running work, which this product does not have.
+goal of learning to work with coding agents. The starter's own deployment default,
+Cloudflare Pages, was replaced by Vercel after infrastructure research: the app runs as
+Vercel serverless functions on real Node.js 24 rather than on an edge runtime, which keeps
+the pre-1.0 Supabase auth library off a non-Node runtime (see `infrastructure.md`).
+Scaffolding confidence is first-class rather than verified: the setup command is
+registered and expected to work, but has not been exercised end to end, so occasional
+manual steps are likely. Serverless functions limit long-running work, which this product
+does not have.
