@@ -191,8 +191,10 @@ device the user signs in on.
 Flat user model: one kind of user. An account owns its own diary and sees only its own
 entries. There is no sharing, no read-only viewer, and no administrator role in the MVP.
 
-Unresolved: sign-up behaviour (open registration versus a single provisioned account), and
-what an unauthenticated visitor sees when they reach a gated view. See Open Questions.
+Sign-up: open registration (resolved 2026-09-25). Anyone may create an account, so privacy
+rests on every diary view being gated and every entry being readable only by its owner. An
+unauthenticated visitor reaching a gated view is assumed to be redirected to sign-in, as the
+existing route protection does — to be confirmed when that work is planned.
 
 ## Non-Goals
 
@@ -210,8 +212,8 @@ what an unauthenticated visitor sees when they reach a gated view. See Open Ques
 
 ## Open Questions
 
-1. **How does the reason lock interact with the reason being optional?** — FR-004 makes the prose optional and FR-008 stops it being editable shortly after entry, so a rushed entry saved without a reason could never be completed. Owner: user. Blocks the entry form's design.
-2. **What happens to past entries when a reason category is renamed or removed?** — FR-005 allows the list to evolve, and the business rule groups history by that category. Owner: user. Resolve before implementation.
-3. **Sign-up behaviour and unauthenticated-visitor handling** — open registration vs. a single provisioned account; what a gated route shows when signed out. Owner: user. Resolve before implementation.
+1. ~~**How does the reason lock interact with the reason being optional?**~~ — **Resolved 2026-09-25:** an entry saved without a reason can have one added later; the lock window starts when the reason is first written, not when the entry is created.
+2. ~~**What happens to past entries when a reason category is renamed or removed?**~~ — **Resolved 2026-09-25:** renaming a category updates its name everywhere, past entries included; removing one is a soft delete, and past entries still show the category name marked as removed. Still open, to settle when the work is planned: whether a removed category is offered for new entries, and whether it can be restored.
+3. ~~**Sign-up behaviour and unauthenticated-visitor handling**~~ — **Resolved 2026-09-25:** open registration. A signed-out visitor on a gated view is assumed to be redirected to sign-in (to confirm when planned).
 4. **User stories for the remaining paths** — only the confrontation path has acceptance criteria. Back-filling an existing holding, updating a price and closing a position do not. Owner: user. Resolve before implementation.
 5. **Live price source as a later addition** — recorded as a secondary success criterion and an explicit non-goal for version one. Owner: user. No date.
