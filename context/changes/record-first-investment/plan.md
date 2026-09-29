@@ -399,30 +399,30 @@ additive tables are harmless to older code).
 
 #### Automated
 
-- [x] 1.1 Local database rebuilds with the migration: `npx supabase db reset`
-- [x] 1.2 RLS is on and exactly six policies exist (select/insert/update × 2 tables, none for delete), shown by the `/migration` skill's `pg_class` / `pg_policies` queries
-- [x] 1.3 Down-script round trip succeeds locally: apply the down-script with `psql`, confirm both tables are gone, then `npx supabase db reset` again
-- [x] 1.4 Generated types are current: regenerating `src/db/database.types.ts` produces no diff
-- [x] 1.5 `verify` skill sequence passes (astro sync, lint, astro check, build)
+- [x] 1.1 Local database rebuilds with the migration: `npx supabase db reset` — 0fad3e0
+- [x] 1.2 RLS is on and exactly six policies exist (select/insert/update × 2 tables, none for delete), shown by the `/migration` skill's `pg_class` / `pg_policies` queries — 0fad3e0
+- [x] 1.3 Down-script round trip succeeds locally: apply the down-script with `psql`, confirm both tables are gone, then `npx supabase db reset` again — 0fad3e0
+- [x] 1.4 Generated types are current: regenerating `src/db/database.types.ts` produces no diff — 0fad3e0
+- [x] 1.5 `verify` skill sequence passes (astro sync, lint, astro check, build) — 0fad3e0
 
 #### Manual
 
-- [x] 1.6 Human runs `npx supabase db push` against production and confirms in Studio that both tables exist with RLS enabled, before Phase 2 is merged
+- [x] 1.6 Human runs `npx supabase db push` against production and confirms in Studio that both tables exist with RLS enabled, before Phase 2 is merged — 0fad3e0
 
 ### Phase 2: Record and list
 
 #### Automated
 
-- [ ] 2.1 `verify` skill sequence passes (astro sync, lint, astro check, build)
-- [ ] 2.2 Existing smoke walk still passes against the local stack: `BASE_URL=http://localhost:4321 npm run smoke`
+- [x] 2.1 `verify` skill sequence passes (astro sync, lint, astro check, build)
+- [x] 2.2 Existing smoke walk still passes against the local stack: `BASE_URL=http://localhost:4321 npm run smoke`
 
 #### Manual
 
-- [ ] 2.3 On a fresh account, `/dashboard` shows the empty state and its link opens the form
-- [ ] 2.4 Recording a first investment with a new inline category, from opening the diary to the saved list, takes under 60 seconds
-- [ ] 2.5 A second entry can pick the category created by the first, and the list shows both newest buy date first with their categories
-- [ ] 2.6 Submitting with a future date, a zero price or no category shows the field error and keeps every typed value, including the reason
-- [ ] 2.7 A price typed as `50,25` is saved and displayed as 50.25
+- [x] 2.3 On a fresh account, `/dashboard` shows the empty state and its link opens the form
+- [x] 2.4 Recording a first investment with a new inline category, from opening the diary to the saved list, takes under 60 seconds
+- [x] 2.5 A second entry can pick the category created by the first, and the list shows both newest buy date first with their categories
+- [x] 2.6 Submitting with a future date, a zero price or no category shows the field error and keeps every typed value, including the reason
+- [x] 2.7 A price typed as `50,25` is saved and displayed as 50.25
 
 ### Phase 3: Privacy proof
 
