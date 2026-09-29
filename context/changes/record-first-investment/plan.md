@@ -413,21 +413,21 @@ additive tables are harmless to older code).
 
 #### Automated
 
-- [x] 2.1 `verify` skill sequence passes (astro sync, lint, astro check, build)
-- [x] 2.2 Existing smoke walk still passes against the local stack: `BASE_URL=http://localhost:4321 npm run smoke`
+- [x] 2.1 `verify` skill sequence passes (astro sync, lint, astro check, build) — 2076669
+- [x] 2.2 Existing smoke walk still passes against the local stack: `BASE_URL=http://localhost:4321 npm run smoke` — 2076669
 
 #### Manual
 
-- [x] 2.3 On a fresh account, `/dashboard` shows the empty state and its link opens the form
-- [x] 2.4 Recording a first investment with a new inline category, from opening the diary to the saved list, takes under 60 seconds
-- [x] 2.5 A second entry can pick the category created by the first, and the list shows both newest buy date first with their categories
-- [x] 2.6 Submitting with a future date, a zero price or no category shows the field error and keeps every typed value, including the reason
-- [x] 2.7 A price typed as `50,25` is saved and displayed as 50.25
+- [x] 2.3 On a fresh account, `/dashboard` shows the empty state and its link opens the form — 2076669
+- [x] 2.4 Recording a first investment with a new inline category, from opening the diary to the saved list, takes under 60 seconds — 2076669
+- [x] 2.5 A second entry can pick the category created by the first, and the list shows both newest buy date first with their categories — 2076669
+- [x] 2.6 Submitting with a future date, a zero price or no category shows the field error and keeps every typed value, including the reason — 2076669
+- [x] 2.7 A price typed as `50,25` is saved and displayed as 50.25 — 2076669
 
 ### Phase 3: Privacy proof
 
 #### Automated
 
-- [ ] 3.1 Extended smoke walk passes locally against the local stack: `BASE_URL=http://localhost:4321 npm run smoke`
+- [x] 3.1 Extended smoke walk passes locally against the local stack: `BASE_URL=http://localhost:4321 npm run smoke`
 - [ ] 3.2 CI `smoke` job is green on the pull request
-- [ ] 3.3 `verify` skill sequence passes (astro sync, lint, astro check, build)
+- [x] 3.3 `verify` skill sequence passes (astro sync, lint, astro check, build)

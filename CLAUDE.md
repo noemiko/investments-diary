@@ -71,9 +71,10 @@ Scripts are in @package.json; only the non-obvious ones are listed here.
   this adapter — see tripwires
 - `npx astro check` — type-checks `.astro` files; CI runs it, there is no npm script
 - `npm run smoke` — walks sign-up → sign-in → protected page → sign-out over HTTP against a
-  **running** server. Needs `BASE_URL` (default `http://localhost:4321`) and the local Supabase
-  stack (`npx supabase start`). Creates an account per run — never point it at production. Run
-  after dependency upgrades.
+  **running** server, and proves cross-account isolation (account B cannot see or borrow account
+  A's positions or categories). Needs `BASE_URL` (default `http://localhost:4321`) and the local
+  Supabase stack (`npx supabase start`). Creates two accounts per run — never point it at
+  production. Run after dependency upgrades.
 
 ## Architecture
 
