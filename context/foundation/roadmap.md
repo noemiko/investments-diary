@@ -3,7 +3,7 @@ project: "Investments Diary"
 version: 1
 status: draft                    # draft | active | locked
 created: 2026-09-25
-updated: 2026-09-25
+updated: 2026-09-29
 prd_version: 1
 main_goal: learn
 top_blocker: decisions
@@ -48,7 +48,7 @@ with your own past reasoning at the moment of deciding improves how you invest.
 
 | ID   | Change ID                  | Outcome (user can …)                                                                 | Prerequisites | PRD refs                        | Status   |
 | ---- | -------------------------- | ------------------------------------------------------------------------------------ | ------------- | ------------------------------- | -------- |
-| S-01 | record-first-investment    | record an investment with a reason category and optional reason, and see it listed   | —             | FR-003, FR-004, FR-005, FR-010  | planning |
+| S-01 | record-first-investment    | record an investment with a reason category and optional reason, and see it listed   | —             | FR-003, FR-004, FR-005, FR-010  | in-progress |
 | S-02 | position-detail-and-price  | open a position, read its full reason, update its price and see its dated result     | S-01          | FR-006, FR-011                  | proposed |
 | S-03 | reason-confrontation       | see earlier same-reason positions with their results before saving a new investment  | S-01, S-02    | US-01, FR-012                   | proposed |
 | S-04 | close-position             | close a position with sell price and date and see its final result                   | S-02          | FR-007                          | proposed |
@@ -91,7 +91,7 @@ which is exactly what this roadmap avoids.
   - Is back-filling an already-held position just a normal entry with a past buy date, or does it need its own flow? (PRD Open Question 4) — Owner: user. Block: no.
   - How does the reason lock interact with the reason being optional? (PRD Open Question 1) — Owner: user. Block: no (this slice stores the reason but offers no editing; the lock lands in S-07).
 - **Risk:** Goes first because every other slice reads the data it creates, and it is where the owner-only access rule and the first table are learned — the least familiar part of the stack, per `main_goal: learn`. What could go wrong: the entry form grows past the 60-second budget; keep optional fields out of the way.
-- **Status:** planning
+- **Status:** in-progress
 
 ### S-02: Read a position and keep its price current
 

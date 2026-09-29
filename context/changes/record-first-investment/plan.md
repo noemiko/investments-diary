@@ -399,15 +399,15 @@ additive tables are harmless to older code).
 
 #### Automated
 
-- [ ] 1.1 Local database rebuilds with the migration: `npx supabase db reset`
-- [ ] 1.2 RLS is on and exactly six policies exist (select/insert/update × 2 tables, none for delete), shown by the `/migration` skill's `pg_class` / `pg_policies` queries
-- [ ] 1.3 Down-script round trip succeeds locally: apply the down-script with `psql`, confirm both tables are gone, then `npx supabase db reset` again
-- [ ] 1.4 Generated types are current: regenerating `src/db/database.types.ts` produces no diff
-- [ ] 1.5 `verify` skill sequence passes (astro sync, lint, astro check, build)
+- [x] 1.1 Local database rebuilds with the migration: `npx supabase db reset`
+- [x] 1.2 RLS is on and exactly six policies exist (select/insert/update × 2 tables, none for delete), shown by the `/migration` skill's `pg_class` / `pg_policies` queries
+- [x] 1.3 Down-script round trip succeeds locally: apply the down-script with `psql`, confirm both tables are gone, then `npx supabase db reset` again
+- [x] 1.4 Generated types are current: regenerating `src/db/database.types.ts` produces no diff
+- [x] 1.5 `verify` skill sequence passes (astro sync, lint, astro check, build)
 
 #### Manual
 
-- [ ] 1.6 Human runs `npx supabase db push` against production and confirms in Studio that both tables exist with RLS enabled, before Phase 2 is merged
+- [x] 1.6 Human runs `npx supabase db push` against production and confirms in Studio that both tables exist with RLS enabled, before Phase 2 is merged
 
 ### Phase 2: Record and list
 
