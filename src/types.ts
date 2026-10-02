@@ -34,6 +34,9 @@ export const POSITION_FORM_FIELDS = [
 
 export type PositionFormField = (typeof POSITION_FORM_FIELDS)[number];
 
+/** The `category_id` value of the "New category…" choice: the name comes from `new_category_name` instead. */
+export const NEW_CATEGORY_CHOICE = "__new__";
+
 /** Raw form values as submitted, echoed back into the form when a submission is rejected. */
 export type PositionFormValues = Record<PositionFormField, string>;
 

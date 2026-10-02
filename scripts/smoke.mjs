@@ -61,17 +61,14 @@ function decodeEntities(html) {
     .replaceAll("&amp;", "&");
 }
 
-// The id appears both in the island's serialized props (`"id":[0,"<uuid>"],"name":[0,"<name>"]`) and in
-// `<option value="<uuid>"><name></option>`; in both, the id comes just before the name. So decode the
-// entities, find the run-unique name, and take the last uuid preceding it.
+// Each category `<option>` carries `data-category-id`; match the one whose text is the run-unique name.
 function categoryIdFor(html, name) {
-  const text = decodeEntities(html);
-  const at = text.indexOf(name);
-  if (at === -1) return "";
-  const uuids = text
-    .slice(Math.max(0, at - 200), at)
-    .match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi);
-  return uuids ? uuids[uuids.length - 1] : "";
+  for (const [, id, text] of html.matchAll(
+    /<option\b[^>]*\bdata-category-id="([0-9a-f-]{36})"[^>]*>([^<]*)<\/option>/gi,
+  )) {
+    if (decodeEntities(text) === name) return id;
+  }
+  return "";
 }
 
 function position(overrides = {}) {
@@ -131,7 +128,18 @@ const steps = [
       categoryId = categoryIdFor(result.body, categoryName);
       return { ...result, location: categoryId ? `(category ${categoryId})` : "(category id not found)" };
     },
-    { status: 200, includes: [categoryName], check: () => categoryId !== "" },
+    // The name input must be in the server-rendered HTML even with categories, so "New category…" works without JS.
+    { status: 200, includes: [categoryName, 'name="new_category_name"'], check: () => categoryId !== "" },
+  ],
+  [
+    // Without JS the select posts the "New category…" sentinel alongside the typed name.
+    "A: records a position via the no-JS new-category path",
+    () =>
+      request(a, "/dashboard/new", {
+        method: "POST",
+        form: position({ category_id: "__new__", new_category_name: `No-JS ${categoryName}` }),
+      }),
+    { status: 302, location: "/dashboard" },
   ],
 
   ["signout clears session", () => request(a, "/api/auth/signout", { method: "POST" }), { status: 302, location: "/" }],

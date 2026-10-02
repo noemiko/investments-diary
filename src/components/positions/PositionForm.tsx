@@ -1,13 +1,17 @@
-import React, { useState } from "react";
+import React, { useState, useSyncExternalStore } from "react";
 import { Briefcase, Calendar, CircleAlert, Hash, Save, Tag, TrendingUp, Wallet } from "lucide-react";
 import { FormField } from "@/components/auth/FormField";
 import { ServerError } from "@/components/auth/ServerError";
 import { SubmitButton } from "@/components/auth/SubmitButton";
 import { parseDecimal } from "@/lib/validation/decimal";
 import { cn } from "@/lib/utils";
-import type { PositionFormErrors, PositionFormField, PositionFormValues, ReasonCategory } from "@/types";
-
-const NEW_CATEGORY = "__new__";
+import {
+  NEW_CATEGORY_CHOICE as NEW_CATEGORY,
+  type PositionFormErrors,
+  type PositionFormField,
+  type PositionFormValues,
+  type ReasonCategory,
+} from "@/types";
 
 const controlBase =
   "w-full rounded-lg border bg-white/10 px-3 py-2 text-white placeholder-white/40 transition-colors focus:ring-2 focus:outline-none";
@@ -31,6 +35,10 @@ function checkDecimal(raw: string, required: boolean, requiredMessage: string): 
   return undefined;
 }
 
+function noopSubscribe() {
+  return () => undefined;
+}
+
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
   return (
@@ -50,6 +58,13 @@ export default function PositionForm({ categories, values: initialValues, errors
     return "";
   });
   const isNewCategory = categoryChoice === NEW_CATEGORY;
+  // Server-rendered HTML always carries the name input, so "New category…" works without JS;
+  // once hydrated, it is shown only for that choice.
+  const hydrated = useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false,
+  );
 
   function update(field: PositionFormField, value: string) {
     setValues((prev) => ({ ...prev, [field]: value }));
@@ -136,10 +151,10 @@ export default function PositionForm({ categories, values: initialValues, errors
         <label htmlFor="category" className="mb-1 block text-sm text-blue-100/80">
           Reason category
         </label>
-        {/* Only one of category_id / new_category_name is ever submitted: the select loses its name in "new" mode. */}
+        {/* "New category…" posts the sentinel; the server then reads new_category_name instead. */}
         <select
           id="category"
-          name={isNewCategory ? undefined : "category_id"}
+          name="category_id"
           value={categoryChoice}
           onChange={(e) => {
             setCategoryChoice(e.target.value);
@@ -158,7 +173,7 @@ export default function PositionForm({ categories, values: initialValues, errors
             </option>
           )}
           {categories.map((category) => (
-            <option key={category.id} value={category.id}>
+            <option key={category.id} value={category.id} data-category-id={category.id}>
               {category.name}
             </option>
           ))}
@@ -167,10 +182,10 @@ export default function PositionForm({ categories, values: initialValues, errors
         <FieldError message={categoryError} />
       </div>
 
-      {isNewCategory && (
+      {(isNewCategory || !hydrated) && (
         <FormField
           id="new_category_name"
-          label="New category name"
+          label={isNewCategory ? "New category name" : "New category name (only with “New category…”)"}
           value={values.new_category_name}
           onChange={(v) => {
             update("new_category_name", v);

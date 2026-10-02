@@ -15,9 +15,16 @@ const UNIQUE_VIOLATION = "23505";
 // invalid_text_representation, invalid_datetime_format: the database refused a value the form let through.
 const VALIDATION_CODES = new Set(["23514", "23502", "22001", "22003", "22P02", "22007", "22008"]);
 
+// Code and message only: `details` can carry the failing row, reason text included.
+function logUnexpected(where: string, error: { code?: string; message: string }) {
+  // eslint-disable-next-line no-console -- the only trace of a failed save in the function logs
+  console.error(`${where} failed`, { code: error.code, message: error.message });
+}
+
 function failure(error: PostgrestError): CreatePositionResult {
   if (error.code === FOREIGN_KEY_VIOLATION) return { ok: false, error: "category_not_found" };
   if (VALIDATION_CODES.has(error.code)) return { ok: false, error: "validation" };
+  logUnexpected("createPosition", error);
   return { ok: false, error: "unexpected" };
 }
 
@@ -93,11 +100,14 @@ export async function createPosition(
     let category: Awaited<ReturnType<typeof findOrCreateCategory>>;
     try {
       category = await findOrCreateCategory(client, userId, input.new_category_name);
-    } catch (_error) {
+    } catch (error) {
+      logUnexpected("findOrCreateCategory", { message: error instanceof Error ? error.message : String(error) });
       return { ok: false, error: "unexpected" };
     }
     if ("error" in category) {
-      return category.error ? failure(category.error) : { ok: false, error: "unexpected" };
+      if (category.error) return failure(category.error);
+      logUnexpected("findOrCreateCategory", { message: "unique violation, but no matching category on re-select" });
+      return { ok: false, error: "unexpected" };
     }
     categoryId = category.id;
   } else {

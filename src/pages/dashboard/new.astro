@@ -55,7 +55,13 @@ if (Astro.request.method === "POST") {
   }
 }
 
-const categories = await listCategories(supabase);
+// A failed read must not cost the author what they just typed: re-render with their values instead of a 500.
+let categories: Awaited<ReturnType<typeof listCategories>> = [];
+try {
+  categories = await listCategories(supabase);
+} catch {
+  errors = { ...errors, form: "Your categories could not be loaded. Please try again." };
+}
 ---
 
 <Layout title="New investment">

@@ -1,6 +1,7 @@
 import { z } from "astro/zod";
 import { parseDecimal } from "@/lib/validation/decimal";
 import {
+  NEW_CATEGORY_CHOICE,
   POSITION_FORM_FIELDS,
   type NewPositionInput,
   type PositionFormErrors,
@@ -68,8 +69,12 @@ const positionFormSchema = z
     instrument: z.string().trim().min(1, "Enter the instrument").max(100, "Use at most 100 characters"),
     buy_price: requiredDecimal("Enter the buy price"),
     buy_date: buyDate,
-    // Checked together below: exactly one of the two must be given.
-    category_id: z.string().trim(),
+    // Checked together below: exactly one of the two must be given. The "New category…" choice
+    // counts as no id, so the form also works without JS (the select then posts the sentinel).
+    category_id: z
+      .string()
+      .trim()
+      .transform((value) => (value === NEW_CATEGORY_CHOICE ? "" : value)),
     new_category_name: z.string().trim(),
     reason_text: optionalText(10_000, "Use at most 10,000 characters", false),
     quantity: optionalDecimal,
