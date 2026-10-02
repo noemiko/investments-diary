@@ -428,6 +428,6 @@ additive tables are harmless to older code).
 
 #### Automated
 
-- [x] 3.1 Extended smoke walk passes locally against the local stack: `BASE_URL=http://localhost:4321 npm run smoke`
-- [ ] 3.2 CI `smoke` job is green on the pull request
-- [x] 3.3 `verify` skill sequence passes (astro sync, lint, astro check, build)
+- [x] 3.1 Extended smoke walk passes locally against the local stack: `BASE_URL=http://localhost:4321 npm run smoke` — ab75804
+- [x] 3.2 CI `smoke` job is green on the pull request — ab75804
+- [x] 3.3 `verify` skill sequence passes (astro sync, lint, astro check, build) — ab75804
