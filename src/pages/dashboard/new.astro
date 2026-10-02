@@ -1,0 +1,81 @@
+---
+// The rule crashes ("Expected node to have a parent") on a top-level `return` in frontmatter;
+// an eslint-disable comment would not help, because the rule still runs. Nothing here passes promises as callbacks.
+/* eslint @typescript-eslint/no-misused-promises: "off" */
+import Layout from "@/layouts/Layout.astro";
+import PositionForm from "@/components/positions/PositionForm";
+import { createClient } from "@/lib/supabase";
+import { createPosition, listCategories, type CreatePositionError } from "@/lib/services/positions";
+import { parsePositionForm, readPositionForm, todayUtc } from "@/lib/validation/position";
+import type { PositionFormErrors, PositionFormValues } from "@/types";
+
+// Handles its own POST and re-renders on error: redirecting with `?error=` would put the
+// submitted values, reason text included, into the URL and the request logs.
+
+const { user } = Astro.locals;
+if (!user) {
+  return Astro.redirect("/auth/signin");
+}
+
+const supabase = createClient(Astro.request.headers, Astro.cookies);
+
+const SAVE_ERRORS: Record<CreatePositionError, PositionFormErrors> = {
+  category_not_found: { category_id: "Choose a category from your list" },
+  validation: { form: "Some values could not be saved. Check them and try again." },
+  unexpected: { form: "Your investment could not be saved. Please try again." },
+};
+
+let values: PositionFormValues = {
+  instrument: "",
+  buy_price: "",
+  buy_date: todayUtc(),
+  category_id: "",
+  new_category_name: "",
+  reason_text: "",
+  quantity: "",
+  broker_label: "",
+};
+let errors: PositionFormErrors = {};
+
+if (Astro.request.method === "POST") {
+  values = readPositionForm(await Astro.request.formData());
+  const parsed = parsePositionForm(values);
+  if (parsed.success) {
+    const result = await createPosition(supabase, user.id, parsed.data);
+    if (result.ok) {
+      return Astro.redirect("/dashboard");
+    }
+    errors = SAVE_ERRORS[result.error];
+    if (result.error === "category_not_found") {
+      // Do not echo an id that is not the author's back into the page.
+      values = { ...values, category_id: "" };
+    }
+  } else {
+    errors = parsed.errors;
+  }
+}
+
+// A failed read must not cost the author what they just typed: re-render with their values instead of a 500.
+let categories: Awaited<ReturnType<typeof listCategories>> = [];
+try {
+  categories = await listCategories(supabase);
+} catch {
+  errors = { ...errors, form: "Your categories could not be loaded. Please try again." };
+}
+---
+
+<Layout title="New investment">
+  <div class="bg-cosmic flex min-h-screen items-center justify-center p-4">
+    <div class="w-full max-w-md rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl">
+      <h1 class="mb-6 bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-center text-2xl font-bold text-transparent">
+        New investment
+      </h1>
+      <PositionForm categories={categories} values={values} errors={errors} client:load />
+      <p class="mt-4 text-center text-sm text-blue-100/60">
+        <a href="/dashboard" class="text-purple-300 hover:underline">
+          Back to your positions
+        </a>
+      </p>
+    </div>
+  </div>
+</Layout>

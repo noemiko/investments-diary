@@ -1,27 +1,112 @@
 ---
 import Layout from "@/layouts/Layout.astro";
+import { createClient } from "@/lib/supabase";
+import { listPositions } from "@/lib/services/positions";
 
 const { user } = Astro.locals;
+
+const supabase = createClient(Astro.request.headers, Astro.cookies);
+const positions = await listPositions(supabase);
+
+// Prices and quantities are stored as numeric(20,8); no currency, since a broker is only a label.
+const numberFormat = new Intl.NumberFormat("en-US", { maximumFractionDigits: 8 });
+const dateFormat = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" });
+
+function formatDate(isoDate: string) {
+  return dateFormat.format(new Date(`${isoDate}T00:00:00Z`));
+}
 ---
 
 <Layout title="Dashboard">
-  <div class="bg-cosmic flex min-h-screen items-center justify-center p-4">
-    <div class="rounded-2xl border border-white/10 bg-white/10 p-8 text-center text-white backdrop-blur-xl">
-      <h1 class="mb-4 bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-3xl font-bold text-transparent">
-        Dashboard
-      </h1>
-      <p class="text-blue-100/80">
-        Welcome, <span class="font-semibold text-white">{user?.email}</span>
-      </p>
-      <p class="mt-2 text-sm text-blue-100/50">This page is only for authenticated users.</p>
-      <form method="POST" action="/api/auth/signout" class="mt-6">
-        <button
-          type="submit"
-          class="rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/20"
-        >
-          Sign out
-        </button>
-      </form>
+  <div class="bg-cosmic min-h-screen p-4">
+    <div class="mx-auto max-w-5xl rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl">
+      <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 class="bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-3xl font-bold text-transparent">
+            Your positions
+          </h1>
+          <p class="mt-1 text-sm text-blue-100/60">
+            Signed in as <span class="font-semibold text-white">{user?.email}</span>
+          </p>
+        </div>
+        <div class="flex items-center gap-3">
+          {positions.length > 0 && (
+            <a
+              href="/dashboard/new"
+              class="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-500"
+            >
+              New investment
+            </a>
+          )}
+          <form method="POST" action="/api/auth/signout">
+            <button
+              type="submit"
+              class="rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/20"
+            >
+              Sign out
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {positions.length === 0 ? (
+        <div class="rounded-xl border border-white/10 bg-white/5 p-8 text-center">
+          <p class="text-blue-100/80">
+            Your positions and the reasons you bought them will appear here, so you can look back on your thinking.
+          </p>
+          <a
+            href="/dashboard/new"
+            class="mt-4 inline-block rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-500"
+          >
+            Record your first investment
+          </a>
+        </div>
+      ) : (
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="border-b border-white/10 text-blue-100/60">
+              <tr>
+                <th scope="col" class="px-3 py-2 font-medium">
+                  Instrument
+                </th>
+                <th scope="col" class="px-3 py-2 font-medium">
+                  Buy date
+                </th>
+                <th scope="col" class="px-3 py-2 text-right font-medium">
+                  Buy price
+                </th>
+                <th scope="col" class="px-3 py-2 text-right font-medium">
+                  Quantity
+                </th>
+                <th scope="col" class="px-3 py-2 font-medium">
+                  Broker
+                </th>
+                <th scope="col" class="px-3 py-2 font-medium">
+                  Category
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5">
+              {positions.map((position) => (
+                <tr>
+                  <td class="px-3 py-2 font-semibold">{position.instrument}</td>
+                  <td class="px-3 py-2 text-blue-100/80">{formatDate(position.buy_date)}</td>
+                  <td class="px-3 py-2 text-right tabular-nums">{numberFormat.format(position.buy_price)}</td>
+                  <td class="px-3 py-2 text-right text-blue-100/80 tabular-nums">
+                    {position.quantity === null ? "—" : numberFormat.format(position.quantity)}
+                  </td>
+                  <td class="px-3 py-2 text-blue-100/80">{position.broker_label ?? "—"}</td>
+                  <td class="px-3 py-2">
+                    <span class="rounded-full bg-purple-500/30 px-2 py-0.5 text-xs text-purple-100">
+                      {position.category_name}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   </div>
 </Layout>

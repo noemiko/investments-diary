@@ -133,10 +133,9 @@ async function ensureLabel(name, teamId) {
   );
   const hit = d.issueLabels.nodes.find((l) => !l.team || l.team.id === teamId);
   if (hit) return hit.id;
-  const c = await gql(
-    `mutation($input:IssueLabelCreateInput!){ issueLabelCreate(input:$input){ issueLabel{ id } } }`,
-    { input: { name, teamId, color: LABEL_COLORS[name] } },
-  );
+  const c = await gql(`mutation($input:IssueLabelCreateInput!){ issueLabelCreate(input:$input){ issueLabel{ id } } }`, {
+    input: { name, teamId, color: LABEL_COLORS[name] },
+  });
   return c.issueLabelCreate.issueLabel.id;
 }
 
@@ -153,10 +152,7 @@ async function findExisting(teamKey, id) {
 
 const md = readFileSync(ROADMAP, "utf8");
 const northStar = section(md, "North star").match(/\*\*([SF]-\d+):/)?.[1];
-const items = topoSort([
-  ...parseItems(md, "Foundations", "foundation"),
-  ...parseItems(md, "Slices", "slice"),
-]);
+const items = topoSort([...parseItems(md, "Foundations", "foundation"), ...parseItems(md, "Slices", "slice")]);
 
 for (const i of items) {
   i.labels = [i.kind, ...(i.id === northStar ? ["north-star"] : [])];
@@ -188,18 +184,15 @@ for (const item of items) {
     console.log(`= ${existing.identifier} ${item.title} (exists, skipped)`);
     continue;
   }
-  const d = await gql(
-    `mutation($input:IssueCreateInput!){ issueCreate(input:$input){ issue{ id identifier url } } }`,
-    {
-      input: {
-        teamId: team.id,
-        projectId,
-        title: item.title,
-        description: describe(item, created),
-        labelIds: item.labels.map((l) => labelIds[l]),
-      },
+  const d = await gql(`mutation($input:IssueCreateInput!){ issueCreate(input:$input){ issue{ id identifier url } } }`, {
+    input: {
+      teamId: team.id,
+      projectId,
+      title: item.title,
+      description: describe(item, created),
+      labelIds: item.labels.map((l) => labelIds[l]),
     },
-  );
+  });
   created[item.id] = { ...d.issueCreate.issue, relations: { nodes: [] } };
   console.log(`+ ${created[item.id].identifier} ${item.title}`);
 }
@@ -208,14 +201,19 @@ for (const item of items) {
 for (const item of items) {
   for (const p of item.prereqs) {
     const blocker = created[p];
-    const already = blocker.relations.nodes.some((r) => r.type === "blocks" && r.relatedIssue.id === created[item.id].id);
-    if (already) continue;
-    await gql(
-      `mutation($input:IssueRelationCreateInput!){ issueRelationCreate(input:$input){ success } }`,
-      { input: { issueId: blocker.id, relatedIssueId: created[item.id].id, type: "blocks" } },
+    const already = blocker.relations.nodes.some(
+      (r) => r.type === "blocks" && r.relatedIssue.id === created[item.id].id,
     );
+    if (already) continue;
+    await gql(`mutation($input:IssueRelationCreateInput!){ issueRelationCreate(input:$input){ success } }`, {
+      input: { issueId: blocker.id, relatedIssueId: created[item.id].id, type: "blocks" },
+    });
     console.log(`  ${blocker.identifier} blocks ${created[item.id].identifier}`);
   }
 }
 
-console.log(`\nDone. ${team.name}: ${Object.values(created).map((c) => c.identifier).join(", ")}`);
+console.log(
+  `\nDone. ${team.name}: ${Object.values(created)
+    .map((c) => c.identifier)
+    .join(", ")}`,
+);

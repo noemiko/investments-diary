@@ -1,9 +1,9 @@
 ---
 change_id: record-first-investment
 title: Record the first investment
-status: planned
+status: impl_reviewed
 created: 2026-09-25
-updated: 2026-09-25
+updated: 2026-10-02
 archived_at: null
 ---
 
