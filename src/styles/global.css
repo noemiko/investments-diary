@@ -4,6 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  /* Brand purple in --primary/--primary-foreground/--ring, plus --cosmic-* and --heading-gradient-*: see context/changes/ui-tokens-onboarding/tokens.md */
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -11,7 +12,7 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --primary: oklch(0.558 0.288 302.321);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -22,7 +23,7 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --ring: oklch(0.627 0.265 303.9);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -36,17 +37,23 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --cosmic-from: #0a0e1a;
+  --cosmic-via: #0f1529;
+  --cosmic-to: #0a0e1a;
+  --heading-gradient-from: oklch(88.2% 0.059 254.128);
+  --heading-gradient-to: oklch(90.2% 0.063 306.703);
 }
 
 .dark {
+  /* Brand purple in --primary/--primary-foreground/--ring, plus --cosmic-* and --heading-gradient-*: see context/changes/ui-tokens-onboarding/tokens.md */
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  --primary: oklch(0.558 0.288 302.321);
+  --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
@@ -56,7 +63,7 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --ring: oklch(0.714 0.203 305.504);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -70,6 +77,11 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --cosmic-from: #0a0e1a;
+  --cosmic-via: #0f1529;
+  --cosmic-to: #0a0e1a;
+  --heading-gradient-from: oklch(88.2% 0.059 254.128);
+  --heading-gradient-to: oklch(90.2% 0.063 306.703);
 }
 
 @theme inline {
@@ -111,7 +123,13 @@
 }
 
 @utility bg-cosmic {
-  background-image: linear-gradient(to bottom, #0a0e1a, #0f1529, #0a0e1a);
+  background-image: linear-gradient(to bottom, var(--cosmic-from), var(--cosmic-via), var(--cosmic-to));
+}
+
+@utility text-gradient-heading {
+  background-image: linear-gradient(to right in oklab, var(--heading-gradient-from), var(--heading-gradient-to));
+  background-clip: text;
+  color: transparent;
 }
 
 @layer base {
