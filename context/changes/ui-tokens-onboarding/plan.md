@@ -388,26 +388,26 @@ wartości neutral.
 
 #### Automated
 
-- [x] 2.1 Sekwencja skilla `verify` przechodzi
-- [x] 2.2 Grep palety/white/black/bg-cosmic/hex po plikach widoku nie zwraca nic
-- [x] 2.3 `npm run smoke` przechodzi
+- [x] 2.1 Sekwencja skilla `verify` przechodzi — 533b127
+- [x] 2.2 Grep palety/white/black/bg-cosmic/hex po plikach widoku nie zwraca nic — 533b127
+- [x] 2.3 `npm run smoke` przechodzi — 533b127
 
 #### Manual
 
-- [x] 2.4 Dashboard z pozycjami: 6 kolumn, badge, fioletowy CTA, outline „Sign out”
-- [x] 2.5 Dashboard pusty: Card z CTA, bez „New investment” w nagłówku
-- [x] 2.6 Wylogowany na `/dashboard` → redirect do `/auth/signin`
-- [x] 2.7 Widoczny focus na przyciskach nagłówka
-- [x] 2.8 390px: tabela przewija się w kontenerze, strona bez poziomego scrolla
+- [x] 2.4 Dashboard z pozycjami: 6 kolumn, badge, fioletowy CTA, outline „Sign out” — 533b127
+- [x] 2.5 Dashboard pusty: Card z CTA, bez „New investment” w nagłówku — 533b127
+- [x] 2.6 Wylogowany na `/dashboard` → redirect do `/auth/signin` — 533b127
+- [x] 2.7 Widoczny focus na przyciskach nagłówka — 533b127
+- [x] 2.8 390px: tabela przewija się w kontenerze, strona bez poziomego scrolla — 533b127
 
 ### Phase 3: States — kitchen sink i bramka wizualna
 
 #### Automated
 
-- [ ] 3.1 Sekwencja skilla `verify` przechodzi
-- [ ] 3.2 Guard `import.meta.env.DEV` zwraca 404 przed renderem
-- [ ] 3.3 Kitchen sink zwraca 200 na `npm run dev`
-- [ ] 3.4 Grep palety po kitchen sinku i fixture'ach nie zwraca nic
+- [x] 3.1 Sekwencja skilla `verify` przechodzi
+- [x] 3.2 Guard `import.meta.env.DEV` zwraca 404 przed renderem
+- [x] 3.3 Kitchen sink zwraca 200 na `npm run dev`
+- [x] 3.4 Grep palety po kitchen sinku i fixture'ach nie zwraca nic
 
 #### Manual
 

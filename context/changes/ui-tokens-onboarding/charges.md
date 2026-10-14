@@ -13,7 +13,44 @@ for `global.css` and `Layout.astro` are the state before this change (commit `c9
 | 4   | accidental architecture  | `Layout.astro:12`                                                                                                                                                             | `.dark` is never applied, so the dark token values never reach the user: `body` paints white `--background`, and the views look dark only because of `bg-cosmic` and manual `text-white`. Entries checked: logged out → redirect to `/auth/signin` (`middleware.ts:14-17`); no data → empty state (`dashboard.astro:52-63`); direct link → OK (no per-page state). | Phase 1: `<html lang="en" class="dark">`.                                                                                                                                                                                                                                                                                   |
 | 5   | missing tokens (focus)   | `dashboard.astro:34-47,57-62` + `global.css:119`                                                                                                                              | The hand-styled buttons have no `focus-visible` style. A keyboard user gets only the global `outline-ring/50`, which was a grey that barely shows on the cosmic background.                                                                                                                                                                                        | Phase 1: `--ring` is now purple in both themes. Phase 2: `buttonVariants` brings `focus-visible:ring-ring/50 ring-[3px]`. **Intended visible change in Phase 1:** keyboard focus on `SubmitButton` and on links/buttons without `outline-none` in all views turns grey → purple; checked with a Tab pass during manual 1.8. |
 
+## Gate evidence (Phase 3)
+
+Screenshots in `screens/`, captured with headless Chrome against `npm run dev` and local Supabase.
+`dashboard-before.png` was rendered from `dashboard.astro` at `51c40e5` (after Phase 1, which
+manual check 1.8 confirmed looks the same as before the change).
+
+| Charge | Evidence                                                                                                                                                                                                                                                                                                                                     |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1      | [dashboard-before.png](screens/dashboard-before.png) vs [dashboard-after.png](screens/dashboard-after.png): CTA purple from `--primary`, heading from `text-gradient-heading`, secondary text at a single `text-muted-foreground` level.                                                                                                     |
+| 2      | [dashboard-after.png](screens/dashboard-after.png): the page background is `bg-cosmic`, now token-backed (`--cosmic-*`, decision Q4), so it renders the same as before.                                                                                                                                                                      |
+| 3      | [kitchen-sink-desktop.png](screens/kitchen-sink-desktop.png): `Table*`, `Badge`, `Card` and `buttonVariants` in every named state (typical rows, null fields, long texts, empty).                                                                                                                                                            |
+| 4      | [dashboard-after.png](screens/dashboard-after.png): Card and table read `.dark` token values (`bg-card`, `border-border`, `text-muted-foreground`).                                                                                                                                                                                          |
+| 5      | [kitchen-sink-desktop.png](screens/kitchen-sink-desktop.png) and [kitchen-sink-390.png](screens/kitchen-sink-390.png): the Focus button in both variants shows the purple `ring-ring/50` ring; Disabled is dimmed. At 390px the page has no horizontal overflow (`scrollWidth == clientWidth`); long rows scroll inside the table container. |
+
+**Intended visible deltas** (before → after): the Card is the opaque neutral `bg-card` instead of
+translucent `bg-white/10` with `backdrop-blur`; the category pill is the neutral
+`Badge variant="secondary"` instead of a purple tint; table cells use shadcn's `p-2` instead of
+`px-3 py-2`.
+
+## UI quality checklist (Phase 3)
+
+`.claude/skills/10x-ui/references/ui-quality-checklist.md` reviewed against this change.
+
+- **Charges**: all five met (list with `file:line` and impact; tokens; shared components;
+  entries checked logged out, with no data and from a direct link; unaddressed charges deferred below).
+- **Contract**: tokens from `global.css`, components from shadcn via `shadcn add`, states default /
+  hover / focus / disabled / empty covered (error and loading do not apply: no form, no client
+  loading), desktop + 390px, focus visible and every control has a text name — met.
+  Dark mode changed at the token layer — met; **checked in both themes — not met, deferred** (see below).
+- **Gate**: kitchen sink present; scope held to one view plus global tokens — met.
+  **`/10x-impl-review`** — Phase 1 done (`reviews/impl-review-phase-1.md`); the full-plan review
+  runs after Phase 3.
+
 ## Deferred
+
+- **Light theme check.** Reason: out of scope (plan, "What We're NOT Doing"). `.dark` is hard-coded
+  on `<html>`, so `:root` values are unreachable until a theme switch or `prefers-color-scheme`
+  lands; verify both themes in that change.
 
 - **Other 6 views** (landing, `auth/signin`, `auth/signup`, `auth/confirm-email`,
   `dashboard/new`): their palette classes and heading gradients stay as they are. Reason: one view
