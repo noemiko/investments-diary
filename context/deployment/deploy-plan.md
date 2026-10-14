@@ -130,7 +130,7 @@ On branch `chore/deploy-hardening`, in one PR:
 | # | Owner | Action |
 |---|---|---|
 | B1 | agent | (a) `npm i -E @supabase/ssr@0.12.7`. (b) ~~Fix `verify` skill~~ done 2026-09-24. (c) ~~Rewrite `tech-stack.md` body~~ done 2026-09-24. (d) Optional: remove `@astrojs/sitemap`, add `<meta name="robots" content="noindex">` in `Layout.astro`. Then run the `verify` skill (sync → lint → check → build) |
-| B2 | **human** | Supabase Dashboard → Authentication → URL Configuration: **Site URL** = `https://investments-diary.vercel.app`, **Redirect URLs** += `https://investments-diary.vercel.app/**`. Add a pattern for previews only if they should use auth (see open decisions) |
+| B2 | **human** | Supabase Dashboard → Authentication → URL Configuration: **Site URL** = `https://investments-diary.vercel.app`, **Redirect URLs** += `https://investments-diary.vercel.app/**`. Without the `/**` entry Supabase rejects signup's `emailRedirectTo` (`/auth/callback`), falls back to Site URL, and the PKCE `?code=` is dropped on `/`. Add a pattern for previews only if they should use auth (see open decisions) |
 | B3 | **human** | Resolve PRD Open Question 3. Recommended for single-tenant: (1) create your account through `/auth/signup` or in the Supabase panel, (2) Authentication → Sign In / Providers → **disable "Allow new users to sign up"**, (3) delete any stray accounts in Users. Record the decision in `prd.md` → Open Questions. Hiding the `/auth/signup` form in code is optional: the Supabase setting is the real gate |
 | B4 | agent | Open the PR. CI (`ci` + `smoke`) must be green. The `smoke` job uses **local** Supabase, so it doesn't depend on B3 |
 
@@ -198,6 +198,7 @@ Fill in during execution.
 | Step | Date | Result / ID |
 |---|---|---|
 | Gap 5: local dev isolated from production | 2026-09-24 | done. Local Supabase stack, guard in `src/lib/supabase.ts`, smoke 8/8 locally. Uncommitted, goes into the B4 PR |
+| B2 hosted Auth URL config | 2026-10-14 | **not done**: signup emails still linked to `http://localhost:3000` (hosted default Site URL). Code side fixed in `context/changes/auth-email-callback/` (`emailRedirectTo` → `/auth/callback`). Still to do in the dashboard: Site URL + Redirect URLs `https://investments-diary.vercel.app/**` (and the preview pattern if previews use auth) |
 | A2 current prod deployment ID (rollback target) | | |
 | A4 git integration / production branch | | |
 | D3 promoted deployment | | |
