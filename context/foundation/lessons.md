@@ -18,3 +18,20 @@ while macOS native menus hide the bug, so it passes a local check.
 in Firefox.
 
 **Applies to:** plan, implement, impl-review
+
+## Open a pull request to run CI/CD
+
+**Context:** Verifying a change remotely: any phase or plan check that relies on CI (`ci`, `smoke`
+jobs in `.github/workflows/ci.yml`) or on a Vercel preview, after pushing a feature branch.
+
+**Problem:** `ci.yml` triggers only on `push` to `master` and `pull_request` to `master`, so pushing
+`ui-tokens-onboarding` (`8413cbf`) ran no CI at all until PR #2 was opened. A branch push looks like
+"shipped for verification" while nothing runs. No Vercel preview was built for the push or the PR
+either.
+
+**Rule:** To run CI/CD on a change, open a pull request against `master` after pushing the branch; a
+branch push alone runs no workflow. Do not count on a Vercel preview from the PR: until the git
+integration is verified (`context/deployment/deploy-plan.md` A4), a preview check needs
+`npx vercel deploy` without `--prod`.
+
+**Applies to:** plan, implement, impl-review
