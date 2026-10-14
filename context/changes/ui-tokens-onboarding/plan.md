@@ -371,34 +371,34 @@ wartości neutral.
 
 #### Automated
 
-- [x] 1.1 Sekwencja skilla `verify` przechodzi
-- [x] 1.2 `ls src/components/ui` zwraca `LibBadge.astro badge.tsx button.tsx card.tsx table.tsx`
-- [x] 1.3 Nowe pliki `ui/` nie zawierają klas koloru palety
-- [x] 1.4 `Layout.astro` ma `class="dark"`
-- [x] 1.5 Brak drugiej kopii `Slot` i zależności `radix-ui`
+- [x] 1.1 Sekwencja skilla `verify` przechodzi — 51c40e5
+- [x] 1.2 `ls src/components/ui` zwraca `LibBadge.astro badge.tsx button.tsx card.tsx table.tsx` — 51c40e5
+- [x] 1.3 Nowe pliki `ui/` nie zawierają klas koloru palety — 51c40e5
+- [x] 1.4 `Layout.astro` ma `class="dark"` — 51c40e5
+- [x] 1.5 Brak drugiej kopii `Slot` i zależności `radix-ui` — 51c40e5
 
 #### Manual
 
-- [x] 1.6 `charges.md` zawiera 3–5 zarzutów z `file:line`, wpływem i sekcją odroczonych
-- [x] 1.7 `tokens.md` zawiera wartości obu motywów, poprzednie wartości i źródło
-- [x] 1.8 Sześć widoków wygląda tak samo jak przed fazą; „Sign in” nadal fioletowy
-- [x] 1.9 Zdanie w `CLAUDE.md` ograniczone do `src/components/ui/`
+- [x] 1.6 `charges.md` zawiera 3–5 zarzutów z `file:line`, wpływem i sekcją odroczonych — 51c40e5
+- [x] 1.7 `tokens.md` zawiera wartości obu motywów, poprzednie wartości i źródło — 51c40e5
+- [x] 1.8 Sześć widoków wygląda tak samo jak przed fazą; „Sign in” nadal fioletowy — 51c40e5
+- [x] 1.9 Zdanie w `CLAUDE.md` ograniczone do `src/components/ui/` — 51c40e5
 
 ### Phase 2: One view — dashboard na tokenach
 
 #### Automated
 
-- [ ] 2.1 Sekwencja skilla `verify` przechodzi
-- [ ] 2.2 Grep palety/white/black/bg-cosmic/hex po plikach widoku nie zwraca nic
-- [ ] 2.3 `npm run smoke` przechodzi
+- [x] 2.1 Sekwencja skilla `verify` przechodzi
+- [x] 2.2 Grep palety/white/black/bg-cosmic/hex po plikach widoku nie zwraca nic
+- [x] 2.3 `npm run smoke` przechodzi
 
 #### Manual
 
-- [ ] 2.4 Dashboard z pozycjami: 6 kolumn, badge, fioletowy CTA, outline „Sign out”
-- [ ] 2.5 Dashboard pusty: Card z CTA, bez „New investment” w nagłówku
-- [ ] 2.6 Wylogowany na `/dashboard` → redirect do `/auth/signin`
-- [ ] 2.7 Widoczny focus na przyciskach nagłówka
-- [ ] 2.8 390px: tabela przewija się w kontenerze, strona bez poziomego scrolla
+- [x] 2.4 Dashboard z pozycjami: 6 kolumn, badge, fioletowy CTA, outline „Sign out”
+- [x] 2.5 Dashboard pusty: Card z CTA, bez „New investment” w nagłówku
+- [x] 2.6 Wylogowany na `/dashboard` → redirect do `/auth/signin`
+- [x] 2.7 Widoczny focus na przyciskach nagłówka
+- [x] 2.8 390px: tabela przewija się w kontenerze, strona bez poziomego scrolla
 
 ### Phase 3: States — kitchen sink i bramka wizualna
 
