@@ -1,0 +1,60 @@
+---
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import type { PositionListItem } from "@/types";
+
+interface Props {
+  positions: PositionListItem[];
+}
+
+const { positions } = Astro.props;
+
+// Prices and quantities are stored as numeric(20,8); no currency, since a broker is only a label.
+const numberFormat = new Intl.NumberFormat("en-US", { maximumFractionDigits: 8 });
+const dateFormat = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" });
+
+function formatDate(isoDate: string) {
+  return dateFormat.format(new Date(`${isoDate}T00:00:00Z`));
+}
+---
+
+<Table>
+  <TableHeader>
+    <TableRow className="hover:bg-transparent">
+      <TableHead scope="col" className="text-muted-foreground">
+        Instrument
+      </TableHead>
+      <TableHead scope="col" className="text-muted-foreground">
+        Buy date
+      </TableHead>
+      <TableHead scope="col" className="text-right text-muted-foreground">
+        Buy price
+      </TableHead>
+      <TableHead scope="col" className="text-right text-muted-foreground">
+        Quantity
+      </TableHead>
+      <TableHead scope="col" className="text-muted-foreground">
+        Broker
+      </TableHead>
+      <TableHead scope="col" className="text-muted-foreground">
+        Category
+      </TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    {positions.map((position) => (
+      <TableRow>
+        <TableCell className="font-semibold">{position.instrument}</TableCell>
+        <TableCell className="text-muted-foreground">{formatDate(position.buy_date)}</TableCell>
+        <TableCell className="text-right tabular-nums">{numberFormat.format(position.buy_price)}</TableCell>
+        <TableCell className="text-right text-muted-foreground tabular-nums">
+          {position.quantity === null ? "—" : numberFormat.format(position.quantity)}
+        </TableCell>
+        <TableCell className="text-muted-foreground">{position.broker_label ?? "—"}</TableCell>
+        <TableCell>
+          <Badge variant="secondary">{position.category_name}</Badge>
+        </TableCell>
+      </TableRow>
+    ))}
+  </TableBody>
+</Table>

@@ -1,0 +1,13 @@
+---
+import { buttonVariants } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+---
+
+<Card className="items-center gap-4 p-8 text-center">
+  <p class="text-muted-foreground">
+    Your positions and the reasons you bought them will appear here, so you can look back on your thinking.
+  </p>
+  <a href="/dashboard/new" class:list={buttonVariants()}>
+    Record your first investment
+  </a>
+</Card>

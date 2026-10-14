@@ -101,7 +101,9 @@ switching to client fetch.
 
 - **Astro components** for layout/static markup. A `.tsx` component must carry a `client:*`
   directive on at least one usage — if it renders without one it has no interactivity and belongs
-  in `.astro`. No Next.js directives (`"use client"`).
+  in `.astro`. No Next.js directives (`"use client"`). Exception: shadcn primitives in
+  `src/components/ui/` may render statically from `.astro` without `client:*`, because the same set
+  serves Astro views and React islands; domain components outside `ui/` still follow the rule.
 - **Class names**: compose with `cn()` from `@/lib/utils`; never concatenate class strings.
 - **shadcn/ui** ("new-york", neutral base) lives in `src/components/ui/`. Per `components.json`,
   hooks belong in `src/hooks/` (`@/hooks`), not under `src/components/`.

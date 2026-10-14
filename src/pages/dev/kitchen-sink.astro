@@ -1,0 +1,109 @@
+---
+// The rule crashes ("Expected node to have a parent") on a top-level `return` in frontmatter;
+// an eslint-disable comment would not help, because the rule still runs. Nothing here passes promises as callbacks.
+/* eslint @typescript-eslint/no-misused-promises: "off" */
+import Layout from "@/layouts/Layout.astro";
+import PositionsEmptyState from "@/components/positions/PositionsEmptyState.astro";
+import PositionsTable from "@/components/positions/PositionsTable.astro";
+import { longTextPositions, positionsWithNulls, typicalPositions } from "@/components/positions/fixtures";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+
+// Dev-only: `/dev/*` is not in PROTECTED_ROUTES, so this guard is the page's only protection.
+// `import.meta.env.DEV` is statically false in `astro build`, so the built page always answers 404.
+if (!import.meta.env.DEV) {
+  return new Response(null, { status: 404 });
+}
+
+// Forced visual states: the variant's hover / focus-visible classes applied statically (see button.tsx).
+const FOCUS = "border-ring ring-ring/50 ring-[3px]";
+const buttonStates = [
+  {
+    label: "Default variant",
+    base: buttonVariants(),
+    hover: cn(buttonVariants(), "bg-primary/90"),
+    focus: cn(buttonVariants(), FOCUS),
+  },
+  {
+    label: "Outline variant",
+    base: buttonVariants({ variant: "outline" }),
+    hover: cn(buttonVariants({ variant: "outline" }), "bg-accent text-accent-foreground dark:bg-input/50"),
+    focus: cn(buttonVariants({ variant: "outline" }), FOCUS),
+  },
+];
+---
+
+<Layout title="Kitchen sink">
+  <div class="bg-cosmic min-h-screen p-4">
+    <Card className="mx-auto max-w-5xl min-w-0 p-8">
+      <div>
+        <h1 class="text-gradient-heading text-3xl font-bold">Kitchen sink</h1>
+        <p class="mt-1 text-sm text-muted-foreground">
+          Dev-only view of the dashboard's named states, rendered from fixtures without Supabase.
+        </p>
+      </div>
+
+      <section class="flex min-w-0 flex-col gap-3">
+        <h2 class="text-lg font-semibold">State: default (typical rows)</h2>
+        <PositionsTable positions={typicalPositions} />
+      </section>
+
+      <section class="flex min-w-0 flex-col gap-3">
+        <h2 class="text-lg font-semibold">State: optional fields empty (quantity and broker null)</h2>
+        <PositionsTable positions={positionsWithNulls} />
+      </section>
+
+      <section class="flex min-w-0 flex-col gap-3">
+        <h2 class="text-lg font-semibold">State: long texts (100-character instrument, 60-character category)</h2>
+        <PositionsTable positions={longTextPositions} />
+      </section>
+
+      <section class="flex min-w-0 flex-col gap-3">
+        <h2 class="text-lg font-semibold">State: empty (no positions)</h2>
+        <PositionsEmptyState />
+      </section>
+
+      <section class="flex min-w-0 flex-col gap-3">
+        <h2 class="text-lg font-semibold">Buttons: default, hover, focus, disabled</h2>
+        {buttonStates.map((state) => (
+          <div class="flex flex-col gap-2">
+            <h3 class="text-sm font-medium text-muted-foreground">{state.label}</h3>
+            <div class="flex flex-wrap items-center gap-3">
+              <button type="button" class:list={state.base}>
+                Default
+              </button>
+              <button type="button" class:list={state.hover}>
+                Hover
+              </button>
+              <button type="button" class:list={state.focus}>
+                Focus
+              </button>
+              <button type="button" class:list={state.base} disabled>
+                Disabled
+              </button>
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <section class="flex min-w-0 flex-col gap-3">
+        <h2 class="text-lg font-semibold">Badges</h2>
+        <div class="flex flex-wrap items-center gap-3">
+          <Badge variant="secondary">Secondary (category)</Badge>
+          <Badge>Default</Badge>
+          <Badge variant="outline">Outline</Badge>
+        </div>
+      </section>
+
+      <section class="flex min-w-0 flex-col gap-3">
+        <h2 class="text-lg font-semibold">States not applicable</h2>
+        <p class="text-sm text-muted-foreground">
+          Error and loading do not apply to this view: the dashboard has no form and loads nothing on the client. Its
+          data is read on the server before the page renders.
+        </p>
+      </section>
+    </Card>
+  </div>
+</Layout>

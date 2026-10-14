@@ -163,7 +163,7 @@ export default function PositionForm({ categories, values: initialValues, errors
           aria-invalid={categoryError ? true : undefined}
           className={cn(
             controlBase,
-            "[&>option]:text-black",
+            "[&>option]:bg-popover [&>option]:text-popover-foreground",
             categoryError ? "border-red-400/60 focus:ring-red-400" : "border-white/20 focus:ring-purple-400",
           )}
         >
