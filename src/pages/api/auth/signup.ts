@@ -7,7 +7,12 @@ export const POST: APIRoute = async (context) => {
   const password = form.get("password") as string;
 
   const supabase = createClient(context.request.headers, context.cookies);
-  const { error } = await supabase.auth.signUp({ email, password });
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    // Without this, Supabase falls back to the project's Site URL (default http://localhost:3000).
+    options: { emailRedirectTo: new URL("/auth/callback", context.url.origin).toString() },
+  });
 
   if (error) {
     return context.redirect(`/auth/signup?error=${encodeURIComponent(error.message)}`);
