@@ -1,10 +1,10 @@
 ---
 change_id: auth-email-callback
 title: Fix signup email confirmation link (otp_expired / localhost:3000)
-status: impl_reviewed
+status: archived
 created: 2026-10-14
-updated: 2026-10-14
-archived_at: null
+updated: 2026-10-15
+archived_at: 2026-10-15T08:16:07Z
 ---
 
 ## Notes
