@@ -1,6 +1,7 @@
 ---
 import Layout from "@/layouts/Layout.astro";
 import PositionsEmptyState from "@/components/positions/PositionsEmptyState.astro";
+import PositionsErrorState from "@/components/positions/PositionsErrorState.astro";
 import PositionsTable from "@/components/positions/PositionsTable.astro";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,7 +11,14 @@ import { listPositions } from "@/lib/services/positions";
 const { user } = Astro.locals;
 
 const supabase = createClient(Astro.request.headers, Astro.cookies);
-const positions = await listPositions(supabase);
+
+// A failed read must not cost the author the page (and its Sign out): render an error state instead of a 500.
+let positions: Awaited<ReturnType<typeof listPositions>> | null = null;
+try {
+  positions = await listPositions(supabase);
+} catch {
+  // positions stays null → PositionsErrorState
+}
 ---
 
 <Layout title="Dashboard">
@@ -24,7 +32,7 @@ const positions = await listPositions(supabase);
           </p>
         </div>
         <div class="flex items-center gap-3">
-          {positions.length > 0 && (
+          {positions && positions.length > 0 && (
             <a href="/dashboard/new" class:list={buttonVariants()}>
               New investment
             </a>
@@ -37,7 +45,13 @@ const positions = await listPositions(supabase);
         </div>
       </div>
 
-      {positions.length === 0 ? <PositionsEmptyState /> : <PositionsTable positions={positions} />}
+      {positions === null ? (
+        <PositionsErrorState />
+      ) : positions.length === 0 ? (
+        <PositionsEmptyState />
+      ) : (
+        <PositionsTable positions={positions} />
+      )}
     </Card>
   </div>
 </Layout>

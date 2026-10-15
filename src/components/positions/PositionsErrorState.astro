@@ -1,0 +1,13 @@
+---
+import { buttonVariants } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+---
+
+<Card className="items-center border-destructive/40 p-8 text-center">
+  <p role="alert" class="max-w-md text-destructive">
+    Your positions could not be loaded. Please try again.
+  </p>
+  <a href="/dashboard" class:list={buttonVariants({ variant: "outline" })}>
+    Try again
+  </a>
+</Card>

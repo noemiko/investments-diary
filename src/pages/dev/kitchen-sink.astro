@@ -4,6 +4,7 @@
 /* eslint @typescript-eslint/no-misused-promises: "off" */
 import Layout from "@/layouts/Layout.astro";
 import PositionsEmptyState from "@/components/positions/PositionsEmptyState.astro";
+import PositionsErrorState from "@/components/positions/PositionsErrorState.astro";
 import PositionsTable from "@/components/positions/PositionsTable.astro";
 import { longTextPositions, positionsWithNulls, typicalPositions } from "@/components/positions/fixtures";
 import { Badge } from "@/components/ui/badge";
@@ -98,10 +99,15 @@ const buttonStates = [
       </section>
 
       <section class="flex min-w-0 flex-col gap-3">
+        <h2 class="text-lg font-semibold">State: error (positions could not be loaded)</h2>
+        <PositionsErrorState />
+      </section>
+
+      <section class="flex min-w-0 flex-col gap-3">
         <h2 class="text-lg font-semibold">States not applicable</h2>
         <p class="text-sm text-muted-foreground">
-          Error and loading do not apply to this view: the dashboard has no form and loads nothing on the client. Its
-          data is read on the server before the page renders.
+          Loading does not apply to this view: the dashboard loads nothing on the client. Its data is read on the server
+          before the page renders, and a failed read shows the error state above.
         </p>
       </section>
     </Card>

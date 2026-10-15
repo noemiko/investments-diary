@@ -23,7 +23,7 @@ manual check 1.8 confirmed looks the same as before the change).
 | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1      | [dashboard-before.png](screens/dashboard-before.png) vs [dashboard-after.png](screens/dashboard-after.png): CTA purple from `--primary`, heading from `text-gradient-heading`, secondary text at a single `text-muted-foreground` level.                                                                                                     |
 | 2      | [dashboard-after.png](screens/dashboard-after.png): the page background is `bg-cosmic`, now token-backed (`--cosmic-*`, decision Q4), so it renders the same as before.                                                                                                                                                                      |
-| 3      | [kitchen-sink-desktop.png](screens/kitchen-sink-desktop.png): `Table*`, `Badge`, `Card` and `buttonVariants` in every named state (typical rows, null fields, long texts, empty).                                                                                                                                                            |
+| 3      | [kitchen-sink-desktop.png](screens/kitchen-sink-desktop.png): `Table*`, `Badge`, `Card` and `buttonVariants` in every named state (typical rows, null fields, long texts, empty, error — added after impl-review F2).                                                                                                                                                            |
 | 4      | [dashboard-after.png](screens/dashboard-after.png): Card and table read `.dark` token values (`bg-card`, `border-border`, `text-muted-foreground`).                                                                                                                                                                                          |
 | 5      | [kitchen-sink-desktop.png](screens/kitchen-sink-desktop.png) and [kitchen-sink-390.png](screens/kitchen-sink-390.png): the Focus button in both variants shows the purple `ring-ring/50` ring; Disabled is dimmed. At 390px the page has no horizontal overflow (`scrollWidth == clientWidth`); long rows scroll inside the table container. |
 
@@ -65,6 +65,10 @@ translucent `bg-white/10` with `backdrop-blur`; the category pill is the neutral
 - **Input/Label/Textarea/Select/Alert primitives.** Reason: the dashboard does not need them. They
   arrive with forms or S-02.
 - **`--success`/`--positive` token.** Reason: decision Q6. It lands in S-02 with result display.
+- **Positions list beyond `max_rows`.** `listPositions` (`src/lib/services/positions.ts:44-49`) has no
+  `.range()`, so PostgREST silently cuts the list at `max_rows` (1000 locally, `supabase/config.toml:18`).
+  Reason: predates this change and is unrealistic soon for one author; add pagination or a
+  "showing first N" notice when the list grows (impl-review F3).
 
 ## Dead code (decision Q7)
 
