@@ -35,6 +35,8 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
 
   smoke:
+    # Slow (local Supabase); runs after merge to master only, not on PRs.
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
