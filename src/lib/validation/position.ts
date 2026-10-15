@@ -1,5 +1,6 @@
 import { z } from "astro/zod";
 import { parseDecimal } from "@/lib/validation/decimal";
+import { isUuid } from "@/lib/validation/uuid";
 import {
   NEW_CATEGORY_CHOICE,
   POSITION_FORM_FIELDS,
@@ -92,7 +93,7 @@ const positionFormSchema = z
         });
       } else if (!category_id && !new_category_name) {
         ctx.addIssue({ code: "custom", path: ["category_id"], message: "Choose a category" });
-      } else if (category_id && !z.uuid().safeParse(category_id).success) {
+      } else if (category_id && !isUuid(category_id)) {
         ctx.addIssue({ code: "custom", path: ["category_id"], message: "Choose a category from your list" });
       } else if (new_category_name.length > 60) {
         ctx.addIssue({ code: "custom", path: ["new_category_name"], message: "Use at most 60 characters" });

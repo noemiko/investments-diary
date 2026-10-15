@@ -324,7 +324,7 @@ const steps = [
   [
     "B: cannot restore A's deleted position",
     () => request(b, `/dashboard/positions/${ids.delPosition}/restore`, { method: "POST" }),
-    { status: 404 },
+    { status: 404, requiresIds: ["delPosition"] },
   ],
   [
     "B: cannot delete A's position",
@@ -406,7 +406,7 @@ const steps = [
   [
     "anonymous delete POST redirects to signin",
     () => request(anonymous, `/dashboard/positions/${ids.delPosition}/delete`, { method: "POST" }),
-    { status: 302, location: "/auth/signin" },
+    { status: 302, location: "/auth/signin", requiresIds: ["delPosition"] },
   ],
   [
     "anonymous: detail page redirects to signin",

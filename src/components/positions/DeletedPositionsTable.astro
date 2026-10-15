@@ -10,15 +10,17 @@ interface Props {
 
 const { positions } = Astro.props;
 
-// Same format as the buy dates on the dashboard.
+// Same format as the buy dates on the dashboard. A buy date is a plain date, so it is read and shown in UTC.
 const dateFormat = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" });
+// `deleted_at` is an instant, so it is shown on the author's calendar day, not UTC's.
+const timestampFormat = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "Europe/Warsaw" });
 
 function formatDate(isoDate: string) {
   return dateFormat.format(new Date(`${isoDate}T00:00:00Z`));
 }
 
 function formatTimestamp(isoTimestamp: string) {
-  return dateFormat.format(new Date(isoTimestamp));
+  return timestampFormat.format(new Date(isoTimestamp));
 }
 ---
 

@@ -347,13 +347,13 @@ None: single-row updates and one extra list query on a separate page.
 
 #### Automated
 
-- [x] 2.1 Smoke walk passes against local Supabase
-- [x] 2.2 verify skill sequence passes
+- [x] 2.1 Smoke walk passes against local Supabase — 741edd7
+- [x] 2.2 verify skill sequence passes — 741edd7
 
 #### Manual
 
-- [x] 2.3 A deliberate break makes the relevant smoke step fail
-- [ ] 2.4 Pull request opened so the ci job runs
+- [x] 2.3 A deliberate break makes the relevant smoke step fail — 741edd7
+- [x] 2.4 Pull request opened so the ci job runs — 741edd7
 
 ### Phase 3: After rebasing onto S-02
 
