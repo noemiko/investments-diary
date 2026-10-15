@@ -407,10 +407,10 @@ None: one extra pair of columns in an existing single-user query, and one by-id 
 
 #### Automated
 
-- [x] 3.1 Smoke walk passes against local Supabase
-- [x] 3.2 verify skill sequence passes
+- [x] 3.1 Smoke walk passes against local Supabase — 23400ec
+- [x] 3.2 verify skill sequence passes — 23400ec
 
 #### Manual
 
-- [x] 3.3 A deliberate break makes the relevant smoke step fail
-- [ ] 3.4 Pull request opened so the ci job runs
+- [x] 3.3 A deliberate break makes the relevant smoke step fail — 23400ec
+- [x] 3.4 Pull request opened so the ci job runs
