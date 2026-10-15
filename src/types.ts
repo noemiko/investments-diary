@@ -9,10 +9,13 @@ export type ReasonCategory = Pick<CategoryRow, "id" | "name">;
 /** One row of the positions list on the dashboard (FR-010). */
 export type PositionListItem = Pick<
   PositionRow,
-  "id" | "instrument" | "buy_date" | "buy_price" | "quantity" | "broker_label"
+  "id" | "instrument" | "buy_date" | "buy_price" | "quantity" | "broker_label" | "current_price" | "price_date"
 > & {
   category_name: string;
 };
+
+/** One position on its detail page (FR-011): the list row plus the full reason. */
+export type PositionDetail = PositionListItem & Pick<PositionRow, "reason_text">;
 
 /** The entry form after parsing: exactly one of `category_id` / `new_category_name` is set. */
 export type NewPositionInput = Pick<
@@ -42,3 +45,19 @@ export type PositionFormValues = Record<PositionFormField, string>;
 
 /** One message per field; `form` carries errors that belong to no single field. */
 export type PositionFormErrors = Partial<Record<PositionFormField | "form", string>>;
+
+/** The price form after parsing (FR-006): both fields are required. */
+export interface PriceUpdateInput {
+  current_price: number;
+  price_date: string;
+}
+
+export const PRICE_FORM_FIELDS = ["current_price", "price_date"] as const;
+
+export type PriceFormField = (typeof PRICE_FORM_FIELDS)[number];
+
+/** Raw price-form values as submitted, echoed back into the form when a submission is rejected. */
+export type PriceFormValues = Record<PriceFormField, string>;
+
+/** One message per field; `form` carries errors that belong to no single field. */
+export type PriceFormErrors = Partial<Record<PriceFormField | "form", string>>;

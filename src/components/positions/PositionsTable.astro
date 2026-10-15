@@ -1,6 +1,8 @@
 ---
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import PositionResult from "@/components/positions/PositionResult.astro";
+import { formatDate, formatNumber } from "@/lib/format";
 import type { PositionListItem } from "@/types";
 
 interface Props {
@@ -8,14 +10,6 @@ interface Props {
 }
 
 const { positions } = Astro.props;
-
-// Prices and quantities are stored as numeric(20,8); no currency, since a broker is only a label.
-const numberFormat = new Intl.NumberFormat("en-US", { maximumFractionDigits: 8 });
-const dateFormat = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" });
-
-function formatDate(isoDate: string) {
-  return dateFormat.format(new Date(`${isoDate}T00:00:00Z`));
-}
 ---
 
 <Table>
@@ -29,6 +23,9 @@ function formatDate(isoDate: string) {
       </TableHead>
       <TableHead scope="col" className="text-right text-muted-foreground">
         Buy price
+      </TableHead>
+      <TableHead scope="col" className="text-muted-foreground">
+        Result
       </TableHead>
       <TableHead scope="col" className="text-right text-muted-foreground">
         Quantity
@@ -44,11 +41,23 @@ function formatDate(isoDate: string) {
   <TableBody>
     {positions.map((position) => (
       <TableRow>
-        <TableCell className="font-semibold">{position.instrument}</TableCell>
+        <TableCell className="font-semibold">
+          <a href={`/dashboard/positions/${position.id}`} class="underline underline-offset-4 hover:text-primary">
+            {position.instrument}
+          </a>
+        </TableCell>
         <TableCell className="text-muted-foreground">{formatDate(position.buy_date)}</TableCell>
-        <TableCell className="text-right tabular-nums">{numberFormat.format(position.buy_price)}</TableCell>
+        <TableCell className="text-right tabular-nums">{formatNumber(position.buy_price)}</TableCell>
+        <TableCell>
+          <PositionResult
+            buy_price={position.buy_price}
+            quantity={position.quantity}
+            current_price={position.current_price}
+            price_date={position.price_date}
+          />
+        </TableCell>
         <TableCell className="text-right text-muted-foreground tabular-nums">
-          {position.quantity === null ? "—" : numberFormat.format(position.quantity)}
+          {position.quantity === null ? "—" : formatNumber(position.quantity)}
         </TableCell>
         <TableCell className="text-muted-foreground">{position.broker_label ?? "—"}</TableCell>
         <TableCell>

@@ -3,7 +3,7 @@
 // Zero dependencies on purpose. Run against a live server: BASE_URL=http://localhost:4321 node scripts/smoke.mjs
 // Creates two accounts per run — never point it at production.
 
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:4321";
 const runId = `${Date.now()}-${randomBytes(3).toString("hex")}`;
@@ -19,7 +19,11 @@ const anonymous = account("anon");
 
 const instrument = `SMOKE-${runId}`;
 const categoryName = `Smoke category ${runId}`;
+const reasonText = "Smoke walk reason";
 let categoryId = "";
+let positionId = "";
+// B's 404 body for an id that exists nowhere; a foreign id must render exactly the same page.
+let unknownIdBody = "";
 
 function cookieHeader(jar) {
   return [...jar.entries()].map(([k, v]) => `${k}=${v}`).join("; ");
@@ -71,6 +75,11 @@ function categoryIdFor(html, name) {
   return "";
 }
 
+// The dashboard links each position to its detail page; with one position recorded there is exactly one link.
+function positionIdIn(html) {
+  return html.match(/href="\/dashboard\/positions\/([0-9a-f-]{36})"/i)?.[1] ?? "";
+}
+
 function position(overrides = {}) {
   return {
     instrument,
@@ -78,15 +87,23 @@ function position(overrides = {}) {
     buy_date: new Date().toISOString().slice(0, 10),
     category_id: "",
     new_category_name: "",
-    reason_text: "Smoke walk reason",
+    reason_text: reasonText,
     quantity: "",
     broker_label: "",
     ...overrides,
   };
 }
 
-const tomorrowUtc = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+const DAY_MS = 24 * 60 * 60 * 1000;
+// UTC, to match the server's `todayUtc()`.
+const todayUtc = new Date().toISOString().slice(0, 10);
+const tomorrowUtc = new Date(Date.now() + DAY_MS).toISOString().slice(0, 10);
+const yesterdayUtc = new Date(Date.now() - DAY_MS).toISOString().slice(0, 10);
 const EMPTY_STATE = "Record your first investment";
+const NO_PRICE = "No price yet";
+// Buy price 50,25 -> current price 60,3 is exactly +20%.
+const RESULT = "+20.00%";
+const detailPath = () => `/dashboard/positions/${positionId}`;
 
 // Each step: [name, run, expected]. `includes` / `excludes` are checked against the (entity-decoded) body.
 const steps = [
@@ -117,9 +134,19 @@ const steps = [
     { status: 302, location: "/dashboard" },
   ],
   [
+    // Captured before the no-JS step adds a second position, so the only link is this position's.
     "A: dashboard lists the position",
-    () => request(a, "/dashboard"),
-    { status: 200, includes: [instrument, "50.25", categoryName], excludes: [EMPTY_STATE] },
+    async () => {
+      const result = await request(a, "/dashboard");
+      positionId = positionIdIn(result.body);
+      return { ...result, location: positionId ? `(position ${positionId})` : "(position id not found)" };
+    },
+    {
+      status: 200,
+      includes: [instrument, "50.25", categoryName],
+      excludes: [EMPTY_STATE],
+      check: () => positionId !== "",
+    },
   ],
   [
     "A: form offers the new category",
@@ -140,6 +167,35 @@ const steps = [
         form: position({ category_id: "__new__", new_category_name: `No-JS ${categoryName}` }),
       }),
     { status: 302, location: "/dashboard" },
+  ],
+
+  // Account A opens the detail page and sets a current price.
+  ["A: dashboard shows no price yet", () => request(a, "/dashboard"), { status: 200, includes: [NO_PRICE] }],
+  [
+    "A: detail page shows reason, category and no price yet",
+    () => request(a, detailPath()),
+    { status: 200, includes: [instrument, reasonText, categoryName, NO_PRICE] },
+  ],
+  [
+    "A: rejects a future price date",
+    () => request(a, detailPath(), { method: "POST", form: { current_price: "60,3", price_date: tomorrowUtc } }),
+    { status: 200, includes: ["The price date cannot be in the future"] },
+  ],
+  [
+    "A: rejects a price date before the buy date",
+    () => request(a, detailPath(), { method: "POST", form: { current_price: "60,3", price_date: yesterdayUtc } }),
+    { status: 200, includes: ["The price date cannot be before the buy date"] },
+  ],
+  [
+    "A: sets a current price",
+    () => request(a, detailPath(), { method: "POST", form: { current_price: "60,3", price_date: todayUtc } }),
+    { status: 302, location: detailPath },
+  ],
+  ["A: dashboard shows the result", () => request(a, "/dashboard"), { status: 200, includes: [RESULT, "as of"] }],
+  [
+    "A: unknown position id returns 404",
+    () => request(a, `/dashboard/positions/${randomUUID()}`),
+    { status: 404, excludes: [instrument, reasonText] },
   ],
 
   ["signout clears session", () => request(a, "/api/auth/signout", { method: "POST" }), { status: 302, location: "/" }],
@@ -186,8 +242,44 @@ const steps = [
     { status: 200, includes: [EMPTY_STATE], excludes: [instrument] },
   ],
   [
+    "B: unknown position id returns 404",
+    async () => {
+      const result = await request(b, `/dashboard/positions/${randomUUID()}`);
+      unknownIdBody = result.body;
+      return result;
+    },
+    { status: 404 },
+  ],
+  [
+    "B: cannot open A's position",
+    () => request(b, detailPath()),
+    { status: 404, excludes: [instrument, reasonText], excludesId: true, sameBodyAs: () => unknownIdBody },
+  ],
+  [
+    "B: cannot set a price on A's position",
+    () => request(b, detailPath(), { method: "POST", form: { current_price: "1", price_date: todayUtc } }),
+    { status: 404, excludes: [instrument, reasonText], excludesId: true, sameBodyAs: () => unknownIdBody },
+  ],
+  [
     "B: signout clears session",
     () => request(b, "/api/auth/signout", { method: "POST" }),
+    { status: 302, location: "/" },
+  ],
+
+  // A's price is unchanged by B's attempt.
+  [
+    "A: signin accepts correct password again",
+    () => request(a, "/api/auth/signin", { method: "POST", form: { email: a.email, password } }),
+    { status: 302, location: "/" },
+  ],
+  [
+    "A: detail page still shows the result",
+    () => request(a, detailPath()),
+    { status: 200, includes: [RESULT, "as of"] },
+  ],
+  [
+    "A: signout clears session again",
+    () => request(a, "/api/auth/signout", { method: "POST" }),
     { status: 302, location: "/" },
   ],
 
@@ -196,15 +288,31 @@ const steps = [
     () => request(anonymous, "/dashboard/new", { method: "POST", form: position({ new_category_name: categoryName }) }),
     { status: 302, location: "/auth/signin" },
   ],
+  [
+    "anonymous: detail page redirects to signin",
+    () => request(anonymous, detailPath()),
+    { status: 302, location: "/auth/signin" },
+  ],
 ];
+
+function maskIds(html) {
+  return html.replaceAll(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, "<id>");
+}
 
 function bodyProblems(actual, expected) {
   const body = decodeEntities(actual.body);
   const problems = [];
   for (const text of expected.includes ?? []) if (!body.includes(text)) problems.push(`missing "${text}"`);
   for (const text of expected.excludes ?? []) if (body.includes(text)) problems.push(`unexpected "${text}"`);
-  if (expected.excludesId && categoryId && body.includes(categoryId)) problems.push(`unexpected A's category id`);
-  if (expected.check && !expected.check()) problems.push("A's category id was not captured");
+  if (expected.excludesId) {
+    if (categoryId && body.includes(categoryId)) problems.push(`unexpected A's category id`);
+    if (positionId && body.includes(positionId)) problems.push(`unexpected A's position id`);
+  }
+  if (expected.check && !expected.check()) problems.push("an id the step depends on was not captured");
+  // Ids are masked so the comparison is about the page, not about which uuid was requested.
+  if (expected.sameBodyAs && maskIds(actual.body) !== maskIds(expected.sameBodyAs())) {
+    problems.push("body differs from the 404 for an unknown id");
+  }
   return problems;
 }
 
@@ -212,14 +320,16 @@ let failed = 0;
 for (const [name, run, expected] of steps) {
   const actual = await run();
   const problems = bodyProblems(actual, expected);
+  // A function location is resolved now, once ids captured by earlier steps are known.
+  const location = typeof expected.location === "function" ? expected.location() : expected.location;
   const ok =
     actual.status === expected.status &&
-    (expected.location === undefined || actual.location.startsWith(expected.location)) &&
+    (location === undefined || actual.location.startsWith(location)) &&
     problems.length === 0;
   console.log(`${ok ? "PASS" : "FAIL"}  ${name}  -> ${actual.status} ${actual.location}`);
   if (!ok) {
     failed++;
-    console.log(`      expected ${expected.status} ${expected.location ?? ""}`);
+    console.log(`      expected ${expected.status} ${location ?? ""}`);
     for (const problem of problems) console.log(`      ${problem}`);
   }
 }

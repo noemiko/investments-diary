@@ -35,3 +35,19 @@ integration is verified (`context/deployment/deploy-plan.md` A4), a preview chec
 `npx vercel deploy` without `--prod`.
 
 **Applies to:** plan, implement, impl-review
+
+## Don't half-guard migrations with `if not exists`
+
+**Context:** Supabase migrations under `supabase/migrations/` that alter an existing table, e.g.
+`20261015094649_add_position_current_price.sql:12-20` (`add column if not exists` followed by
+`add constraint`).
+
+**Problem:** The columns use `add column if not exists`, but `add constraint` has no `if not exists`
+form, so re-applying the file fails at the constraints anyway. The guard suggests the migration is
+safe to re-run when it isn't. Once a migration is applied in production it cannot be edited, so
+the misleading guard stays in the history.
+
+**Rule:** In a migration, use `if not exists` on every statement or on none; if a statement (e.g.
+`add constraint`) has no guarded form, write the whole file unguarded.
+
+**Applies to:** plan, implement, impl-review

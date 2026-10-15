@@ -15,6 +15,8 @@ export const typicalPositions: PositionListItem[] = [
     buy_price: 187.42,
     quantity: 15,
     broker_label: "XTB",
+    current_price: 201.1,
+    price_date: "2026-10-14",
     category_name: "Quality growth",
   },
   {
@@ -24,6 +26,8 @@ export const typicalPositions: PositionListItem[] = [
     buy_price: 92.1,
     quantity: 40.5,
     broker_label: "mBank",
+    current_price: 88.5,
+    price_date: "2026-10-01",
     category_name: "Index core",
   },
   {
@@ -33,6 +37,8 @@ export const typicalPositions: PositionListItem[] = [
     buy_price: 61234.12345678,
     quantity: 0.00012345,
     broker_label: "Kraken",
+    current_price: null,
+    price_date: null,
     category_name: "Speculation",
   },
 ];
@@ -45,6 +51,8 @@ export const positionsWithNulls: PositionListItem[] = [
     buy_price: 0.12345678,
     quantity: null,
     broker_label: null,
+    current_price: 0.2,
+    price_date: "2026-09-30",
     category_name: "Turnaround",
   },
 ];
@@ -57,6 +65,8 @@ export const longTextPositions: PositionListItem[] = [
     buy_price: 1234567.12345678,
     quantity: 98765.43210987,
     broker_label: "Interactive Brokers Ireland",
+    current_price: null,
+    price_date: null,
     category_name: LONG_CATEGORY,
   },
 ];

@@ -3,7 +3,7 @@ project: "Investments Diary"
 version: 1
 status: draft                    # draft | active | locked
 created: 2026-09-25
-updated: 2026-10-02
+updated: 2026-10-15
 prd_version: 1
 main_goal: learn
 top_blocker: decisions
@@ -49,7 +49,7 @@ with your own past reasoning at the moment of deciding improves how you invest.
 | ID   | Change ID                  | Outcome (user can …)                                                                 | Prerequisites | PRD refs                        | Status   |
 | ---- | -------------------------- | ------------------------------------------------------------------------------------ | ------------- | ------------------------------- | -------- |
 | S-01 | record-first-investment    | record an investment with a reason category and optional reason, and see it listed   | —             | FR-003, FR-004, FR-005, FR-010  | done |
-| S-02 | position-detail-and-price  | open a position, read its full reason, update its price and see its dated result     | S-01          | FR-006, FR-011                  | proposed |
+| S-02 | position-detail-and-price  | open a position, read its full reason, update its price and see its dated result     | S-01          | FR-006, FR-011                  | in-progress |
 | S-03 | reason-confrontation       | see earlier same-reason positions with their results before saving a new investment  | S-01, S-02    | US-01, FR-012                   | proposed |
 | S-04 | close-position             | close a position with sell price and date and see its final result                   | S-02          | FR-007                          | proposed |
 | S-05 | recoverable-delete         | delete a position and restore it later                                               | S-01          | FR-009                          | proposed |
@@ -104,7 +104,7 @@ which is exactly what this roadmap avoids.
 - **Unknowns:**
   - Acceptance criteria for the price-update path are missing (PRD Open Question 4) — Owner: user. Block: no (write them during `/10x-plan`).
 - **Risk:** Sequenced before the confrontation because "result" does not exist until a current price does; without it S-03 would show positions with nothing to judge them by.
-- **Status:** proposed
+- **Status:** in-progress
 
 ### S-03: Confrontation before saving a new investment
 
