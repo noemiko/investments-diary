@@ -391,26 +391,26 @@ None: one extra pair of columns in an existing single-user query, and one by-id 
 
 #### Automated
 
-- [x] 2.1 verify skill sequence passes
-- [x] 2.2 Existing smoke walk still passes
+- [x] 2.1 verify skill sequence passes — 3ad8dc4
+- [x] 2.2 Existing smoke walk still passes — 3ad8dc4
 
 #### Manual
 
-- [x] 2.3 Multi-paragraph reason keeps its line breaks
-- [x] 2.4 Result shows percent and amount with quantity, percent only without, with "as of" date in detail and list
-- [x] 2.5 Future and before-buy price dates rejected with values kept
-- [x] 2.6 Comma decimals work in the price field
-- [x] 2.7 Second price update replaces the first
-- [x] 2.8 Malformed and unknown ids show "Position not found" with status 404
+- [x] 2.3 Multi-paragraph reason keeps its line breaks — 3ad8dc4
+- [x] 2.4 Result shows percent and amount with quantity, percent only without, with "as of" date in detail and list — 3ad8dc4
+- [x] 2.5 Future and before-buy price dates rejected with values kept — 3ad8dc4
+- [x] 2.6 Comma decimals work in the price field — 3ad8dc4
+- [x] 2.7 Second price update replaces the first — 3ad8dc4
+- [x] 2.8 Malformed and unknown ids show "Position not found" with status 404 — 3ad8dc4
 
 ### Phase 3: Smoke proof
 
 #### Automated
 
-- [ ] 3.1 Smoke walk passes against local Supabase
-- [ ] 3.2 verify skill sequence passes
+- [x] 3.1 Smoke walk passes against local Supabase
+- [x] 3.2 verify skill sequence passes
 
 #### Manual
 
-- [ ] 3.3 A deliberate break makes the relevant smoke step fail
+- [x] 3.3 A deliberate break makes the relevant smoke step fail
 - [ ] 3.4 Pull request opened so the ci job runs
