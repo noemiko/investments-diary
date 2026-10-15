@@ -411,8 +411,10 @@ wartości neutral.
 
 #### Manual
 
-- [ ] 3.5 Vercel preview: `/dev/kitchen-sink` zwraca 404
-- [ ] 3.6 Wszystkie sekcje stanów podpisane; długie teksty nie rozpychają 390px
-- [ ] 3.7 Focus i disabled odróżnialne od default
-- [ ] 3.8 Screenshoty w `screens/` podpięte w `charges.md`
-- [ ] 3.9 `ui-quality-checklist` przejrzana; luki zapisane jako odroczone
+- [x] 3.5 Vercel preview: `/dev/kitchen-sink` zwraca 404
+- [x] 3.6 Wszystkie sekcje stanów podpisane; długie teksty nie rozpychają 390px
+- [x] 3.7 Focus i disabled odróżnialne od default
+- [x] 3.8 Screenshoty w `screens/` podpięte w `charges.md`
+- [x] 3.9 `ui-quality-checklist` przejrzana; luki zapisane jako odroczone
+
+> **Review note (2026-10-15, impl-review F1):** criteria 2.2 and 3.4 as written cannot return nothing. Under the Claude Code shell `grep` is ugrep, which rejects `(/|\b)` and exits 2 with empty output; with `/usr/bin/grep` the pattern matches the Q4-approved `bg-cosmic`. Re-run with `/usr/bin/grep`: the only matches are `bg-cosmic` at `dashboard.astro:17` and `kitchen-sink.astro:39`. No palette, `white/*`, `black/*` or hex classes.
