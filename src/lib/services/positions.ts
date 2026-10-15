@@ -1,6 +1,6 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 import type { createClient } from "@/lib/supabase";
-import type { NewPositionInput, PositionListItem, ReasonCategory } from "@/types";
+import type { NewPositionInput, PositionDetail, PositionListItem, PriceUpdateInput, ReasonCategory } from "@/types";
 
 // Always the request-scoped client, so RLS scopes every query to the signed-in author.
 type Client = ReturnType<typeof createClient>;
@@ -8,6 +8,8 @@ type Client = ReturnType<typeof createClient>;
 export type CreatePositionError = "validation" | "category_not_found" | "unexpected";
 
 export type CreatePositionResult = { ok: true; id: string } | { ok: false; error: CreatePositionError };
+
+export type UpdatePriceResult = { ok: true } | { ok: false; error: "not_found" | "validation" | "unexpected" };
 
 const FOREIGN_KEY_VIOLATION = "23503";
 const UNIQUE_VIOLATION = "23505";
@@ -43,7 +45,9 @@ export async function listCategories(client: Client): Promise<ReasonCategory[]> 
 export async function listPositions(client: Client): Promise<PositionListItem[]> {
   const { data, error } = await client
     .from("positions")
-    .select("id, instrument, buy_date, buy_price, quantity, broker_label, reason_categories(name)")
+    .select(
+      "id, instrument, buy_date, buy_price, quantity, broker_label, current_price, price_date, reason_categories(name)",
+    )
     .is("deleted_at", null)
     .order("buy_date", { ascending: false })
     .order("created_at", { ascending: false });
@@ -52,6 +56,48 @@ export async function listPositions(client: Client): Promise<PositionListItem[]>
     ...position,
     category_name: reason_categories.name,
   }));
+}
+
+/**
+ * One of the author's non-deleted positions, or null. Missing, foreign (hidden by RLS) and deleted
+ * ids all give null, so a caller cannot tell them apart. RLS checks only ownership, hence the
+ * explicit `deleted_at` filter.
+ */
+export async function getPosition(client: Client, id: string): Promise<PositionDetail | null> {
+  const { data, error } = await client
+    .from("positions")
+    .select(
+      "id, instrument, buy_date, buy_price, quantity, broker_label, current_price, price_date, reason_text, reason_categories(name)",
+    )
+    .eq("id", id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) throw new Error(`getPosition failed: ${error.message}`);
+  if (!data) return null;
+  const { reason_categories, ...position } = data;
+  return { ...position, category_name: reason_categories.name };
+}
+
+/** Replaces a non-deleted position's current price and its date (FR-006); no other column changes. */
+export async function updatePositionPrice(
+  client: Client,
+  id: string,
+  input: PriceUpdateInput,
+): Promise<UpdatePriceResult> {
+  const { data, error } = await client
+    .from("positions")
+    .update({ current_price: input.current_price, price_date: input.price_date })
+    .eq("id", id)
+    .is("deleted_at", null)
+    .select("id");
+  if (error) {
+    if (VALIDATION_CODES.has(error.code)) return { ok: false, error: "validation" };
+    logUnexpected("updatePositionPrice", error);
+    return { ok: false, error: "unexpected" };
+  }
+  // Zero rows: missing, foreign (RLS) or deleted — all the same to the caller.
+  if (data.length === 0) return { ok: false, error: "not_found" };
+  return { ok: true };
 }
 
 // Matches the unique index on (user_id, lower(name)) among non-deleted categories.

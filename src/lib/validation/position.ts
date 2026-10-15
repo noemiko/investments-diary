@@ -32,7 +32,8 @@ function toPositive(raw: string, ctx: z.RefinementCtx): number {
   return value;
 }
 
-const requiredDecimal = (emptyMessage: string) =>
+/** A required decimal field: `emptyMessage` when blank, else `parseDecimal` and greater than 0. */
+export const requiredDecimal = (emptyMessage: string) =>
   z.string().transform((raw, ctx): number => {
     if (raw.trim() === "") {
       ctx.addIssue({ code: "custom", message: emptyMessage });
@@ -51,7 +52,8 @@ function optionalText(max: number, message: string, trim: boolean) {
     .transform((value) => (value.trim() === "" ? null : value));
 }
 
-function isCalendarDate(value: string): boolean {
+/** True for a real `YYYY-MM-DD` calendar date (rejects 2026-02-30). */
+export function isCalendarDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const date = new Date(`${value}T00:00:00Z`);
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;

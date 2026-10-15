@@ -1,0 +1,221 @@
+---
+// The rule crashes ("Expected node to have a parent") on a top-level `return` in frontmatter;
+// an eslint-disable comment would not help, because the rule still runs. Nothing here passes promises as callbacks.
+/* eslint @typescript-eslint/no-misused-promises: "off" */
+import { z } from "astro/zod";
+import Layout from "@/layouts/Layout.astro";
+import PositionResult from "@/components/positions/PositionResult.astro";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { formatDate, formatNumber } from "@/lib/format";
+import { createClient } from "@/lib/supabase";
+import { getPosition, updatePositionPrice, type UpdatePriceResult } from "@/lib/services/positions";
+import { todayUtc } from "@/lib/validation/position";
+import { parsePriceForm, readPriceForm } from "@/lib/validation/price";
+import type { PositionDetail, PriceFormErrors, PriceFormValues } from "@/types";
+
+// Handles its own POST and re-renders on error, as /dashboard/new does.
+
+const { user } = Astro.locals;
+if (!user) {
+  return Astro.redirect("/auth/signin");
+}
+
+const supabase = createClient(Astro.request.headers, Astro.cookies);
+
+const SAVE_ERRORS: Record<Exclude<UpdatePriceResult, { ok: true }>["error"], PriceFormErrors> = {
+  not_found: {},
+  validation: { form: "This price could not be saved. Check it and try again." },
+  unexpected: { form: "The price could not be saved. Please try again." },
+};
+
+const id = Astro.params.id ?? "";
+
+// "not_found" covers a malformed id, a missing one, another account's and a deleted one alike,
+// so the page never reveals whether an id exists for someone else.
+let state: "found" | "not_found" | "load_failed" = "not_found";
+let position: PositionDetail | null = null;
+if (z.uuid().safeParse(id).success) {
+  try {
+    position = await getPosition(supabase, id);
+    state = position ? "found" : "not_found";
+  } catch {
+    // A failed read must not cost the author the page: render an error state instead of a 500.
+    state = "load_failed";
+  }
+}
+
+let values: PriceFormValues = { current_price: "", price_date: todayUtc() };
+let errors: PriceFormErrors = {};
+
+if (position && Astro.request.method === "POST") {
+  values = readPriceForm(await Astro.request.formData());
+  const parsed = parsePriceForm(values, position.buy_date);
+  if (parsed.success) {
+    const result = await updatePositionPrice(supabase, position.id, parsed.data);
+    if (result.ok) {
+      return Astro.redirect(`/dashboard/positions/${position.id}`);
+    }
+    if (result.error === "not_found") {
+      state = "not_found";
+      position = null;
+    } else {
+      errors = SAVE_ERRORS[result.error];
+    }
+  } else {
+    errors = parsed.errors;
+  }
+}
+
+if (state === "not_found") {
+  Astro.response.status = 404;
+}
+
+const inputClass =
+  "h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive md:text-sm";
+---
+
+<Layout title={position ? position.instrument : "Position not found"}>
+  <div class="bg-cosmic min-h-screen p-4">
+    <Card className="mx-auto max-w-3xl min-w-0 p-8">
+      {state === "load_failed" && (
+        <div class="flex flex-col items-center gap-4 text-center">
+          <p role="alert" class="max-w-md text-destructive">
+            This position could not be loaded. Please try again.
+          </p>
+          <a href={`/dashboard/positions/${id}`} class:list={buttonVariants({ variant: "outline" })}>
+            Try again
+          </a>
+        </div>
+      )}
+
+      {state === "not_found" && (
+        <div class="flex flex-col items-center gap-4 text-center">
+          <h1 class="text-gradient-heading text-3xl font-bold">Position not found</h1>
+          <p class="max-w-md text-muted-foreground">It may have been removed, or the link is wrong.</p>
+        </div>
+      )}
+
+      {position && (
+        <>
+          <div class="flex flex-col gap-2">
+            <div class="flex flex-wrap items-center gap-3">
+              <h1 class="text-gradient-heading min-w-0 text-3xl font-bold break-words">{position.instrument}</h1>
+              <Badge variant="secondary">{position.category_name}</Badge>
+            </div>
+            <p class="text-lg">
+              <PositionResult
+                buy_price={position.buy_price}
+                quantity={position.quantity}
+                current_price={position.current_price}
+                price_date={position.price_date}
+              />
+            </p>
+          </div>
+
+          <dl class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div>
+              <dt class="text-sm text-muted-foreground">Buy date</dt>
+              <dd>{formatDate(position.buy_date)}</dd>
+            </div>
+            <div>
+              <dt class="text-sm text-muted-foreground">Buy price</dt>
+              <dd class="tabular-nums">{formatNumber(position.buy_price)}</dd>
+            </div>
+            <div>
+              <dt class="text-sm text-muted-foreground">Quantity</dt>
+              <dd class="tabular-nums">{position.quantity === null ? "—" : formatNumber(position.quantity)}</dd>
+            </div>
+            <div>
+              <dt class="text-sm text-muted-foreground">Broker</dt>
+              <dd class="break-words">{position.broker_label ?? "—"}</dd>
+            </div>
+          </dl>
+
+          <section class="flex flex-col gap-2">
+            <h2 class="text-lg font-semibold">Reason</h2>
+            {position.reason_text?.trim() ? (
+              <p class="break-words whitespace-pre-wrap">{position.reason_text}</p>
+            ) : (
+              <p class="text-muted-foreground">No reason written.</p>
+            )}
+          </section>
+
+          <section class="flex flex-col gap-4">
+            <h2 class="text-lg font-semibold">Current price</h2>
+            {position.current_price !== null && position.price_date !== null && (
+              <p class="text-sm text-muted-foreground">
+                Currently{" "}
+                <span class="font-semibold text-foreground tabular-nums">{formatNumber(position.current_price)}</span>{" "}
+                as of {formatDate(position.price_date)}
+              </p>
+            )}
+            <form method="POST" class="flex flex-col gap-4" novalidate>
+              <div class="grid gap-4 sm:grid-cols-2">
+                <div class="flex flex-col gap-1">
+                  <label for="current_price" class="text-sm text-muted-foreground">
+                    Price (per share)
+                  </label>
+                  <input
+                    id="current_price"
+                    name="current_price"
+                    type="text"
+                    inputmode="decimal"
+                    placeholder="50.25"
+                    value={values.current_price}
+                    aria-invalid={errors.current_price ? "true" : undefined}
+                    aria-describedby={errors.current_price ? "current_price-error" : undefined}
+                    class:list={inputClass}
+                  />
+                  {errors.current_price && (
+                    <p id="current_price-error" class="text-xs text-destructive">
+                      {errors.current_price}
+                    </p>
+                  )}
+                </div>
+                <div class="flex flex-col gap-1">
+                  <label for="price_date" class="text-sm text-muted-foreground">
+                    Price date
+                  </label>
+                  <input
+                    id="price_date"
+                    name="price_date"
+                    type="date"
+                    min={position.buy_date}
+                    max={todayUtc()}
+                    value={values.price_date}
+                    aria-invalid={errors.price_date ? "true" : undefined}
+                    aria-describedby={errors.price_date ? "price_date-error" : undefined}
+                    class:list={inputClass}
+                  />
+                  {errors.price_date && (
+                    <p id="price_date-error" class="text-xs text-destructive">
+                      {errors.price_date}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {errors.form && (
+                <p role="alert" class="text-sm text-destructive">
+                  {errors.form}
+                </p>
+              )}
+              <div>
+                <button type="submit" class:list={buttonVariants()}>
+                  Save price
+                </button>
+              </div>
+            </form>
+          </section>
+        </>
+      )}
+
+      <p class="text-sm">
+        <a href="/dashboard" class="text-primary hover:underline">
+          Back to your positions
+        </a>
+      </p>
+    </Card>
+  </div>
+</Layout>

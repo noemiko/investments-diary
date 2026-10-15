@@ -377,31 +377,31 @@ None: one extra pair of columns in an existing single-user query, and one by-id 
 
 #### Automated
 
-- [x] 1.1 The migration applies to the local database
-- [x] 1.2 Both checks reject bad rows
-- [x] 1.3 Down-script round trip succeeds locally
-- [x] 1.4 Regenerating database types produces no diff
-- [x] 1.5 verify skill sequence passes
+- [x] 1.1 The migration applies to the local database — c8edec1
+- [x] 1.2 Both checks reject bad rows — c8edec1
+- [x] 1.3 Down-script round trip succeeds locally — c8edec1
+- [x] 1.4 Regenerating database types produces no diff — c8edec1
+- [x] 1.5 verify skill sequence passes — c8edec1
 
 #### Manual
 
-- [x] 1.6 Human pushes the migration to production and confirms both columns in Studio
+- [x] 1.6 Human pushes the migration to production and confirms both columns in Studio — c8edec1
 
 ### Phase 2: Detail page and result
 
 #### Automated
 
-- [ ] 2.1 verify skill sequence passes
-- [ ] 2.2 Existing smoke walk still passes
+- [x] 2.1 verify skill sequence passes
+- [x] 2.2 Existing smoke walk still passes
 
 #### Manual
 
-- [ ] 2.3 Multi-paragraph reason keeps its line breaks
-- [ ] 2.4 Result shows percent and amount with quantity, percent only without, with "as of" date in detail and list
-- [ ] 2.5 Future and before-buy price dates rejected with values kept
-- [ ] 2.6 Comma decimals work in the price field
-- [ ] 2.7 Second price update replaces the first
-- [ ] 2.8 Malformed and unknown ids show "Position not found" with status 404
+- [x] 2.3 Multi-paragraph reason keeps its line breaks
+- [x] 2.4 Result shows percent and amount with quantity, percent only without, with "as of" date in detail and list
+- [x] 2.5 Future and before-buy price dates rejected with values kept
+- [x] 2.6 Comma decimals work in the price field
+- [x] 2.7 Second price update replaces the first
+- [x] 2.8 Malformed and unknown ids show "Position not found" with status 404
 
 ### Phase 3: Smoke proof
 

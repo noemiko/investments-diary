@@ -1,0 +1,26 @@
+---
+import { formatDate } from "@/lib/format";
+import { positionResult, type PositionResultInput } from "@/lib/result";
+
+type Props = PositionResultInput;
+
+const { buy_price, quantity, current_price, price_date } = Astro.props;
+const result = positionResult({ buy_price, quantity, current_price, price_date });
+
+// Sign shown for gains and losses, not for a (rounded) zero. No gain/loss colours on purpose.
+const percentFormat = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+  signDisplay: "exceptZero",
+});
+// Percent only, by the author's decision (2026-10-15); `result.amount` is computed but not shown.
+---
+
+{result ? (
+  <span class="tabular-nums">
+    <span class="font-semibold">{percentFormat.format(result.percent)}%</span>
+    <span class="text-muted-foreground"> as of {formatDate(result.priceDate)}</span>
+  </span>
+) : (
+  <span class="text-muted-foreground">No price yet</span>
+)}
