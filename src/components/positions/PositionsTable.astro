@@ -42,7 +42,7 @@ const { positions } = Astro.props;
     {positions.map((position) => (
       <TableRow>
         <TableCell className="font-semibold">
-          <a href={`/dashboard/positions/${position.id}`} class="hover:underline focus-visible:underline">
+          <a href={`/dashboard/positions/${position.id}`} class="underline underline-offset-4 hover:text-primary">
             {position.instrument}
           </a>
         </TableCell>

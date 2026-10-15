@@ -22,6 +22,8 @@ const categoryName = `Smoke category ${runId}`;
 const reasonText = "Smoke walk reason";
 let categoryId = "";
 let positionId = "";
+// B's 404 body for an id that exists nowhere; a foreign id must render exactly the same page.
+let unknownIdBody = "";
 
 function cookieHeader(jar) {
   return [...jar.entries()].map(([k, v]) => `${k}=${v}`).join("; ");
@@ -240,14 +242,23 @@ const steps = [
     { status: 200, includes: [EMPTY_STATE], excludes: [instrument] },
   ],
   [
+    "B: unknown position id returns 404",
+    async () => {
+      const result = await request(b, `/dashboard/positions/${randomUUID()}`);
+      unknownIdBody = result.body;
+      return result;
+    },
+    { status: 404 },
+  ],
+  [
     "B: cannot open A's position",
     () => request(b, detailPath()),
-    { status: 404, excludes: [instrument, reasonText], excludesId: true },
+    { status: 404, excludes: [instrument, reasonText], excludesId: true, sameBodyAs: () => unknownIdBody },
   ],
   [
     "B: cannot set a price on A's position",
     () => request(b, detailPath(), { method: "POST", form: { current_price: "1", price_date: todayUtc } }),
-    { status: 404, excludes: [instrument, reasonText], excludesId: true },
+    { status: 404, excludes: [instrument, reasonText], excludesId: true, sameBodyAs: () => unknownIdBody },
   ],
   [
     "B: signout clears session",
@@ -284,6 +295,10 @@ const steps = [
   ],
 ];
 
+function maskIds(html) {
+  return html.replaceAll(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, "<id>");
+}
+
 function bodyProblems(actual, expected) {
   const body = decodeEntities(actual.body);
   const problems = [];
@@ -294,6 +309,10 @@ function bodyProblems(actual, expected) {
     if (positionId && body.includes(positionId)) problems.push(`unexpected A's position id`);
   }
   if (expected.check && !expected.check()) problems.push("an id the step depends on was not captured");
+  // Ids are masked so the comparison is about the page, not about which uuid was requested.
+  if (expected.sameBodyAs && maskIds(actual.body) !== maskIds(expected.sameBodyAs())) {
+    problems.push("body differs from the 404 for an unknown id");
+  }
   return problems;
 }
 

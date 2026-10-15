@@ -82,7 +82,8 @@ const inputClass =
       {state === "load_failed" && (
         <div class="flex flex-col items-center gap-4 text-center">
           <p role="alert" class="max-w-md text-destructive">
-            This position could not be loaded. Please try again.
+            This position could not be loaded.{Astro.request.method === "POST" && " Your price was not saved."} Please
+            try again.
           </p>
           <a href={`/dashboard/positions/${id}`} class:list={buttonVariants({ variant: "outline" })}>
             Try again

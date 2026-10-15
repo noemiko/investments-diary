@@ -18,13 +18,13 @@ export interface PositionResultValue {
  * Returns `null` when there is no current price yet; otherwise `percent`, `amount` (null without
  * a quantity) and `priceDate` as documented on `PositionResultValue`.
  */
-export function positionResult(_input: PositionResultInput): PositionResultValue | null {
-  if (!_input.current_price || !_input.price_date) {
+export function positionResult(input: PositionResultInput): PositionResultValue | null {
+  if (input.current_price === null || input.price_date === null) {
     return null;
   }
   return {
-    percent: ((_input.current_price - _input.buy_price) / _input.buy_price) * 100,
-    amount: _input.quantity == null ? null : (_input.current_price - _input.buy_price) * _input.quantity,
-    priceDate: _input.price_date,
+    percent: ((input.current_price - input.buy_price) / input.buy_price) * 100,
+    amount: input.quantity == null ? null : (input.current_price - input.buy_price) * input.quantity,
+    priceDate: input.price_date,
   };
 }

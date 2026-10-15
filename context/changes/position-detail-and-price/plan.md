@@ -176,6 +176,9 @@ or `null` when quantity is null, and `priceDate = price_date`. Pure, no I/O.
 
 **File**: `src/components/positions/PositionResult.astro` (new)
 
+> **Amended 2026-10-15:** the result is percent-only (`+20.00% as of <date>`); the ` · amount`
+> part below was dropped by the author's decision. See `change.md`.
+
 **Intent**: Render a result identically wherever it appears.
 
 **Contract**: Props: the position's price fields. Renders `+20.00%` (two decimals, sign shown
