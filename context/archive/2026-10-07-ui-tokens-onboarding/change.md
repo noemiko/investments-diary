@@ -1,10 +1,10 @@
 ---
 change_id: ui-tokens-onboarding
 title: Ui tokens onboarding
-status: implemented
+status: archived
 created: 2026-10-07
 updated: 2026-10-15
-archived_at: null
+archived_at: 2026-10-15T08:34:29Z
 ---
 
 ## Notes
