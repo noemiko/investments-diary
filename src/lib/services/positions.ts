@@ -1,6 +1,13 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 import type { createClient } from "@/lib/supabase";
-import type { NewPositionInput, PositionDetail, PositionListItem, PriceUpdateInput, ReasonCategory } from "@/types";
+import type {
+  DeletedPositionItem,
+  NewPositionInput,
+  PositionDetail,
+  PositionListItem,
+  PriceUpdateInput,
+  ReasonCategory,
+} from "@/types";
 
 // Always the request-scoped client, so RLS scopes every query to the signed-in author.
 type Client = ReturnType<typeof createClient>;
@@ -10,6 +17,7 @@ export type CreatePositionError = "validation" | "category_not_found" | "unexpec
 export type CreatePositionResult = { ok: true; id: string } | { ok: false; error: CreatePositionError };
 
 export type UpdatePriceResult = { ok: true } | { ok: false; error: "not_found" | "validation" | "unexpected" };
+export type SoftDeleteResult = { ok: true } | { ok: false; error: "not_found" | "unexpected" };
 
 const FOREIGN_KEY_VIOLATION = "23503";
 const UNIQUE_VIOLATION = "23505";
@@ -98,6 +106,56 @@ export async function updatePositionPrice(
   // Zero rows: missing, foreign (RLS) or deleted — all the same to the caller.
   if (data.length === 0) return { ok: false, error: "not_found" };
   return { ok: true };
+}
+
+/** The author's deleted positions with their category name, most recently deleted first (FR-009). */
+export async function listDeletedPositions(client: Client): Promise<DeletedPositionItem[]> {
+  const { data, error } = await client
+    .from("positions")
+    .select("id, instrument, buy_date, deleted_at, reason_categories(name)")
+    .not("deleted_at", "is", null)
+    .order("deleted_at", { ascending: false });
+  if (error) throw new Error(`listDeletedPositions failed: ${error.message}`);
+  return data.map(({ reason_categories, ...position }) => ({
+    ...position,
+    category_name: reason_categories.name,
+  }));
+}
+
+// An update that RLS hides (another author's row) or that the state filter excludes affects zero
+// rows without an error, so zero rows is the not-found signal.
+function softDeleteOutcome(
+  where: string,
+  { data, error }: { data: { id: string }[] | null; error: PostgrestError | null },
+): SoftDeleteResult {
+  if (error) {
+    logUnexpected(where, error);
+    return { ok: false, error: "unexpected" };
+  }
+  if (!data || data.length === 0) return { ok: false, error: "not_found" };
+  return { ok: true };
+}
+
+/** Soft-deletes one of the author's non-deleted positions (FR-009). */
+export async function deletePosition(client: Client, id: string): Promise<SoftDeleteResult> {
+  const result = await client
+    .from("positions")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id)
+    .is("deleted_at", null)
+    .select("id");
+  return softDeleteOutcome("deletePosition", result);
+}
+
+/** Restores one of the author's deleted positions (FR-009). */
+export async function restorePosition(client: Client, id: string): Promise<SoftDeleteResult> {
+  const result = await client
+    .from("positions")
+    .update({ deleted_at: null })
+    .eq("id", id)
+    .not("deleted_at", "is", null)
+    .select("id");
+  return softDeleteOutcome("restorePosition", result);
 }
 
 // Matches the unique index on (user_id, lower(name)) among non-deleted categories.

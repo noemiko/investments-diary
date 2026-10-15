@@ -17,6 +17,12 @@ export type PositionListItem = Pick<
 /** One position on its detail page (FR-011): the list row plus the full reason. */
 export type PositionDetail = PositionListItem & Pick<PositionRow, "reason_text">;
 
+/** One row of the Deleted positions page (FR-009): only rows that have a `deleted_at`. */
+export type DeletedPositionItem = Pick<PositionRow, "id" | "instrument" | "buy_date" | "deleted_at"> & {
+  deleted_at: string;
+  category_name: string;
+};
+
 /** The entry form after parsing: exactly one of `category_id` / `new_category_name` is set. */
 export type NewPositionInput = Pick<
   PositionRow,

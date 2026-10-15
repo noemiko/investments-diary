@@ -1,0 +1,64 @@
+---
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import type { DeletedPositionItem } from "@/types";
+
+interface Props {
+  positions: DeletedPositionItem[];
+}
+
+const { positions } = Astro.props;
+
+// Same format as the buy dates on the dashboard.
+const dateFormat = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" });
+
+function formatDate(isoDate: string) {
+  return dateFormat.format(new Date(`${isoDate}T00:00:00Z`));
+}
+
+function formatTimestamp(isoTimestamp: string) {
+  return dateFormat.format(new Date(isoTimestamp));
+}
+---
+
+<Table>
+  <TableHeader>
+    <TableRow className="hover:bg-transparent">
+      <TableHead scope="col" className="text-muted-foreground">
+        Instrument
+      </TableHead>
+      <TableHead scope="col" className="text-muted-foreground">
+        Category
+      </TableHead>
+      <TableHead scope="col" className="text-muted-foreground">
+        Buy date
+      </TableHead>
+      <TableHead scope="col" className="text-muted-foreground">
+        Deleted on
+      </TableHead>
+      <TableHead scope="col">
+        <span class="sr-only">Actions</span>
+      </TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    {positions.map((position) => (
+      <TableRow>
+        <TableCell className="font-semibold">{position.instrument}</TableCell>
+        <TableCell>
+          <Badge variant="secondary">{position.category_name}</Badge>
+        </TableCell>
+        <TableCell className="text-muted-foreground">{formatDate(position.buy_date)}</TableCell>
+        <TableCell className="text-muted-foreground">{formatTimestamp(position.deleted_at)}</TableCell>
+        <TableCell>
+          <form method="POST" action={`/dashboard/positions/${position.id}/restore`}>
+            <button type="submit" class:list={buttonVariants({ variant: "outline", size: "sm" })}>
+              Restore
+            </button>
+          </form>
+        </TableCell>
+      </TableRow>
+    ))}
+  </TableBody>
+</Table>
