@@ -1,10 +1,20 @@
 name: CI
 
+# Docs-only changes (context/, docs/, *.md) skip CI. Keep in sync with scripts/vercel-ignore-build.sh.
+
 on:
   push:
     branches: [master]
+    paths-ignore:
+      - 'context/**'
+      - 'docs/**'
+      - '**/*.md'
   pull_request:
     branches: [master]
+    paths-ignore:
+      - 'context/**'
+      - 'docs/**'
+      - '**/*.md'
 
 jobs:
   ci:
@@ -25,6 +35,8 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
 
   smoke:
+    # Slow (local Supabase); runs after merge to master only, not on PRs.
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
