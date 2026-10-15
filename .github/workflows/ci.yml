@@ -1,10 +1,20 @@
 name: CI
 
+# Docs-only changes (context/, docs/, *.md) skip CI. Keep in sync with scripts/vercel-ignore-build.sh.
+
 on:
   push:
     branches: [master]
+    paths-ignore:
+      - 'context/**'
+      - 'docs/**'
+      - '**/*.md'
   pull_request:
     branches: [master]
+    paths-ignore:
+      - 'context/**'
+      - 'docs/**'
+      - '**/*.md'
 
 jobs:
   ci:
