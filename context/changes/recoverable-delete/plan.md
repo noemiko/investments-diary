@@ -330,29 +330,29 @@ None: single-row updates and one extra list query on a separate page.
 
 #### Automated
 
-- [x] 1.1 verify skill sequence passes
-- [x] 1.2 Existing smoke walk still passes
-- [x] 1.3 No migration added
+- [x] 1.1 verify skill sequence passes — 3ebb0fa
+- [x] 1.2 Existing smoke walk still passes — 3ebb0fa
+- [x] 1.3 No migration added — 3ebb0fa
 
 #### Manual
 
-- [x] 1.4 Inline confirmation opens, Cancel closes, nothing deleted before confirm
-- [x] 1.5 Confirm-then-delete works with JavaScript disabled
-- [x] 1.6 Undo notice restores the row
-- [x] 1.7 All-deleted empty state still links to Deleted positions and restore works
-- [x] 1.8 Deleted page ordered by deletion with deleted date
-- [x] 1.9 Delete control operable by keyboard
+- [x] 1.4 Inline confirmation opens, Cancel closes, nothing deleted before confirm — 3ebb0fa
+- [x] 1.5 Confirm-then-delete works with JavaScript disabled — 3ebb0fa
+- [x] 1.6 Undo notice restores the row — 3ebb0fa
+- [x] 1.7 All-deleted empty state still links to Deleted positions and restore works — 3ebb0fa
+- [x] 1.8 Deleted page ordered by deletion with deleted date — 3ebb0fa
+- [x] 1.9 Delete control operable by keyboard — 3ebb0fa
 
 ### Phase 2: Smoke proof
 
 #### Automated
 
-- [ ] 2.1 Smoke walk passes against local Supabase
-- [ ] 2.2 verify skill sequence passes
+- [x] 2.1 Smoke walk passes against local Supabase
+- [x] 2.2 verify skill sequence passes
 
 #### Manual
 
-- [ ] 2.3 A deliberate break makes the relevant smoke step fail
+- [x] 2.3 A deliberate break makes the relevant smoke step fail
 - [ ] 2.4 Pull request opened so the ci job runs
 
 ### Phase 3: After rebasing onto S-02
