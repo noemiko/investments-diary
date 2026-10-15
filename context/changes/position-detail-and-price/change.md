@@ -1,0 +1,18 @@
+---
+change_id: position-detail-and-price
+title: Position detail view with manual price and dated result
+status: implementing
+created: 2026-10-15
+updated: 2026-10-15
+archived_at: null
+---
+
+## Notes
+
+Roadmap S-02 (FR-006, FR-011). Runs in parallel with `recoverable-delete` (S-05) in a separate worktree.
+
+Coordination with S-05, agreed 2026-10-15:
+- The Delete / Restore buttons belong to `recoverable-delete`, not to this change. Do not add delete UI to the detail page here.
+- Every new read or write by id (`getPosition`, price update) must filter `deleted_at is null`: RLS checks only ownership, not deletion. A deleted position must 404 on its detail page and refuse a price update.
+- Merge order: this change merges first; `recoverable-delete` rebases onto it.
+- Shared local Supabase stack: no `supabase db reset` while both branches are active; regenerate `src/db/database.types.ts` after merge instead of hand-merging it.

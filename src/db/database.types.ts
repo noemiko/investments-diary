@@ -41,9 +41,11 @@ export type Database = {
           buy_price: number
           category_id: string
           created_at: string
+          current_price: number | null
           deleted_at: string | null
           id: string
           instrument: string
+          price_date: string | null
           quantity: number | null
           reason_text: string | null
           user_id: string
@@ -54,9 +56,11 @@ export type Database = {
           buy_price: number
           category_id: string
           created_at?: string
+          current_price?: number | null
           deleted_at?: string | null
           id?: string
           instrument: string
+          price_date?: string | null
           quantity?: number | null
           reason_text?: string | null
           user_id: string
@@ -67,9 +71,11 @@ export type Database = {
           buy_price?: number
           category_id?: string
           created_at?: string
+          current_price?: number | null
           deleted_at?: string | null
           id?: string
           instrument?: string
+          price_date?: string | null
           quantity?: number | null
           reason_text?: string | null
           user_id?: string
