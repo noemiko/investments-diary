@@ -366,26 +366,26 @@ None. No schema change.
 
 #### Automated
 
-- [x] 2.1 The `verify` skill passes (astro sync, lint, astro check, build)
-- [x] 2.2 `BASE_URL=http://localhost:4321 npm run smoke` passes unchanged against local Supabase
+- [x] 2.1 The `verify` skill passes (astro sync, lint, astro check, build) — 16e3a50
+- [x] 2.2 `BASE_URL=http://localhost:4321 npm run smoke` passes unchanged against local Supabase — 16e3a50
 
 #### Manual
 
-- [x] 2.3 With JS: choosing a category instantly shows its earlier positions newest buy first, each with instrument, buy date, reason and dated result or "No price yet"
-- [x] 2.4 With JS: switching categories updates the panel; a category with no positions shows the empty state
-- [x] 2.5 With JS: "New category…" with a name matching an existing category in different case shows that category's history and the "existing category" line; a non-matching name shows the empty state
-- [x] 2.6 A deleted position never appears in the panel, and reappears after restore
-- [x] 2.7 A long reason is clamped and expands and collapses in place by mouse and keyboard without submitting the form
-- [x] 2.8 With JS disabled: a submission rejected by validation (e.g. empty instrument) re-renders with the panel for the submitted category and all typed values intact
-- [x] 2.9 The panel contains no verdict, score, aggregate or gain/loss colour
-- [x] 2.10 Recording a position with a known category still takes under 60 seconds (timed once)
+- [x] 2.3 With JS: choosing a category instantly shows its earlier positions newest buy first, each with instrument, buy date, reason and dated result or "No price yet" — 16e3a50
+- [x] 2.4 With JS: switching categories updates the panel; a category with no positions shows the empty state — 16e3a50
+- [x] 2.5 With JS: "New category…" with a name matching an existing category in different case shows that category's history and the "existing category" line; a non-matching name shows the empty state — 16e3a50
+- [x] 2.6 A deleted position never appears in the panel, and reappears after restore — 16e3a50
+- [x] 2.7 A long reason is clamped and expands and collapses in place by mouse and keyboard without submitting the form — 16e3a50
+- [x] 2.8 With JS disabled: a submission rejected by validation (e.g. empty instrument) re-renders with the panel for the submitted category and all typed values intact — 16e3a50
+- [x] 2.9 The panel contains no verdict, score, aggregate or gain/loss colour — 16e3a50
+- [x] 2.10 Recording a position with a known category still takes under 60 seconds (timed once) — 16e3a50
 
 ### Phase 3: Smoke proof
 
 #### Automated
 
-- [ ] 3.1 `BASE_URL=http://localhost:4321 npm run smoke` passes with the new confrontation steps against local Supabase
-- [ ] 3.2 The `verify` skill passes (astro sync, lint, astro check, build)
+- [x] 3.1 `BASE_URL=http://localhost:4321 npm run smoke` passes with the new confrontation steps against local Supabase
+- [x] 3.2 The `verify` skill passes (astro sync, lint, astro check, build)
 
 #### Manual
 
