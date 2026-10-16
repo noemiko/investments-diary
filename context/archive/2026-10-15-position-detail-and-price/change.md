@@ -1,10 +1,10 @@
 ---
 change_id: position-detail-and-price
 title: Position detail view with manual price and dated result
-status: impl_reviewed
+status: archived
 created: 2026-10-15
-updated: 2026-10-15
-archived_at: null
+updated: 2026-10-16
+archived_at: 2026-10-16T08:41:32Z
 ---
 
 ## Notes
