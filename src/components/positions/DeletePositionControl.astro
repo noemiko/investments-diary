@@ -1,0 +1,42 @@
+---
+import { buttonVariants } from "@/components/ui/button";
+
+interface Props {
+  id: string;
+  instrument: string;
+  /** Where Cancel goes without JS: the page the control sits on. */
+  cancelHref?: string;
+}
+
+const { id, instrument, cancelHref = "/dashboard" } = Astro.props;
+
+// Native <details>, so the confirmation works without JS and nothing is deleted until the confirm
+// button posts the form. Cancel is a link back to the current page, which closes the confirmation by
+// reloading without JS; the inline handler closes it in place (and refocuses Delete) when JS runs.
+---
+
+<details>
+  <summary
+    class:list={[
+      buttonVariants({ variant: "outline", size: "sm" }),
+      "cursor-pointer list-none [&::-webkit-details-marker]:hidden",
+    ]}
+  >
+    Delete<span class="sr-only"> {instrument}</span>
+  </summary>
+  <div class="mt-2 flex flex-wrap items-center gap-2">
+    <p class="text-sm">Delete {instrument}? You can restore it later.</p>
+    <form method="POST" action={`/dashboard/positions/${id}/delete`}>
+      <button type="submit" class:list={buttonVariants({ variant: "destructive", size: "sm" })}>
+        Delete<span class="sr-only"> {instrument}</span>
+      </button>
+    </form>
+    <a
+      href={cancelHref}
+      class:list={buttonVariants({ variant: "ghost", size: "sm" })}
+      onclick="const d = this.closest('details'); d.open = false; d.querySelector('summary').focus(); return false;"
+    >
+      Cancel
+    </a>
+  </div>
+</details>

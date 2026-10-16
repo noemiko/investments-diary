@@ -7,8 +7,20 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase";
 import { listPositions } from "@/lib/services/positions";
+import { isUuid } from "@/lib/validation/uuid";
 
 const { user } = Astro.locals;
+
+// `?deleted=` is only a hint from the delete redirect: show the Undo notice for a well-formed id only.
+// Undo POSTs to the restore endpoint, which enforces ownership and state.
+const deletedParam = Astro.url.searchParams.get("deleted");
+const deletedId = isUuid(deletedParam) ? deletedParam : null;
+
+const ERROR_MESSAGES: Partial<Record<string, string>> = {
+  delete_failed: "The position could not be deleted. Please try again.",
+  restore_failed: "The position could not be restored. Please try again.",
+};
+const errorMessage = ERROR_MESSAGES[Astro.url.searchParams.get("error") ?? ""];
 
 const supabase = createClient(Astro.request.headers, Astro.cookies);
 
@@ -31,7 +43,10 @@ try {
             Signed in as <span class="font-semibold text-foreground">{user?.email}</span>
           </p>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-3">
+          <a href="/dashboard/deleted" class="text-sm text-muted-foreground underline-offset-4 hover:underline">
+            Deleted positions
+          </a>
           {positions && positions.length > 0 && (
             <a href="/dashboard/new" class:list={buttonVariants()}>
               New investment
@@ -44,6 +59,26 @@ try {
           </form>
         </div>
       </div>
+
+      {deletedId && (
+        <div role="status" class="flex flex-wrap items-center gap-3 rounded-md border p-4 text-sm">
+          <p>Position deleted.</p>
+          <form method="POST" action={`/dashboard/positions/${deletedId}/restore`}>
+            <button type="submit" class:list={buttonVariants({ variant: "outline", size: "sm" })}>
+              Undo
+            </button>
+          </form>
+          <a href="/dashboard/deleted" class="text-muted-foreground underline-offset-4 hover:underline">
+            Deleted positions
+          </a>
+        </div>
+      )}
+
+      {errorMessage && (
+        <p role="alert" class="rounded-md border border-destructive/40 p-4 text-sm text-destructive">
+          {errorMessage}
+        </p>
+      )}
 
       {positions === null ? (
         <PositionsErrorState />

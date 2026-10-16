@@ -1,5 +1,6 @@
 // Smoke test: proves the Supabase auth flow still works end-to-end over HTTP (redirects, cookies, gating),
-// and that one account cannot see or borrow another account's diary data.
+// that a deleted position can be restored, and that one account cannot see, borrow, delete or restore
+// another account's diary data.
 // Zero dependencies on purpose. Run against a live server: BASE_URL=http://localhost:4321 node scripts/smoke.mjs
 // Creates two accounts per run — never point it at production.
 
@@ -18,10 +19,13 @@ const b = account("b");
 const anonymous = account("anon");
 
 const instrument = `SMOKE-${runId}`;
+const deletedInstrument = `DEL-${runId}`;
 const categoryName = `Smoke category ${runId}`;
 const reasonText = "Smoke walk reason";
-let categoryId = "";
-let positionId = "";
+
+// Ids captured from A's pages, so later steps can target them and check B never sees them.
+const ids = { category: "", mainPosition: "", delPosition: "" };
+const ID_LABELS = { category: "category", mainPosition: "main position", delPosition: "position to delete" };
 // B's 404 body for an id that exists nowhere; a foreign id must render exactly the same page.
 let unknownIdBody = "";
 
@@ -75,9 +79,16 @@ function categoryIdFor(html, name) {
   return "";
 }
 
-// The dashboard links each position to its detail page; with one position recorded there is exactly one link.
-function positionIdIn(html) {
-  return html.match(/href="\/dashboard\/positions\/([0-9a-f-]{36})"/i)?.[1] ?? "";
+// Each position row carries a form posting to `/dashboard/positions/<id>/<action>`; match the row whose
+// cell text is exactly the run-unique instrument.
+function positionIdFor(html, name, action) {
+  const actionPattern = new RegExp(`/dashboard/positions/([0-9a-f-]{36})/${action}"`, "i");
+  for (const [row] of html.matchAll(/<tr\b[^>]*>[\s\S]*?<\/tr>/gi)) {
+    if (!decodeEntities(row).includes(`>${name}<`)) continue;
+    const match = row.match(actionPattern);
+    if (match) return match[1];
+  }
+  return "";
 }
 
 function position(overrides = {}) {
@@ -103,9 +114,14 @@ const EMPTY_STATE = "Record your first investment";
 const NO_PRICE = "No price yet";
 // Buy price 50,25 -> current price 60,3 is exactly +20%.
 const RESULT = "+20.00%";
-const detailPath = () => `/dashboard/positions/${positionId}`;
+// The app's own not-found heading; Astro's routing 404 says "404: Not found", so a wrong path cannot pass.
+const NOT_FOUND = "Position not found";
+const detailPath = () => `/dashboard/positions/${ids.mainPosition}`;
 
-// Each step: [name, run, expected]. `includes` / `excludes` are checked against the (entity-decoded) body.
+// Each step: [name, run, expected]. `includes` / `excludes` are checked against the (entity-decoded) body;
+// an entry (or `location`) may be a function, read when the step runs, to use an id captured earlier.
+// `excludesIds` names captured ids that must not appear in the body; `requiresIds` names ids that must
+// have been captured. `location` is a prefix match unless `exactLocation` is set.
 const steps = [
   ["home renders", () => request(a, "/"), { status: 200 }],
   ["dashboard redirects anonymous user", () => request(a, "/dashboard"), { status: 302, location: "/auth/signin" }],
@@ -134,29 +150,84 @@ const steps = [
     { status: 302, location: "/dashboard" },
   ],
   [
-    // Captured before the no-JS step adds a second position, so the only link is this position's.
     "A: dashboard lists the position",
     async () => {
       const result = await request(a, "/dashboard");
-      positionId = positionIdIn(result.body);
-      return { ...result, location: positionId ? `(position ${positionId})` : "(position id not found)" };
+      ids.mainPosition = positionIdFor(result.body, instrument, "delete");
+      return { ...result, location: ids.mainPosition ? `(position ${ids.mainPosition})` : "(position id not found)" };
     },
     {
       status: 200,
       includes: [instrument, "50.25", categoryName],
       excludes: [EMPTY_STATE],
-      check: () => positionId !== "",
+      requiresIds: ["mainPosition"],
     },
   ],
+
+  // Account A deletes a dedicated position, restores it, and deletes it again (FR-009).
+  [
+    "A: records the position to delete",
+    async () => {
+      const result = await request(a, "/dashboard/new", {
+        method: "POST",
+        form: position({ instrument: deletedInstrument, new_category_name: categoryName }),
+      });
+      ids.delPosition = positionIdFor((await request(a, "/dashboard")).body, deletedInstrument, "delete");
+      return result;
+    },
+    { status: 302, location: "/dashboard", exactLocation: true, requiresIds: ["delPosition"] },
+  ],
+  [
+    "A: deletes it",
+    () => request(a, `/dashboard/positions/${ids.delPosition}/delete`, { method: "POST" }),
+    { status: 302, location: () => `/dashboard?deleted=${ids.delPosition}`, exactLocation: true },
+  ],
+  [
+    "A: dashboard shows the notice and no longer lists it",
+    () => request(a, `/dashboard?deleted=${ids.delPosition}`),
+    { status: 200, includes: ["Position deleted.", instrument], excludes: [deletedInstrument] },
+  ],
+  [
+    "A: deleted page lists it",
+    () => request(a, "/dashboard/deleted"),
+    { status: 200, includes: [deletedInstrument, () => `/dashboard/positions/${ids.delPosition}/restore`] },
+  ],
+  [
+    "A: deleting it again is not found",
+    () => request(a, `/dashboard/positions/${ids.delPosition}/delete`, { method: "POST" }),
+    { status: 404, includes: [NOT_FOUND], requiresIds: ["delPosition"] },
+  ],
+  [
+    "A: restores it",
+    () => request(a, `/dashboard/positions/${ids.delPosition}/restore`, { method: "POST" }),
+    { status: 302, location: "/dashboard", exactLocation: true },
+  ],
+  [
+    "A: dashboard lists the restored position",
+    () => request(a, "/dashboard"),
+    { status: 200, includes: [deletedInstrument, instrument], excludes: ["Position deleted."] },
+  ],
+  [
+    "A: deleted page no longer lists it",
+    () => request(a, "/dashboard/deleted"),
+    { status: 200, excludes: [deletedInstrument], excludesIds: ["delPosition"] },
+  ],
+  [
+    // Left deleted for B's checks.
+    "A: deletes it again",
+    () => request(a, `/dashboard/positions/${ids.delPosition}/delete`, { method: "POST" }),
+    { status: 302, location: () => `/dashboard?deleted=${ids.delPosition}`, exactLocation: true },
+  ],
+
   [
     "A: form offers the new category",
     async () => {
       const result = await request(a, "/dashboard/new");
-      categoryId = categoryIdFor(result.body, categoryName);
-      return { ...result, location: categoryId ? `(category ${categoryId})` : "(category id not found)" };
+      ids.category = categoryIdFor(result.body, categoryName);
+      return { ...result, location: ids.category ? `(category ${ids.category})` : "(category id not found)" };
     },
     // The name input must be in the server-rendered HTML even with categories, so "New category…" works without JS.
-    { status: 200, includes: [categoryName, 'name="new_category_name"'], check: () => categoryId !== "" },
+    { status: 200, includes: [categoryName, 'name="new_category_name"'], requiresIds: ["category"] },
   ],
   [
     // Without JS the select posts the "New category…" sentinel alongside the typed name.
@@ -174,7 +245,7 @@ const steps = [
   [
     "A: detail page shows reason, category and no price yet",
     () => request(a, detailPath()),
-    { status: 200, includes: [instrument, reasonText, categoryName, NO_PRICE] },
+    { status: 200, includes: [instrument, reasonText, categoryName, NO_PRICE], requiresIds: ["mainPosition"] },
   ],
   [
     "A: rejects a future price date",
@@ -189,7 +260,7 @@ const steps = [
   [
     "A: sets a current price",
     () => request(a, detailPath(), { method: "POST", form: { current_price: "60,3", price_date: todayUtc } }),
-    { status: 302, location: detailPath },
+    { status: 302, location: detailPath, exactLocation: true },
   ],
   ["A: dashboard shows the result", () => request(a, "/dashboard"), { status: 200, includes: [RESULT, "as of"] }],
   [
@@ -197,7 +268,38 @@ const steps = [
     () => request(a, `/dashboard/positions/${randomUUID()}`),
     { status: 404, excludes: [instrument, reasonText] },
   ],
-
+  // RLS checks only ownership, so a deleted position is hidden by the app's own `deleted_at` filters.
+  [
+    "A: deleted position's detail page returns 404",
+    () => request(a, `/dashboard/positions/${ids.delPosition}`),
+    { status: 404, excludes: [deletedInstrument], requiresIds: ["delPosition"] },
+  ],
+  [
+    "A: cannot set a price on a deleted position",
+    () =>
+      request(a, `/dashboard/positions/${ids.delPosition}`, {
+        method: "POST",
+        form: { current_price: "60,3", price_date: todayUtc },
+      }),
+    { status: 404, includes: [NOT_FOUND], requiresIds: ["delPosition"] },
+  ],
+  // The same detail page opens once restored, so the two 404s above come from the `deleted_at` filter.
+  [
+    "A: restores the deleted position again",
+    () => request(a, `/dashboard/positions/${ids.delPosition}/restore`, { method: "POST" }),
+    { status: 302, location: "/dashboard", exactLocation: true, requiresIds: ["delPosition"] },
+  ],
+  [
+    "A: restored position's detail page opens",
+    () => request(a, `/dashboard/positions/${ids.delPosition}`),
+    { status: 200, includes: [deletedInstrument], requiresIds: ["delPosition"] },
+  ],
+  [
+    // Left deleted again for B's checks.
+    "A: deletes it once more",
+    () => request(a, `/dashboard/positions/${ids.delPosition}/delete`, { method: "POST" }),
+    { status: 302, location: () => `/dashboard?deleted=${ids.delPosition}`, exactLocation: true },
+  ],
   ["signout clears session", () => request(a, "/api/auth/signout", { method: "POST" }), { status: 302, location: "/" }],
   ["dashboard redirects after signout", () => request(a, "/dashboard"), { status: 302, location: "/auth/signin" }],
 
@@ -220,12 +322,32 @@ const steps = [
   [
     "B: form does not offer A's category",
     () => request(b, "/dashboard/new"),
-    { status: 200, excludes: [categoryName], check: () => categoryId !== "", excludesId: true },
+    { status: 200, excludes: [categoryName], requiresIds: ["category"], excludesIds: ["category"] },
   ],
   [
     "B: cannot record a position with A's category",
-    () => request(b, "/dashboard/new", { method: "POST", form: position({ category_id: categoryId }) }),
-    { status: 200, includes: ["Choose a category from your list"], excludesId: true },
+    () => request(b, "/dashboard/new", { method: "POST", form: position({ category_id: ids.category }) }),
+    { status: 200, includes: ["Choose a category from your list"], excludesIds: ["category"] },
+  ],
+  [
+    "B: deleted page does not list A's deleted position",
+    () => request(b, "/dashboard/deleted"),
+    {
+      status: 200,
+      excludes: [deletedInstrument],
+      requiresIds: ["delPosition"],
+      excludesIds: ["delPosition", "mainPosition"],
+    },
+  ],
+  [
+    "B: cannot restore A's deleted position",
+    () => request(b, `/dashboard/positions/${ids.delPosition}/restore`, { method: "POST" }),
+    { status: 404, includes: [NOT_FOUND], requiresIds: ["delPosition"] },
+  ],
+  [
+    "B: cannot delete A's position",
+    () => request(b, `/dashboard/positions/${ids.mainPosition}/delete`, { method: "POST" }),
+    { status: 404, includes: [NOT_FOUND], requiresIds: ["mainPosition"] },
   ],
   [
     "B: rejects a future buy date",
@@ -253,12 +375,23 @@ const steps = [
   [
     "B: cannot open A's position",
     () => request(b, detailPath()),
-    { status: 404, excludes: [instrument, reasonText], excludesId: true, sameBodyAs: () => unknownIdBody },
+    {
+      status: 404,
+      excludes: [instrument, reasonText],
+      requiresIds: ["mainPosition"],
+      excludesIds: ["category", "mainPosition"],
+      sameBodyAs: () => unknownIdBody,
+    },
   ],
   [
     "B: cannot set a price on A's position",
     () => request(b, detailPath(), { method: "POST", form: { current_price: "1", price_date: todayUtc } }),
-    { status: 404, excludes: [instrument, reasonText], excludesId: true, sameBodyAs: () => unknownIdBody },
+    {
+      status: 404,
+      excludes: [instrument, reasonText],
+      excludesIds: ["category", "mainPosition"],
+      sameBodyAs: () => unknownIdBody,
+    },
   ],
   [
     "B: signout clears session",
@@ -266,7 +399,7 @@ const steps = [
     { status: 302, location: "/" },
   ],
 
-  // A's price is unchanged by B's attempt.
+  // A's price and A's delete state are unchanged by B's attempts.
   [
     "A: signin accepts correct password again",
     () => request(a, "/api/auth/signin", { method: "POST", form: { email: a.email, password } }),
@@ -276,6 +409,11 @@ const steps = [
     "A: detail page still shows the result",
     () => request(a, detailPath()),
     { status: 200, includes: [RESULT, "as of"] },
+  ],
+  [
+    "A: deleted position is still deleted",
+    () => request(a, "/dashboard/deleted"),
+    { status: 200, includes: [deletedInstrument], requiresIds: ["delPosition"] },
   ],
   [
     "A: signout clears session again",
@@ -289,11 +427,18 @@ const steps = [
     { status: 302, location: "/auth/signin" },
   ],
   [
+    "anonymous delete POST redirects to signin",
+    () => request(anonymous, `/dashboard/positions/${ids.delPosition}/delete`, { method: "POST" }),
+    { status: 302, location: "/auth/signin", requiresIds: ["delPosition"] },
+  ],
+  [
     "anonymous: detail page redirects to signin",
     () => request(anonymous, detailPath()),
     { status: 302, location: "/auth/signin" },
   ],
 ];
+
+const resolve = (value) => (typeof value === "function" ? value() : value);
 
 function maskIds(html) {
   return html.replaceAll(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, "<id>");
@@ -302,13 +447,18 @@ function maskIds(html) {
 function bodyProblems(actual, expected) {
   const body = decodeEntities(actual.body);
   const problems = [];
-  for (const text of expected.includes ?? []) if (!body.includes(text)) problems.push(`missing "${text}"`);
-  for (const text of expected.excludes ?? []) if (body.includes(text)) problems.push(`unexpected "${text}"`);
-  if (expected.excludesId) {
-    if (categoryId && body.includes(categoryId)) problems.push(`unexpected A's category id`);
-    if (positionId && body.includes(positionId)) problems.push(`unexpected A's position id`);
+  for (const text of (expected.includes ?? []).map(resolve)) {
+    if (!body.includes(text)) problems.push(`missing "${text}"`);
   }
-  if (expected.check && !expected.check()) problems.push("an id the step depends on was not captured");
+  for (const text of (expected.excludes ?? []).map(resolve)) {
+    if (body.includes(text)) problems.push(`unexpected "${text}"`);
+  }
+  for (const key of expected.excludesIds ?? []) {
+    if (ids[key] && body.includes(ids[key])) problems.push(`unexpected A's ${ID_LABELS[key]} id`);
+  }
+  for (const key of expected.requiresIds ?? []) {
+    if (!ids[key]) problems.push(`A's ${ID_LABELS[key]} id was not captured`);
+  }
   // Ids are masked so the comparison is about the page, not about which uuid was requested.
   if (expected.sameBodyAs && maskIds(actual.body) !== maskIds(expected.sameBodyAs())) {
     problems.push("body differs from the 404 for an unknown id");
@@ -320,12 +470,11 @@ let failed = 0;
 for (const [name, run, expected] of steps) {
   const actual = await run();
   const problems = bodyProblems(actual, expected);
-  // A function location is resolved now, once ids captured by earlier steps are known.
-  const location = typeof expected.location === "function" ? expected.location() : expected.location;
-  const ok =
-    actual.status === expected.status &&
-    (location === undefined || actual.location.startsWith(location)) &&
-    problems.length === 0;
+  const location = resolve(expected.location);
+  const locationOk =
+    location === undefined ||
+    (expected.exactLocation ? actual.location === location : actual.location.startsWith(location));
+  const ok = actual.status === expected.status && locationOk && problems.length === 0;
   console.log(`${ok ? "PASS" : "FAIL"}  ${name}  -> ${actual.status} ${actual.location}`);
   if (!ok) {
     failed++;

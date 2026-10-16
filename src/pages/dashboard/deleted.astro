@@ -1,0 +1,51 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import DeletedPositionsTable from "@/components/positions/DeletedPositionsTable.astro";
+import { buttonVariants } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase";
+import { listDeletedPositions } from "@/lib/services/positions";
+
+const supabase = createClient(Astro.request.headers, Astro.cookies);
+
+// A failed read must not cost the author the page: render an error state instead of a 500.
+let positions: Awaited<ReturnType<typeof listDeletedPositions>> | null = null;
+try {
+  positions = await listDeletedPositions(supabase);
+} catch {
+  // positions stays null → error state
+}
+---
+
+<Layout title="Deleted positions">
+  <div class="bg-cosmic min-h-screen p-4">
+    <Card className="mx-auto max-w-5xl min-w-0 p-8">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <h1 class="text-gradient-heading text-3xl font-bold">Deleted positions</h1>
+        <a href="/dashboard" class:list={buttonVariants({ variant: "outline" })}>
+          Back to your positions
+        </a>
+      </div>
+
+      {positions === null ? (
+        <Card className="items-center border-destructive/40 p-8 text-center">
+          <p role="alert" class="max-w-md text-destructive">
+            Your deleted positions could not be loaded. Please try again.
+          </p>
+          <a href="/dashboard/deleted" class:list={buttonVariants({ variant: "outline" })}>
+            Try again
+          </a>
+        </Card>
+      ) : positions.length === 0 ? (
+        <Card className="items-center gap-4 p-8 text-center">
+          <p class="text-muted-foreground">No deleted positions.</p>
+          <a href="/dashboard" class:list={buttonVariants({ variant: "outline" })}>
+            Back to your positions
+          </a>
+        </Card>
+      ) : (
+        <DeletedPositionsTable positions={positions} />
+      )}
+    </Card>
+  </div>
+</Layout>

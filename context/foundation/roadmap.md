@@ -52,7 +52,7 @@ with your own past reasoning at the moment of deciding improves how you invest.
 | S-02 | position-detail-and-price  | open a position, read its full reason, update its price and see its dated result     | S-01          | FR-006, FR-011                  | done |
 | S-03 | reason-confrontation       | see earlier same-reason positions with their results before saving a new investment  | S-01, S-02    | US-01, FR-012                   | proposed |
 | S-04 | close-position             | close a position with sell price and date and see its final result                   | S-02          | FR-007                          | proposed |
-| S-05 | recoverable-delete         | delete a position and restore it later                                               | S-01          | FR-009                          | proposed |
+| S-05 | recoverable-delete         | delete a position and restore it later                                               | S-01          | FR-009                          | done |
 | S-06 | private-diary-access       | register and reach only their own diary, with every diary page gated behind sign-in  | —             | FR-001, FR-002                  | ready    |
 | S-07 | reason-lock-editing        | correct an investment's facts and add a missing reason, after which the reason locks | S-01          | FR-008, FR-004                  | proposed |
 | S-08 | evolve-reason-categories   | rename a reason category everywhere, or remove it while past positions keep it       | S-01          | FR-005                          | proposed |
@@ -141,7 +141,7 @@ which is exactly what this roadmap avoids.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Independent of the result path, so it can run alongside it. What could go wrong: hidden entries still leak into the confrontation or the list; the restore path must be verified, not assumed.
-- **Status:** proposed
+- **Status:** done
 
 ### S-06: Private access to the diary
 
@@ -219,3 +219,4 @@ which is exactly what this roadmap avoids.
 
 - **S-01: user can record an investment (instrument, buy price and buy date required; quantity and broker label optional), attach a reason category they defined and an optional reason text, and see it in their list of positions with its category.** — Archived 2026-10-02 → `context/archive/2026-09-25-record-first-investment/`. Lesson: —.
 - **S-02: user can open one position, read its full written reason, update its current price, and see its result together with the date that price was set — in the detail view and in the list.** — Archived 2026-10-16 → `context/archive/2026-10-15-position-detail-and-price/`. Lesson: —.
+- **S-05: user can delete a position, which disappears from the list and the confrontation, and restore it later.** — Archived 2026-10-16 → `context/archive/2026-10-15-recoverable-delete/`. Lesson: —.

@@ -2,8 +2,8 @@
 // The rule crashes ("Expected node to have a parent") on a top-level `return` in frontmatter;
 // an eslint-disable comment would not help, because the rule still runs. Nothing here passes promises as callbacks.
 /* eslint @typescript-eslint/no-misused-promises: "off" */
-import { z } from "astro/zod";
 import Layout from "@/layouts/Layout.astro";
+import DeletePositionControl from "@/components/positions/DeletePositionControl.astro";
 import PositionResult from "@/components/positions/PositionResult.astro";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { createClient } from "@/lib/supabase";
 import { getPosition, updatePositionPrice, type UpdatePriceResult } from "@/lib/services/positions";
 import { todayUtc } from "@/lib/validation/position";
 import { parsePriceForm, readPriceForm } from "@/lib/validation/price";
+import { isUuid } from "@/lib/validation/uuid";
 import type { PositionDetail, PriceFormErrors, PriceFormValues } from "@/types";
 
 // Handles its own POST and re-renders on error, as /dashboard/new does.
@@ -36,7 +37,7 @@ const id = Astro.params.id ?? "";
 // so the page never reveals whether an id exists for someone else.
 let state: "found" | "not_found" | "load_failed" = "not_found";
 let position: PositionDetail | null = null;
-if (z.uuid().safeParse(id).success) {
+if (isUuid(id)) {
   try {
     position = await getPosition(supabase, id);
     state = position ? "found" : "not_found";
@@ -208,6 +209,15 @@ const inputClass =
                 </button>
               </div>
             </form>
+          </section>
+
+          <section class="flex flex-col gap-2">
+            <h2 class="text-lg font-semibold">Delete</h2>
+            <DeletePositionControl
+              id={position.id}
+              instrument={position.instrument}
+              cancelHref={`/dashboard/positions/${position.id}`}
+            />
           </section>
         </>
       )}

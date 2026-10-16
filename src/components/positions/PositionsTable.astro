@@ -1,4 +1,5 @@
 ---
+import DeletePositionControl from "@/components/positions/DeletePositionControl.astro";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import PositionResult from "@/components/positions/PositionResult.astro";
@@ -36,6 +37,9 @@ const { positions } = Astro.props;
       <TableHead scope="col" className="text-muted-foreground">
         Category
       </TableHead>
+      <TableHead scope="col">
+        <span class="sr-only">Actions</span>
+      </TableHead>
     </TableRow>
   </TableHeader>
   <TableBody>
@@ -62,6 +66,9 @@ const { positions } = Astro.props;
         <TableCell className="text-muted-foreground">{position.broker_label ?? "—"}</TableCell>
         <TableCell>
           <Badge variant="secondary">{position.category_name}</Badge>
+        </TableCell>
+        <TableCell>
+          <DeletePositionControl id={position.id} instrument={position.instrument} />
         </TableCell>
       </TableRow>
     ))}
