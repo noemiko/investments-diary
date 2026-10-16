@@ -17,6 +17,20 @@ export type PositionListItem = Pick<
 /** One position on its detail page (FR-011): the list row plus the full reason. */
 export type PositionDetail = PositionListItem & Pick<PositionRow, "reason_text">;
 
+/** One earlier position as the confrontation panel shows it, grouped by `category_id` on the client. */
+export type ConfrontationPosition = Pick<
+  PositionRow,
+  | "id"
+  | "category_id"
+  | "instrument"
+  | "buy_date"
+  | "buy_price"
+  | "quantity"
+  | "current_price"
+  | "price_date"
+  | "reason_text"
+>;
+
 /** One row of the Deleted positions page (FR-009): only rows that have a `deleted_at`. */
 export type DeletedPositionItem = Pick<PositionRow, "id" | "instrument" | "buy_date" | "deleted_at"> & {
   deleted_at: string;

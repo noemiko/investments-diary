@@ -1,6 +1,7 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 import type { createClient } from "@/lib/supabase";
 import type {
+  ConfrontationPosition,
   DeletedPositionItem,
   NewPositionInput,
   PositionDetail,
@@ -64,6 +65,21 @@ export async function listPositions(client: Client): Promise<PositionListItem[]>
     ...position,
     category_name: reason_categories.name,
   }));
+}
+
+/**
+ * Every non-deleted position of the author, reason included, newest buy first. One read for all
+ * categories, so the new-investment form can switch category without another round trip.
+ */
+export async function listConfrontationPositions(client: Client): Promise<ConfrontationPosition[]> {
+  const { data, error } = await client
+    .from("positions")
+    .select("id, category_id, instrument, buy_date, buy_price, quantity, current_price, price_date, reason_text")
+    .is("deleted_at", null)
+    .order("buy_date", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(`listConfrontationPositions failed: ${error.message}`);
+  return data;
 }
 
 /**

@@ -9,6 +9,7 @@ import {
   NEW_CATEGORY_CHOICE as NEW_CATEGORY,
   type PositionFormErrors,
   type PositionFormField,
+  type ConfrontationPosition,
   type PositionFormValues,
   type ReasonCategory,
 } from "@/types";
@@ -20,6 +21,8 @@ interface Props {
   categories: ReasonCategory[];
   values: PositionFormValues;
   errors: PositionFormErrors;
+  /** The author's earlier positions; `null` when they could not be loaded. Not rendered yet. */
+  earlierPositions?: ConfrontationPosition[] | null;
 }
 
 // Mirrors the server's "today" (UTC) so the date check agrees with src/lib/validation/position.ts.
