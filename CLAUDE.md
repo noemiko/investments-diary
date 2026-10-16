@@ -5,7 +5,7 @@ Copilot read the same bytes.
 
 ## What this repo is
 
-**Investments Diary** — a private, single-user investment journal that records the *reason*
+**Investments Diary** — a private, single-user investment journal that records the _reason_
 behind each buy/sell and confronts the author with comparable past positions at decision time.
 Product context: @context/foundation/prd.md (requirements), @context/foundation/tech-stack.md
 (why this stack). Every domain behaviour must trace to an `FR-NNN` in the PRD. If a change needs

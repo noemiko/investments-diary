@@ -25,27 +25,29 @@ update both answer 404.
 
 ## Key Decisions Made
 
-| Decision | Choice | Why (1 sentence) |
-| --- | --- | --- |
-| Confirmation | Inline `<details>` in the row | Works without JS like every form here and needs no by-id read that would clash with S-02. |
-| Restore location | Separate `/dashboard/deleted` page | Keeps the main list clean and makes leaks into it easy to test for. |
-| After delete | Notice with Undo on `/dashboard` | A wrong click is fixed in one step. |
-| Detail page | Final phase after rebasing onto S-02 | Closes the agreed coordination check inside this change. |
-| Schema | No migration | `deleted_at` and the update policy already exist; nothing touches the shared local database. |
-| Endpoints | POST-only routes under `/dashboard/positions/[id]/` | Gated by the existing middleware prefix; redirects like the auth POSTs. |
-| Not-found | 404 for foreign, unknown, malformed or wrong-state ids | Zero rows updated under RLS looks the same for all of them. |
-| Retention | Restorable forever, no purge | FR-009 says recoverable, with no time limit. |
-| Smoke data | Dedicated `DEL-<runId>` position | Never disturbs the position S-02's smoke steps reprice. |
+| Decision         | Choice                                                 | Why (1 sentence)                                                                             |
+| ---------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| Confirmation     | Inline `<details>` in the row                          | Works without JS like every form here and needs no by-id read that would clash with S-02.    |
+| Restore location | Separate `/dashboard/deleted` page                     | Keeps the main list clean and makes leaks into it easy to test for.                          |
+| After delete     | Notice with Undo on `/dashboard`                       | A wrong click is fixed in one step.                                                          |
+| Detail page      | Final phase after rebasing onto S-02                   | Closes the agreed coordination check inside this change.                                     |
+| Schema           | No migration                                           | `deleted_at` and the update policy already exist; nothing touches the shared local database. |
+| Endpoints        | POST-only routes under `/dashboard/positions/[id]/`    | Gated by the existing middleware prefix; redirects like the auth POSTs.                      |
+| Not-found        | 404 for foreign, unknown, malformed or wrong-state ids | Zero rows updated under RLS looks the same for all of them.                                  |
+| Retention        | Restorable forever, no purge                           | FR-009 says recoverable, with no time limit.                                                 |
+| Smoke data       | Dedicated `DEL-<runId>` position                       | Never disturbs the position S-02's smoke steps reprice.                                      |
 
 ## Scope
 
 **In scope:**
+
 - Service: delete, restore, list deleted
 - Two POST endpoints; inline confirmation; Undo notice; Deleted page and header link
 - Smoke steps for the round trip and two-account isolation
 - After S-02 merges: rebase, Delete on the detail page, deleted-detail and refused-price checks
 
 **Out of scope:**
+
 - Hard delete or purge; restore confirmation; category delete (S-08)
 - The confrontation's filter (S-03 must reuse `deleted_at is null`)
 - New dependencies, dialogs or islands
@@ -60,10 +62,10 @@ not found. `DeletePositionControl.astro` is shared by the list and, in Phase 3, 
 
 ## Phases at a Glance
 
-| Phase | What it delivers | Key risk |
-| --- | --- | --- |
-| 1. Delete and restore flow | All user-visible delete/undo/restore behaviour | Styling a `<details>` confirmation inside a table cell |
-| 2. Smoke proof | Round trip and isolation checks | Scraping the position id from the delete form action |
+| Phase                       | What it delivers                                          | Key risk                                                  |
+| --------------------------- | --------------------------------------------------------- | --------------------------------------------------------- |
+| 1. Delete and restore flow  | All user-visible delete/undo/restore behaviour            | Styling a `<details>` confirmation inside a table cell    |
+| 2. Smoke proof              | Round trip and isolation checks                           | Scraping the position id from the delete form action      |
 | 3. After rebasing onto S-02 | Detail-page Delete; deleted → 404 there and price refused | Merge conflicts in types, service, table and smoke script |
 
 **Prerequisites:** Docker running for local Supabase. Phase 3: `position-detail-and-price` merged to `master`.

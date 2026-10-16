@@ -1,4 +1,5 @@
 <!-- IMPL-REVIEW-REPORT -->
+
 # Implementation Review: Position Detail and Current Price
 
 - **Plan**: context/changes/position-detail-and-price/plan.md
@@ -10,16 +11,17 @@
 
 ## Verdicts
 
-| Dimension | Verdict |
-|-----------|---------|
-| Plan Adherence | PASS |
-| Scope Discipline | PASS |
-| Safety & Quality | WARNING |
-| Architecture | PASS |
-| Pattern Consistency | PASS |
-| Success Criteria | PASS |
+| Dimension           | Verdict |
+| ------------------- | ------- |
+| Plan Adherence      | PASS    |
+| Scope Discipline    | PASS    |
+| Safety & Quality    | WARNING |
+| Architecture        | PASS    |
+| Pattern Consistency | PASS    |
+| Success Criteria    | PASS    |
 
 Notes:
+
 - **Plan Adherence:** every planned change has the verdict MATCH. The percent-only result display is an approved deviation, recorded in change.md.
 - **Scope Discipline:** two files changed outside the plan, both benign and documented. `fixtures.ts` was needed because the DTO gained fields. `roadmap.md` holds the S-02 status flip.
 - **Success Criteria:** these were re-run on HEAD and pass:

@@ -1,4 +1,5 @@
 <!-- IMPL-REVIEW-REPORT -->
+
 # Implementation Review: Record the First Investment
 
 - **Plan**: context/changes/record-first-investment/plan.md
@@ -10,14 +11,14 @@
 
 ## Verdicts
 
-| Dimension | Verdict |
-|-----------|---------|
-| Plan Adherence | PASS |
-| Scope Discipline | WARNING |
-| Safety & Quality | WARNING |
-| Architecture | PASS |
+| Dimension           | Verdict |
+| ------------------- | ------- |
+| Plan Adherence      | PASS    |
+| Scope Discipline    | WARNING |
+| Safety & Quality    | WARNING |
+| Architecture        | PASS    |
 | Pattern Consistency | WARNING |
-| Success Criteria | PASS |
+| Success Criteria    | PASS    |
 
 Notes: no DRIFT and no MISSING items. The EXTRA changes are all benign adaptations: `FormField` gained optional props, `decimal.ts` was split out, and ESLint and Prettier now ignore the generated types. No update or delete path exists in `src/`. Automated criteria re-run on 2026-09-29: types match, astro sync, lint, astro check and build pass, the smoke walk passes 21/21, and PR #1 CI (`ci` and `smoke`) is green. `db reset` was not re-run, to preserve local manual-test data; it passed earlier in the same session, including after the deliberate-break check.
 
@@ -41,7 +42,7 @@ Notes: no DRIFT and no MISSING items. The EXTRA changes are all benign adaptatio
   - Confidence: MED — depends on how often the author trades after midnight.
   - Blind spot: None significant.
 - **Decision**: SKIPPED — UTC "today" kept as planned
-Stock is not open at 01:00 - 2:00. Crypto currency market can be open, but I don't see it is very necessary to complicate code with this edge case which is unlikely.
+  Stock is not open at 01:00 - 2:00. Crypto currency market can be open, but I don't see it is very necessary to complicate code with this edge case which is unlikely.
 
 ### F2 — Without JavaScript, a user who already has categories cannot create a new one
 
@@ -55,7 +56,7 @@ Stock is not open at 01:00 - 2:00. Crypto currency market can be open, but I don
   - Tradeoff: Slightly more branching in `readPositionForm` / the schema, and the island must hide the field without a flash.
   - Confidence: MED — the schema's exactly-one rule must be adjusted carefully so the error messages stay clear.
   - Blind spot: The smoke walk doesn't cover the no-JS new-category path, so this needs a new step.
-- **Decision**: FIXED — select always posts category_id; "__new__" sentinel (NEW_CATEGORY_CHOICE) means no id on the server; name input always in SSR HTML, hidden after hydration (useSyncExternalStore); smoke covers the SSR input and the no-JS post
+- **Decision**: FIXED — select always posts category_id; "**new**" sentinel (NEW_CATEGORY_CHOICE) means no id on the server; name input always in SSR HTML, hidden after hydration (useSyncExternalStore); smoke covers the SSR input and the no-JS post
 
 ### F3 — A failed category read after a POST gives a 500 and loses the typed reason
 

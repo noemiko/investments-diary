@@ -219,6 +219,7 @@ not before `buyDate` ("The price date cannot be before the buy date"). The share
 never touching deleted positions.
 
 **Contract**:
+
 - `listPositions` also selects `current_price, price_date`.
 - `getPosition(client, id): Promise<PositionDetail | null>` — filters `id` and `deleted_at is null`,
   `maybeSingle()`; `null` for missing, foreign and deleted ids alike; throws on a query error (as
@@ -236,6 +237,7 @@ never touching deleted positions.
 **Intent**: FR-011 (full reason with the result) and the FR-006 update path.
 
 **Contract**:
+
 - Gated by the existing `/dashboard` middleware prefix; keeps the `if (!user)` redirect that `new.astro` has.
 - A non-uuid `id`, or `getPosition` returning `null`, sets `Astro.response.status = 404` and renders
   "Position not found" with a link back to `/dashboard`. The same output for every not-found
@@ -297,6 +299,7 @@ neither read nor reprice someone else's position.
 **Contract**: Capture A's position id from the dashboard HTML (`href="/dashboard/positions/<uuid>"`)
 right after the first position is recorded, before the no-JS step adds a second one, the same way
 `categoryId` is captured. New steps, in walk order:
+
 - A: dashboard shows "No price yet"
 - A: detail page shows the reason text and category, and "No price yet"
 - A: a future price date is rejected (200, message shown)

@@ -13,6 +13,7 @@ archived_at: 2026-10-15T08:34:29Z
 
 **Implementation adaptation (2026-10-07):** where `plan.md` contradicts the decisions below, the
 decisions win (confirmed at `/10x-implement` entry):
+
 - Q4: the cosmic background becomes its own token variable + utility; the dashboard uses it instead of `bg-background`.
 - Q5: the heading gradient gets its own tokens + utility instead of being dropped for `text-foreground`.
 - Q7: `LibBadge.astro` is deleted in Phase 1 (criterion 1.2 therefore expects `badge.tsx button.tsx card.tsx table.tsx`). `Topbar.astro` turned out to be live (`Welcome.astro:2,18`, landing `/`), so it is kept and deferred to the landing migration.

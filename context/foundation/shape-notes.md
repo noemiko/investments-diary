@@ -43,6 +43,7 @@ timeline_budget:
 # Shape Notes — Investments Diary
 
 ## Seed idea (verbatim)
+
 > Investments diary for personal use: record each past and new investment with the
 > reasoning behind it, close it with the result, and review outcomes against the
 > original thesis. Manual price entry in the MVP. Open questions: which single domain
@@ -50,6 +51,7 @@ timeline_budget:
 > whether a live stock-price source is added later as an optional feature.
 
 ## Vision & Problem Statement
+
 A private investor managing their own money makes buy and sell decisions guided by
 emotion rather than by a clear strategy; their strategy is not itself clearly
 articulated. At the moment of buying, at the moment of selling, and when reviewing
@@ -66,6 +68,7 @@ long-term investment rationale. And a diary only produces value if its entries a
 honest, which favours a private personal tool over a social or commercial product.
 
 ## User & Persona
+
 Primary persona: the author of the diary — a private retail investor who manages their
 own money across one or more brokers. Single named user; the MVP serves exactly one
 person. Keeping an investment diary is recognized good practice, which is part of why
@@ -76,6 +79,7 @@ and when reviewing past investments. They arrive with an incomplete memory of wh
 already own and why they bought it.
 
 ## Success Criteria
+
 ### Primary
 
 - Every position the author currently holds is recorded in the diary together with the
@@ -102,6 +106,7 @@ already own and why they bought it.
   rather than postponing it. Slow entry kills the habit and therefore the product.
 
 ## Timeline acknowledgment
+
 Acknowledged on 2026-09-20: the first working version is budgeted at roughly 30 hours
 of after-hours work spread over about six weeks, on a stack the author has not used
 before. The scope-cost was surfaced during discovery — four user actions, one entity,
@@ -113,6 +118,7 @@ and fall back to closed positions only; or drop the grouping in the confrontatio
 and show a flat list of past reasons.
 
 ## User Stories
+
 ### US-01: Author is confronted with past reasoning while recording a new investment
 
 - **Given** a signed-in author whose diary already holds at least one position with a reason category
@@ -129,6 +135,7 @@ and show a flat list of past reasons.
 > Draft derived from the flow the author described in Phase 3. Confirm or correct before `/10x-prd`.
 
 ## Functional Requirements
+
 ### Account
 
 - FR-001: User can create an account and sign in. Priority: must-have
@@ -192,6 +199,7 @@ and show a flat list of past reasons.
   > before and how it went, leaving the judgement to them.
 
 ## Non-Functional Requirements
+
 - Recording a position, from opening the diary to a saved entry including choosing a
   reason, takes the author under 60 seconds.
 - A position's reason and result are visible only to its author. No other account and no
@@ -201,6 +209,7 @@ and show a flat list of past reasons.
 - Every displayed result states the date of the price it was computed from.
 
 ## Business Logic
+
 Whenever the author records a new investment, the diary presents every earlier position
 given the same reason, each with its outcome, before the entry is confirmed.
 
@@ -222,6 +231,7 @@ strategy in advance and the diary flags investments falling outside it, was cons
 and deliberately deferred beyond the first version on scope grounds.
 
 ## Access Control
+
 Account-based login. The diary is gated behind authentication and is reachable from
 any device the user signs in on.
 
@@ -233,6 +243,7 @@ single provisioned account), and what an unauthenticated visitor sees when they 
 gated view.
 
 ## Non-Goals
+
 - **No declared strategy to judge buys against.** The author writes no strategy in advance
   and the diary never flags an investment as off-strategy. This is the stronger rule
   implied by the author's own goal of sticking to a strategy, deliberately held back so it
@@ -246,6 +257,7 @@ gated view.
   is what the honesty the product depends on requires.
 
 ## Open Questions
+
 1. **Which single domain rule?** — return per reasoning tag, or thesis-versus-outcome flag. Owner: user. To resolve in Phase 5.
 2. **Live stock-price source as a later optional feature?** — Owner: user. Deferred; not in MVP, recorded as a secondary success criterion.
 3. **Sign-up behaviour and unauthenticated-visitor handling** — open registration vs. a single provisioned account; what a gated route shows when signed out. Owner: user. Resolve before implementation.
@@ -253,6 +265,7 @@ gated view.
 5. **What happens to past entries when a reason category is renamed or removed?** — FR-005 allows the list to evolve. Owner: user. Resolve before implementation.
 
 ## Forward: tech-stack
+
 Informational only. Not part of the PRD schema; consumed by the tech-stack step.
 
 The author stated a learning goal of working with coding agents, and named a candidate

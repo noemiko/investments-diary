@@ -72,14 +72,14 @@ Konfiguracja shadcn: `components.json` — `style: new-york`, `baseColor: neutra
 **`:root` (`global.css:6-39`) — 32 zmienne** (wszystkie kolory to odcienie szarości `oklch(L 0 0)`
 poza `--destructive` i `--chart-*`):
 
-| Grupa | Zmienne |
-| --- | --- |
-| Promień | `--radius` (0.625rem) |
-| Powierzchnie | `--background`, `--foreground`, `--card`, `--card-foreground`, `--popover`, `--popover-foreground` |
-| Role | `--primary`, `--primary-foreground`, `--secondary`, `--secondary-foreground`, `--muted`, `--muted-foreground`, `--accent`, `--accent-foreground`, `--destructive` |
-| Kontrolki | `--border`, `--input`, `--ring` |
-| Wykresy | `--chart-1` … `--chart-5` |
-| Sidebar | `--sidebar`, `--sidebar-foreground`, `--sidebar-primary`, `--sidebar-primary-foreground`, `--sidebar-accent`, `--sidebar-accent-foreground`, `--sidebar-border`, `--sidebar-ring` |
+| Grupa        | Zmienne                                                                                                                                                                           |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Promień      | `--radius` (0.625rem)                                                                                                                                                             |
+| Powierzchnie | `--background`, `--foreground`, `--card`, `--card-foreground`, `--popover`, `--popover-foreground`                                                                                |
+| Role         | `--primary`, `--primary-foreground`, `--secondary`, `--secondary-foreground`, `--muted`, `--muted-foreground`, `--accent`, `--accent-foreground`, `--destructive`                 |
+| Kontrolki    | `--border`, `--input`, `--ring`                                                                                                                                                   |
+| Wykresy      | `--chart-1` … `--chart-5`                                                                                                                                                         |
+| Sidebar      | `--sidebar`, `--sidebar-foreground`, `--sidebar-primary`, `--sidebar-primary-foreground`, `--sidebar-accent`, `--sidebar-accent-foreground`, `--sidebar-border`, `--sidebar-ring` |
 
 **`.dark` (`global.css:41-73`) — 31 zmiennych**: ten sam zestaw minus `--radius`.
 
@@ -110,10 +110,10 @@ ustawia `border-border outline-ring/50` na `*` oraz `bg-background text-foregrou
 
 `ls src/components/ui` → **2 pliki**:
 
-| Plik | Pochodzenie | Tokeny | Importy |
-| --- | --- | --- | --- |
-| `button.tsx` | shadcn (cva + Radix `Slot`); warianty default/destructive/outline/secondary/ghost/link, rozmiary default/sm/lg/icon (`button.tsx:7-33`) | semantyczne; jedyny literał `text-white` w wariancie destructive (`button.tsx:14`) | 1 — `src/components/auth/SubmitButton.tsx:3` |
-| `LibBadge.astro` | starter (badge biblioteki z wersją) | paleta: `bg-blue-900/50 text-blue-200`, `bg-purple-500/30 text-purple-200` (`LibBadge.astro:10,12`) | 0 (grep po `src/`) |
+| Plik             | Pochodzenie                                                                                                                             | Tokeny                                                                                              | Importy                                      |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| `button.tsx`     | shadcn (cva + Radix `Slot`); warianty default/destructive/outline/secondary/ghost/link, rozmiary default/sm/lg/icon (`button.tsx:7-33`) | semantyczne; jedyny literał `text-white` w wariancie destructive (`button.tsx:14`)                  | 1 — `src/components/auth/SubmitButton.tsx:3` |
+| `LibBadge.astro` | starter (badge biblioteki z wersją)                                                                                                     | paleta: `bg-blue-900/50 text-blue-200`, `bg-purple-500/30 text-purple-200` (`LibBadge.astro:10,12`) | 0 (grep po `src/`)                           |
 
 Uwaga: `SubmitButton` importuje `Button`, ale nadpisuje jego kolory przez `className`
 (`bg-purple-600 … text-white hover:bg-purple-500`, `SubmitButton.tsx:18`), więc wariant
@@ -132,22 +132,22 @@ Metoda: grep w `src/**` po `(bg|text|border|ring|from|via|to|fill|stroke|outline
 `-(white|black)` oraz hex/`rgb()`/`hsl()`/arbitralnych `[#…]`. Brak dopasowań arbitralnych
 `bg-[#…]`. Liczby = liczba dopasowań klas (nie linii).
 
-| Plik | Paleta | white/black | Najczęstsze klasy | Rola (widok) |
-| --- | --- | --- | --- | --- |
-| `src/pages/dashboard.astro` | 14 | 12 | `from-blue-200 to-purple-200` (h1, :25), `text-blue-100/60|80`, `bg-purple-600 hover:bg-purple-500` (CTA, :36,:59), `bg-purple-500/30 text-purple-100` (badge kategorii, :100), `bg-white/10 border-white/10` (karta, :22) | **docelowy widok** |
-| `src/components/positions/PositionForm.tsx` | 10 | 5 | `text-blue-100/80` (label, :151,:200), `border-red-400/60 focus:ring-red-400` / `focus:ring-purple-400` (:167,:215), `text-red-300` (:45), `[&>option]:text-black` (:166) | formularz nowej pozycji |
-| `src/components/Welcome.astro` | 15 | 13 | `from-blue-200 via-purple-200 to-pink-200` (:22), `bg-purple-600` (:31), poświaty `bg-purple-500/20`, `bg-blue-500/15`, `bg-indigo-400/10` (:7-9) + inline `rgba()` (:14) | landing `/` |
-| `src/components/Topbar.astro` | 10 | 3 | `text-purple-300 hover:text-purple-100` (:10,:14,:24,:27), `text-blue-100/70` | **0 importów** |
-| `src/components/auth/FormField.tsx` | 5 | 4 | `text-blue-100/80` (:43), `border-red-400/60 focus:ring-red-400` / `focus:ring-purple-400` (:63), `text-red-300` (:69), `bg-white/10 text-white placeholder-white/40` (:6) | wspólny input |
-| `src/components/ui/LibBadge.astro` | 4 | 0 | `bg-blue-900/50 text-blue-200`, `bg-purple-500/30 text-purple-200` | **0 importów** |
-| `src/components/auth/ServerError.tsx` | 3 | 0 | `bg-red-900/30 border-red-500/30 text-red-300` (:11) | wspólny alert |
-| `src/pages/auth/confirm-email.astro` | 4 | 3 | gradient h1 (:25), `text-purple-300` (:29) | auth |
-| `src/pages/auth/signin.astro` | 4 | 3 | gradient h1 (:11), `text-blue-100/60` (:15), `text-purple-300` (:17) | auth |
-| `src/pages/auth/signup.astro` | 4 | 3 | jak signin (:11,:15,:17) | auth |
-| `src/pages/dashboard/new.astro` | 4 | 3 | gradient h1 (:70), `text-purple-300` (:75), karta `bg-white/10` (:69) | nowa pozycja |
-| `src/components/auth/SubmitButton.tsx` | 2 | 2 | `bg-purple-600 hover:bg-purple-500 text-white` (:18) nadpisuje `Button`, spinner `border-white/30` (:22) | wspólny submit |
-| `src/components/auth/SignUpForm.tsx` | 1 | 0 | `text-blue-100/50` (:59) | auth |
-| `src/components/auth/PasswordToggle.tsx` | 0 | 2 | `text-white/40 hover:text-white/70` (:13) | auth |
+| Plik                                        | Paleta | white/black | Najczęstsze klasy                                                                                                                                                          | Rola (widok)                                                                                                                                                |
+| ------------------------------------------- | ------ | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/pages/dashboard.astro`                 | 14     | 12          | `from-blue-200 to-purple-200` (h1, :25), `text-blue-100/60                                                                                                                 | 80`, `bg-purple-600 hover:bg-purple-500`(CTA, :36,:59),`bg-purple-500/30 text-purple-100`(badge kategorii, :100),`bg-white/10 border-white/10` (karta, :22) | **docelowy widok** |
+| `src/components/positions/PositionForm.tsx` | 10     | 5           | `text-blue-100/80` (label, :151,:200), `border-red-400/60 focus:ring-red-400` / `focus:ring-purple-400` (:167,:215), `text-red-300` (:45), `[&>option]:text-black` (:166)  | formularz nowej pozycji                                                                                                                                     |
+| `src/components/Welcome.astro`              | 15     | 13          | `from-blue-200 via-purple-200 to-pink-200` (:22), `bg-purple-600` (:31), poświaty `bg-purple-500/20`, `bg-blue-500/15`, `bg-indigo-400/10` (:7-9) + inline `rgba()` (:14)  | landing `/`                                                                                                                                                 |
+| `src/components/Topbar.astro`               | 10     | 3           | `text-purple-300 hover:text-purple-100` (:10,:14,:24,:27), `text-blue-100/70`                                                                                              | **0 importów**                                                                                                                                              |
+| `src/components/auth/FormField.tsx`         | 5      | 4           | `text-blue-100/80` (:43), `border-red-400/60 focus:ring-red-400` / `focus:ring-purple-400` (:63), `text-red-300` (:69), `bg-white/10 text-white placeholder-white/40` (:6) | wspólny input                                                                                                                                               |
+| `src/components/ui/LibBadge.astro`          | 4      | 0           | `bg-blue-900/50 text-blue-200`, `bg-purple-500/30 text-purple-200`                                                                                                         | **0 importów**                                                                                                                                              |
+| `src/components/auth/ServerError.tsx`       | 3      | 0           | `bg-red-900/30 border-red-500/30 text-red-300` (:11)                                                                                                                       | wspólny alert                                                                                                                                               |
+| `src/pages/auth/confirm-email.astro`        | 4      | 3           | gradient h1 (:25), `text-purple-300` (:29)                                                                                                                                 | auth                                                                                                                                                        |
+| `src/pages/auth/signin.astro`               | 4      | 3           | gradient h1 (:11), `text-blue-100/60` (:15), `text-purple-300` (:17)                                                                                                       | auth                                                                                                                                                        |
+| `src/pages/auth/signup.astro`               | 4      | 3           | jak signin (:11,:15,:17)                                                                                                                                                   | auth                                                                                                                                                        |
+| `src/pages/dashboard/new.astro`             | 4      | 3           | gradient h1 (:70), `text-purple-300` (:75), karta `bg-white/10` (:69)                                                                                                      | nowa pozycja                                                                                                                                                |
+| `src/components/auth/SubmitButton.tsx`      | 2      | 2           | `bg-purple-600 hover:bg-purple-500 text-white` (:18) nadpisuje `Button`, spinner `border-white/30` (:22)                                                                   | wspólny submit                                                                                                                                              |
+| `src/components/auth/SignUpForm.tsx`        | 1      | 0           | `text-blue-100/50` (:59)                                                                                                                                                   | auth                                                                                                                                                        |
+| `src/components/auth/PasswordToggle.tsx`    | 0      | 2           | `text-white/40 hover:text-white/70` (:13)                                                                                                                                  | auth                                                                                                                                                        |
 
 Suma: **14** plików w tabeli — 13 z klasami palety + `PasswordToggle.tsx` z samym `white/*`.
 Poza tabelą: `button.tsx` ma jeden `text-white` (`button.tsx:14`), poza tym jest semantyczny. Dodatkowe surowe kolory poza klasami: `global.css:114` (hex w `bg-cosmic`, używany w
@@ -157,17 +157,17 @@ Poza tabelą: `button.tsx` ma jeden `text-white` (`button.tsx:14`), poza tym jes
 
 Powtarzające się wzorce (kandydaci na mapowanie ról):
 
-| Literał | Rola, którą pełni | Token-kandydat |
-| --- | --- | --- |
-| `bg-purple-600 hover:bg-purple-500 text-white` | główna akcja | `bg-primary text-primary-foreground hover:bg-primary/90` (= `Button` default) |
-| `text-blue-100/60`, `/70`, `/80`, `/50` | tekst drugorzędny (4 różne przezroczystości) | `text-muted-foreground` |
-| `text-purple-300 hover:text-purple-100` | link | `text-primary` / `Button variant="link"` |
-| `bg-white/10 border-white/10 text-white` | karta / panel | `bg-card text-card-foreground border-border` |
-| `border-white/20 bg-white/10` | input | `border-input bg-transparent` / `dark:bg-input/30` |
-| `focus:ring-purple-400` | focus | `ring-ring` |
-| `red-300`, `red-400/60`, `red-500/30`, `red-900/30` | błąd | `destructive` (+ `/opacity`) |
-| `from-blue-200 to-purple-200 bg-clip-text` | nagłówek | brak tokenu — decyzja (usunąć lub `text-foreground`) |
-| `bg-purple-500/30 text-purple-100` (pill) | etykieta kategorii | `Badge variant="secondary"` |
+| Literał                                             | Rola, którą pełni                            | Token-kandydat                                                                |
+| --------------------------------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------- |
+| `bg-purple-600 hover:bg-purple-500 text-white`      | główna akcja                                 | `bg-primary text-primary-foreground hover:bg-primary/90` (= `Button` default) |
+| `text-blue-100/60`, `/70`, `/80`, `/50`             | tekst drugorzędny (4 różne przezroczystości) | `text-muted-foreground`                                                       |
+| `text-purple-300 hover:text-purple-100`             | link                                         | `text-primary` / `Button variant="link"`                                      |
+| `bg-white/10 border-white/10 text-white`            | karta / panel                                | `bg-card text-card-foreground border-border`                                  |
+| `border-white/20 bg-white/10`                       | input                                        | `border-input bg-transparent` / `dark:bg-input/30`                            |
+| `focus:ring-purple-400`                             | focus                                        | `ring-ring`                                                                   |
+| `red-300`, `red-400/60`, `red-500/30`, `red-900/30` | błąd                                         | `destructive` (+ `/opacity`)                                                  |
+| `from-blue-200 to-purple-200 bg-clip-text`          | nagłówek                                     | brak tokenu — decyzja (usunąć lub `text-foreground`)                          |
+| `bg-purple-500/30 text-purple-100` (pill)           | etykieta kategorii                           | `Badge variant="secondary"`                                                   |
 
 ### 5. Brakujące prymitywy dla docelowego widoku (`dashboard.astro`)
 
@@ -175,15 +175,15 @@ Co widok renderuje dziś (`dashboard.astro:20-112`): kartę-kontener, nagłówek
 przyciski-akcje (link „New investment”, submit „Sign out”), pusty stan z CTA, tabelę 6 kolumn
 z liczbami `tabular-nums` i pillem kategorii. Każdy z tych elementów jest zbudowany ręcznie.
 
-| Prymityw | Status | Gdzie potrzebny | Uwagi |
-| --- | --- | --- | --- |
-| **Table** (`Table/Header/Row/Head/Body/Cell`) | brak | `dashboard.astro:65-108` | shadcn `table` to czyste elementy HTML + klasy (bez Radix). S-02 dokłada kolumny wynik/data ceny. |
-| **Badge** | brak (`LibBadge` to nie to — inny cel, paleta, 0 importów) | pill kategorii `dashboard.astro:100-102`; od S-08 znacznik „removed” | shadcn `badge` wymaga tylko `Slot` (jest). |
-| **Card** | brak | kontener `dashboard.astro:22`, pusty stan `:53` | ten sam wzorzec w 5 innych stronach (`new.astro:69`, `signin.astro:10`, …). |
-| **Button** jako link | jest (`asChild` + `Slot`), nieużywany w widoku | CTA `:34-39`, `:57-62`; sign-out `:42-47` | brakuje nie komponentu, a jego użycia. Uwaga: `button.tsx` to `.tsx` — w `.astro` bez `client:*` renderuje się statycznie, co jest zgodne z konwencją z `CLAUDE.md` tylko jeśli nie ma interaktywności (tu jej nie ma); alternatywa to `buttonVariants()` w klasie `<a>`. |
-| **Empty state** | brak | `dashboard.astro:52-63`; US-01 wymaga pustego stanu też w konfrontacji (S-03) | może być wzorzec na Card, nie osobny komponent. |
-| **Token „positive/negative”** | brak w `global.css` | wynik zysk/strata od S-02 (FR-006), S-03, S-04 | jest tylko `--destructive`; zysk nie ma roli — inaczej wróci `text-green-*`. |
-| Input / Label / Textarea / Select / Alert | brak w `ui/` (zastępniki w `auth/`) | **nie** w dashboardzie; potrzebne w `PositionForm` i przy aktualizacji ceny (S-02) | poza docelowym widokiem; odnotowane, nie wymagane do wyświetlania danych. |
+| Prymityw                                      | Status                                                     | Gdzie potrzebny                                                                    | Uwagi                                                                                                                                                                                                                                                                     |
+| --------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Table** (`Table/Header/Row/Head/Body/Cell`) | brak                                                       | `dashboard.astro:65-108`                                                           | shadcn `table` to czyste elementy HTML + klasy (bez Radix). S-02 dokłada kolumny wynik/data ceny.                                                                                                                                                                         |
+| **Badge**                                     | brak (`LibBadge` to nie to — inny cel, paleta, 0 importów) | pill kategorii `dashboard.astro:100-102`; od S-08 znacznik „removed”               | shadcn `badge` wymaga tylko `Slot` (jest).                                                                                                                                                                                                                                |
+| **Card**                                      | brak                                                       | kontener `dashboard.astro:22`, pusty stan `:53`                                    | ten sam wzorzec w 5 innych stronach (`new.astro:69`, `signin.astro:10`, …).                                                                                                                                                                                               |
+| **Button** jako link                          | jest (`asChild` + `Slot`), nieużywany w widoku             | CTA `:34-39`, `:57-62`; sign-out `:42-47`                                          | brakuje nie komponentu, a jego użycia. Uwaga: `button.tsx` to `.tsx` — w `.astro` bez `client:*` renderuje się statycznie, co jest zgodne z konwencją z `CLAUDE.md` tylko jeśli nie ma interaktywności (tu jej nie ma); alternatywa to `buttonVariants()` w klasie `<a>`. |
+| **Empty state**                               | brak                                                       | `dashboard.astro:52-63`; US-01 wymaga pustego stanu też w konfrontacji (S-03)      | może być wzorzec na Card, nie osobny komponent.                                                                                                                                                                                                                           |
+| **Token „positive/negative”**                 | brak w `global.css`                                        | wynik zysk/strata od S-02 (FR-006), S-03, S-04                                     | jest tylko `--destructive`; zysk nie ma roli — inaczej wróci `text-green-*`.                                                                                                                                                                                              |
+| Input / Label / Textarea / Select / Alert     | brak w `ui/` (zastępniki w `auth/`)                        | **nie** w dashboardzie; potrzebne w `PositionForm` i przy aktualizacji ceny (S-02) | poza docelowym widokiem; odnotowane, nie wymagane do wyświetlania danych.                                                                                                                                                                                                 |
 
 ## Code References
 
