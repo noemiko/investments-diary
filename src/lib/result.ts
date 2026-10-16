@@ -1,3 +1,4 @@
+import { formatDate, formatPercent } from "@/lib/format";
 import type { PositionListItem } from "@/types";
 
 /** The fields a position's result is computed from. */
@@ -27,4 +28,17 @@ export function positionResult(input: PositionResultInput): PositionResultValue 
     amount: input.quantity == null ? null : (input.current_price - input.buy_price) * input.quantity,
     priceDate: input.price_date,
   };
+}
+
+/** What a position without a current price shows instead of a result. */
+export const NO_PRICE = "No price yet";
+
+/**
+ * A result as text, shared by `PositionResult.astro` and React islands so both read the same.
+ * Returns `null` when there is no price yet; the caller renders `NO_PRICE` for it.
+ */
+export function describeResult(input: PositionResultInput): { percent: string; asOf: string } | null {
+  const result = positionResult(input);
+  if (!result) return null;
+  return { percent: formatPercent(result.percent), asOf: `as of ${formatDate(result.priceDate)}` };
 }

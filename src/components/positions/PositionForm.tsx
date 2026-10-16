@@ -3,12 +3,15 @@ import { Briefcase, Calendar, CircleAlert, Hash, Save, Tag, TrendingUp, Wallet }
 import { FormField } from "@/components/auth/FormField";
 import { ServerError } from "@/components/auth/ServerError";
 import { SubmitButton } from "@/components/auth/SubmitButton";
+import { ConfrontationPanel } from "@/components/positions/ConfrontationPanel";
+import { confrontationState } from "@/lib/confrontation";
 import { parseDecimal } from "@/lib/validation/decimal";
 import { cn } from "@/lib/utils";
 import {
   NEW_CATEGORY_CHOICE as NEW_CATEGORY,
   type PositionFormErrors,
   type PositionFormField,
+  type ConfrontationPosition,
   type PositionFormValues,
   type ReasonCategory,
 } from "@/types";
@@ -20,6 +23,8 @@ interface Props {
   categories: ReasonCategory[];
   values: PositionFormValues;
   errors: PositionFormErrors;
+  /** The author's earlier positions; `null` when they could not be loaded. */
+  earlierPositions: ConfrontationPosition[] | null;
 }
 
 // Mirrors the server's "today" (UTC) so the date check agrees with src/lib/validation/position.ts.
@@ -49,7 +54,12 @@ function FieldError({ message }: { message?: string }) {
   );
 }
 
-export default function PositionForm({ categories, values: initialValues, errors: initialErrors }: Props) {
+export default function PositionForm({
+  categories,
+  values: initialValues,
+  errors: initialErrors,
+  earlierPositions,
+}: Props) {
   const [values, setValues] = useState<PositionFormValues>(initialValues);
   const [errors, setErrors] = useState<PositionFormErrors>(initialErrors);
   const [categoryChoice, setCategoryChoice] = useState(() => {
@@ -105,6 +115,8 @@ export default function PositionForm({ categories, values: initialValues, errors
   }
 
   const categoryError = errors.category_id;
+  // Derived from state, not gated on `hydrated`: the no-JS re-render must show the same panel.
+  const confrontation = confrontationState(categoryChoice, values.new_category_name, categories, earlierPositions);
 
   return (
     <form method="POST" action="/dashboard/new" className="space-y-4" onSubmit={handleSubmit} noValidate>
@@ -195,6 +207,8 @@ export default function PositionForm({ categories, values: initialValues, errors
           icon={<Tag className="size-4" />}
         />
       )}
+
+      <ConfrontationPanel state={confrontation} />
 
       <div>
         <label htmlFor="reason_text" className="mb-1 block text-sm text-blue-100/80">

@@ -5,9 +5,14 @@
 import Layout from "@/layouts/Layout.astro";
 import PositionForm from "@/components/positions/PositionForm";
 import { createClient } from "@/lib/supabase";
-import { createPosition, listCategories, type CreatePositionError } from "@/lib/services/positions";
+import {
+  createPosition,
+  listCategories,
+  listConfrontationPositions,
+  type CreatePositionError,
+} from "@/lib/services/positions";
 import { parsePositionForm, readPositionForm, todayUtc } from "@/lib/validation/position";
-import type { PositionFormErrors, PositionFormValues } from "@/types";
+import type { ConfrontationPosition, PositionFormErrors, PositionFormValues } from "@/types";
 
 // Handles its own POST and re-renders on error: redirecting with `?error=` would put the
 // submitted values, reason text included, into the URL and the request logs.
@@ -62,6 +67,15 @@ try {
 } catch {
   errors = { ...errors, form: "Your categories could not be loaded. Please try again." };
 }
+
+// Earlier positions only inform the decision: a failed read is the panel's notice (`null`, not `[]`
+// which means "none yet"), never a form error, so saving still works.
+let earlierPositions: ConfrontationPosition[] | null;
+try {
+  earlierPositions = await listConfrontationPositions(supabase);
+} catch {
+  earlierPositions = null;
+}
 ---
 
 <Layout title="New investment">
@@ -70,7 +84,13 @@ try {
       <h1 class="mb-6 bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-center text-2xl font-bold text-transparent">
         New investment
       </h1>
-      <PositionForm categories={categories} values={values} errors={errors} client:load />
+      <PositionForm
+        categories={categories}
+        values={values}
+        errors={errors}
+        earlierPositions={earlierPositions}
+        client:load
+      />
       <p class="mt-4 text-center text-sm text-blue-100/60">
         <a href="/dashboard" class="text-purple-300 hover:underline">
           Back to your positions

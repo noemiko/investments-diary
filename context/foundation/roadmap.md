@@ -50,7 +50,7 @@ with your own past reasoning at the moment of deciding improves how you invest.
 | ---- | -------------------------- | ------------------------------------------------------------------------------------ | ------------- | ------------------------------- | -------- |
 | S-01 | record-first-investment    | record an investment with a reason category and optional reason, and see it listed   | —             | FR-003, FR-004, FR-005, FR-010  | done |
 | S-02 | position-detail-and-price  | open a position, read its full reason, update its price and see its dated result     | S-01          | FR-006, FR-011                  | done |
-| S-03 | reason-confrontation       | see earlier same-reason positions with their results before saving a new investment  | S-01, S-02    | US-01, FR-012                   | proposed |
+| S-03 | reason-confrontation       | see earlier same-reason positions with their results before saving a new investment  | S-01, S-02    | US-01, FR-012                   | in-progress |
 | S-04 | close-position             | close a position with sell price and date and see its final result                   | S-02          | FR-007                          | proposed |
 | S-05 | recoverable-delete         | delete a position and restore it later                                               | S-01          | FR-009                          | done |
 | S-06 | private-diary-access       | register and reach only their own diary, with every diary page gated behind sign-in  | —             | FR-001, FR-002                  | ready    |
@@ -116,7 +116,7 @@ which is exactly what this roadmap avoids.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** The north star; placed as soon as a result exists. What could go wrong: it drifts into a verdict or score — the PRD forbids any recommendation, so it must present history only.
-- **Status:** proposed
+- **Status:** in-progress
 
 ### S-04: Close a position
 

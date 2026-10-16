@@ -1,6 +1,7 @@
 // Smoke test: proves the Supabase auth flow still works end-to-end over HTTP (redirects, cookies, gating),
-// that a deleted position can be restored, and that one account cannot see, borrow, delete or restore
-// another account's diary data.
+// that a deleted position can be restored, that the new-investment form confronts the author with their
+// same-category positions (server-rendered part only; the live reveal needs JS), and that one account
+// cannot see, borrow, delete or restore another account's diary data.
 // Zero dependencies on purpose. Run against a live server: BASE_URL=http://localhost:4321 node scripts/smoke.mjs
 // Creates two accounts per run — never point it at production.
 
@@ -22,6 +23,8 @@ const instrument = `SMOKE-${runId}`;
 const deletedInstrument = `DEL-${runId}`;
 const categoryName = `Smoke category ${runId}`;
 const reasonText = "Smoke walk reason";
+// Run-unique, so its absence from a page proves the deleted filter rather than a coincidence.
+const deletedReasonText = `Deleted position reason ${runId}`;
 
 // Ids captured from A's pages, so later steps can target them and check B never sees them.
 const ids = { category: "", mainPosition: "", delPosition: "" };
@@ -117,6 +120,14 @@ const RESULT = "+20.00%";
 // The app's own not-found heading; Astro's routing 404 says "404: Not found", so a wrong path cannot pass.
 const NOT_FOUND = "Position not found";
 const detailPath = () => `/dashboard/positions/${ids.mainPosition}`;
+// Island props carry every non-deleted reason whatever category is chosen, so only these attributes,
+// emitted by the rendered panel, prove which positions the confrontation shows.
+const CONFRONTATION_HISTORY = 'data-confrontation="history"';
+const CONFRONTATION_EMPTY = "data-confrontation-empty";
+const CONFRONTATION_ITEM = "data-confrontation-position-id";
+const confronts = (key) => () => `${CONFRONTATION_ITEM}="${ids[key]}"`;
+// An empty instrument is rejected, so the form re-renders (no JS) with the submitted category kept.
+const rejectedEntry = (overrides) => position({ instrument: "", ...overrides });
 
 // Each step: [name, run, expected]. `includes` / `excludes` are checked against the (entity-decoded) body;
 // an entry (or `location`) may be a function, read when the step runs, to use an id captured earlier.
@@ -170,7 +181,11 @@ const steps = [
     async () => {
       const result = await request(a, "/dashboard/new", {
         method: "POST",
-        form: position({ instrument: deletedInstrument, new_category_name: categoryName }),
+        form: position({
+          instrument: deletedInstrument,
+          new_category_name: categoryName,
+          reason_text: deletedReasonText,
+        }),
       });
       ids.delPosition = positionIdFor((await request(a, "/dashboard")).body, deletedInstrument, "delete");
       return result;
@@ -228,6 +243,38 @@ const steps = [
     },
     // The name input must be in the server-rendered HTML even with categories, so "New category…" works without JS.
     { status: 200, includes: [categoryName, 'name="new_category_name"'], requiresIds: ["category"] },
+  ],
+
+  // Confrontation (US-01, FR-012): the re-rendered form shows the category's earlier positions, minus
+  // the deleted one, whose reason must not reach the page at all.
+  [
+    "A: confrontation shows the category's earlier position, not the deleted one",
+    () => request(a, "/dashboard/new", { method: "POST", form: rejectedEntry({ category_id: ids.category }) }),
+    {
+      status: 200,
+      includes: ["Enter the instrument", CONFRONTATION_HISTORY, confronts("mainPosition")],
+      excludes: [CONFRONTATION_EMPTY, confronts("delPosition"), deletedReasonText],
+      requiresIds: ["category", "mainPosition", "delPosition"],
+    },
+  ],
+  [
+    // `createPosition` trims and matches the typed name case-insensitively, so the panel must too.
+    "A: confrontation matches a typed existing category name",
+    () =>
+      request(a, "/dashboard/new", {
+        method: "POST",
+        form: rejectedEntry({ category_id: "__new__", new_category_name: ` ${categoryName.toUpperCase()} ` }),
+      }),
+    {
+      status: 200,
+      includes: [
+        CONFRONTATION_HISTORY,
+        confronts("mainPosition"),
+        "already exists, so this investment will be filed under it",
+      ],
+      excludes: [CONFRONTATION_EMPTY],
+      requiresIds: ["mainPosition"],
+    },
   ],
   [
     // Without JS the select posts the "New category…" sentinel alongside the typed name.
@@ -295,6 +342,15 @@ const steps = [
     { status: 200, includes: [deletedInstrument], requiresIds: ["delPosition"] },
   ],
   [
+    "A: confrontation shows the restored position again",
+    () => request(a, "/dashboard/new", { method: "POST", form: rejectedEntry({ category_id: ids.category }) }),
+    {
+      status: 200,
+      includes: [confronts("mainPosition"), confronts("delPosition"), deletedReasonText],
+      requiresIds: ["category", "mainPosition", "delPosition"],
+    },
+  ],
+  [
     // Left deleted again for B's checks.
     "A: deletes it once more",
     () => request(a, `/dashboard/positions/${ids.delPosition}/delete`, { method: "POST" }),
@@ -323,6 +379,32 @@ const steps = [
     "B: form does not offer A's category",
     () => request(b, "/dashboard/new"),
     { status: 200, excludes: [categoryName], requiresIds: ["category"], excludesIds: ["category"] },
+  ],
+  [
+    // Every reason the author wrote is serialised into this page's island props, so this is the privacy line.
+    "B: form carries none of A's reasons or positions",
+    () => request(b, "/dashboard/new"),
+    {
+      status: 200,
+      excludes: [reasonText, deletedReasonText, CONFRONTATION_ITEM],
+      requiresIds: ["mainPosition", "delPosition"],
+      excludesIds: ["mainPosition", "delPosition"],
+    },
+  ],
+  [
+    // B typing A's exact category name has nothing to match: B's categories are B's own.
+    "B: confrontation for A's category name is empty",
+    () =>
+      request(b, "/dashboard/new", {
+        method: "POST",
+        form: rejectedEntry({ category_id: "__new__", new_category_name: categoryName, reason_text: "" }),
+      }),
+    {
+      status: 200,
+      includes: [CONFRONTATION_HISTORY, CONFRONTATION_EMPTY],
+      excludes: [CONFRONTATION_ITEM, reasonText, deletedReasonText, "already exists"],
+      excludesIds: ["mainPosition", "delPosition", "category"],
+    },
   ],
   [
     "B: cannot record a position with A's category",
