@@ -11,14 +11,14 @@ export const POST: APIRoute = async (context) => {
 
   const { id } = context.params;
   if (!isUuid(id)) {
-    return new Response("Position not found", { status: 404 });
+    return context.rewrite("/dashboard/positions/not-found");
   }
 
   const supabase = createClient(context.request.headers, context.cookies);
   const result = await restorePosition(supabase, id);
   if (!result.ok) {
     if (result.error === "not_found") {
-      return new Response("Position not found", { status: 404 });
+      return context.rewrite("/dashboard/positions/not-found");
     }
     return context.redirect("/dashboard?error=restore_failed");
   }

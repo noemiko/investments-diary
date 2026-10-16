@@ -114,6 +114,8 @@ const EMPTY_STATE = "Record your first investment";
 const NO_PRICE = "No price yet";
 // Buy price 50,25 -> current price 60,3 is exactly +20%.
 const RESULT = "+20.00%";
+// The app's own not-found heading; Astro's routing 404 says "404: Not found", so a wrong path cannot pass.
+const NOT_FOUND = "Position not found";
 const detailPath = () => `/dashboard/positions/${ids.mainPosition}`;
 
 // Each step: [name, run, expected]. `includes` / `excludes` are checked against the (entity-decoded) body;
@@ -193,7 +195,7 @@ const steps = [
   [
     "A: deleting it again is not found",
     () => request(a, `/dashboard/positions/${ids.delPosition}/delete`, { method: "POST" }),
-    { status: 404 },
+    { status: 404, includes: [NOT_FOUND], requiresIds: ["delPosition"] },
   ],
   [
     "A: restores it",
@@ -279,7 +281,24 @@ const steps = [
         method: "POST",
         form: { current_price: "60,3", price_date: todayUtc },
       }),
-    { status: 404, requiresIds: ["delPosition"] },
+    { status: 404, includes: [NOT_FOUND], requiresIds: ["delPosition"] },
+  ],
+  // The same detail page opens once restored, so the two 404s above come from the `deleted_at` filter.
+  [
+    "A: restores the deleted position again",
+    () => request(a, `/dashboard/positions/${ids.delPosition}/restore`, { method: "POST" }),
+    { status: 302, location: "/dashboard", exactLocation: true, requiresIds: ["delPosition"] },
+  ],
+  [
+    "A: restored position's detail page opens",
+    () => request(a, `/dashboard/positions/${ids.delPosition}`),
+    { status: 200, includes: [deletedInstrument], requiresIds: ["delPosition"] },
+  ],
+  [
+    // Left deleted again for B's checks.
+    "A: deletes it once more",
+    () => request(a, `/dashboard/positions/${ids.delPosition}/delete`, { method: "POST" }),
+    { status: 302, location: () => `/dashboard?deleted=${ids.delPosition}`, exactLocation: true },
   ],
   ["signout clears session", () => request(a, "/api/auth/signout", { method: "POST" }), { status: 302, location: "/" }],
   ["dashboard redirects after signout", () => request(a, "/dashboard"), { status: 302, location: "/auth/signin" }],
@@ -323,12 +342,12 @@ const steps = [
   [
     "B: cannot restore A's deleted position",
     () => request(b, `/dashboard/positions/${ids.delPosition}/restore`, { method: "POST" }),
-    { status: 404, requiresIds: ["delPosition"] },
+    { status: 404, includes: [NOT_FOUND], requiresIds: ["delPosition"] },
   ],
   [
     "B: cannot delete A's position",
     () => request(b, `/dashboard/positions/${ids.mainPosition}/delete`, { method: "POST" }),
-    { status: 404, requiresIds: ["mainPosition"] },
+    { status: 404, includes: [NOT_FOUND], requiresIds: ["mainPosition"] },
   ],
   [
     "B: rejects a future buy date",
@@ -380,7 +399,7 @@ const steps = [
     { status: 302, location: "/" },
   ],
 
-  // A's price is unchanged by B's attempt.
+  // A's price and A's delete state are unchanged by B's attempts.
   [
     "A: signin accepts correct password again",
     () => request(a, "/api/auth/signin", { method: "POST", form: { email: a.email, password } }),
@@ -390,6 +409,11 @@ const steps = [
     "A: detail page still shows the result",
     () => request(a, detailPath()),
     { status: 200, includes: [RESULT, "as of"] },
+  ],
+  [
+    "A: deleted position is still deleted",
+    () => request(a, "/dashboard/deleted"),
+    { status: 200, includes: [deletedInstrument], requiresIds: ["delPosition"] },
   ],
   [
     "A: signout clears session again",

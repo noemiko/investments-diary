@@ -22,13 +22,13 @@ const { id, instrument, cancelHref = "/dashboard" } = Astro.props;
       "cursor-pointer list-none [&::-webkit-details-marker]:hidden",
     ]}
   >
-    Delete
+    Delete<span class="sr-only"> {instrument}</span>
   </summary>
   <div class="mt-2 flex flex-wrap items-center gap-2">
     <p class="text-sm">Delete {instrument}? You can restore it later.</p>
     <form method="POST" action={`/dashboard/positions/${id}/delete`}>
       <button type="submit" class:list={buttonVariants({ variant: "destructive", size: "sm" })}>
-        Delete
+        Delete<span class="sr-only"> {instrument}</span>
       </button>
     </form>
     <a

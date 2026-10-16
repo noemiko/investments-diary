@@ -1,0 +1,23 @@
+---
+// Rendered (via rewrite) when a delete or restore targets a position that is not the author's or not in
+// that state, e.g. a double-submitted Delete or Undo. Same body for every case, so it reveals nothing.
+import Layout from "@/layouts/Layout.astro";
+import { buttonVariants } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+
+Astro.response.status = 404;
+---
+
+<Layout title="Position not found">
+  <div class="bg-cosmic min-h-screen p-4">
+    <Card className="mx-auto max-w-3xl min-w-0 p-8">
+      <div class="flex flex-col items-center gap-4 text-center">
+        <h1 class="text-gradient-heading text-3xl font-bold">Position not found</h1>
+        <p class="max-w-md text-muted-foreground">It may already be deleted or restored, or the link is wrong.</p>
+        <a href="/dashboard" class:list={buttonVariants({ variant: "outline" })}>
+          Back to positions
+        </a>
+      </div>
+    </Card>
+  </div>
+</Layout>

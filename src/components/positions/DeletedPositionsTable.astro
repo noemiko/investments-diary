@@ -2,6 +2,7 @@
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatDate, formatTimestamp } from "@/lib/format";
 import type { DeletedPositionItem } from "@/types";
 
 interface Props {
@@ -9,19 +10,6 @@ interface Props {
 }
 
 const { positions } = Astro.props;
-
-// Same format as the buy dates on the dashboard. A buy date is a plain date, so it is read and shown in UTC.
-const dateFormat = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" });
-// `deleted_at` is an instant, so it is shown on the author's calendar day, not UTC's.
-const timestampFormat = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "Europe/Warsaw" });
-
-function formatDate(isoDate: string) {
-  return dateFormat.format(new Date(`${isoDate}T00:00:00Z`));
-}
-
-function formatTimestamp(isoTimestamp: string) {
-  return timestampFormat.format(new Date(isoTimestamp));
-}
 ---
 
 <Table>
