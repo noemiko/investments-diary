@@ -74,7 +74,7 @@ regenerated `src/db/database.types.ts` matches the committed file byte for byte;
 - **Location**: context/foundation/roadmap.md:52-55; Progress 3.1-3.5
 - **Detail**: Phase 3 code is staged but not committed, so Progress 3.x carries no SHAs. `origin/master` (a90402c) archived S-02 and set it to `done` on roadmap line 52; this branch's unstaged edit changes S-05 on line 55 and still shows S-02 `in-progress`. A rebase will conflict on those adjacent rows.
 - **Fix**: Commit Phase 3, rebase onto `origin/master` (take S-02 `done`, keep S-05 `in-progress`), then append the SHA to 3.1-3.5.
-- **Decision**: IN PROGRESS — Phase 3 committed as 7560386; review fixes commit + rebase + SHAs run at the end of triage.
+- **Decision**: FIXED — Phase 3 committed, review fixes committed, rebased onto origin/master a90402c without conflicts (roadmap: S-02 done, S-05 in-progress). Progress SHAs refreshed after the rebase: p1 03a92f9, p2 52cf4c7, p3 3dfe6e4.
 
 ### F5 — DeletedPositionsTable re-declares formatDate
 

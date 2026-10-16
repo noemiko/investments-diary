@@ -341,40 +341,40 @@ None: single-row updates and one extra list query on a separate page.
 
 #### Automated
 
-- [x] 1.1 verify skill sequence passes — 3ebb0fa
-- [x] 1.2 Existing smoke walk still passes — 3ebb0fa
-- [x] 1.3 No migration added — 3ebb0fa
+- [x] 1.1 verify skill sequence passes — 03a92f9
+- [x] 1.2 Existing smoke walk still passes — 03a92f9
+- [x] 1.3 No migration added — 03a92f9
 
 #### Manual
 
-- [x] 1.4 Inline confirmation opens, Cancel closes, nothing deleted before confirm — 3ebb0fa
-- [x] 1.5 Confirm-then-delete works with JavaScript disabled — 3ebb0fa
-- [x] 1.6 Undo notice restores the row — 3ebb0fa
-- [x] 1.7 All-deleted empty state still links to Deleted positions and restore works — 3ebb0fa
-- [x] 1.8 Deleted page ordered by deletion with deleted date — 3ebb0fa
-- [x] 1.9 Delete control operable by keyboard — 3ebb0fa
+- [x] 1.4 Inline confirmation opens, Cancel closes, nothing deleted before confirm — 03a92f9
+- [x] 1.5 Confirm-then-delete works with JavaScript disabled — 03a92f9
+- [x] 1.6 Undo notice restores the row — 03a92f9
+- [x] 1.7 All-deleted empty state still links to Deleted positions and restore works — 03a92f9
+- [x] 1.8 Deleted page ordered by deletion with deleted date — 03a92f9
+- [x] 1.9 Delete control operable by keyboard — 03a92f9
 
 ### Phase 2: Smoke proof
 
 #### Automated
 
-- [x] 2.1 Smoke walk passes against local Supabase — 741edd7
-- [x] 2.2 verify skill sequence passes — 741edd7
+- [x] 2.1 Smoke walk passes against local Supabase — 52cf4c7
+- [x] 2.2 verify skill sequence passes — 52cf4c7
 
 #### Manual
 
-- [x] 2.3 A deliberate break makes the relevant smoke step fail — 741edd7
-- [x] 2.4 Pull request opened so the ci job runs — 741edd7
+- [x] 2.3 A deliberate break makes the relevant smoke step fail — 52cf4c7
+- [x] 2.4 Pull request opened so the ci job runs — 52cf4c7
 
 ### Phase 3: After rebasing onto S-02
 
 #### Automated
 
-- [x] 3.1 Rebased branch passes verify
-- [x] 3.2 Regenerating database types produces no diff
-- [x] 3.3 Smoke walk passes including deleted-detail and refused-price steps
+- [x] 3.1 Rebased branch passes verify — 3dfe6e4
+- [x] 3.2 Regenerating database types produces no diff — 3dfe6e4
+- [x] 3.3 Smoke walk passes including deleted-detail and refused-price steps — 3dfe6e4
 
 #### Manual
 
-- [x] 3.4 Deleting from the detail page lands on the Undo notice
-- [x] 3.5 After Undo the detail page shows price and result intact
+- [x] 3.4 Deleting from the detail page lands on the Undo notice — 3dfe6e4
+- [x] 3.5 After Undo the detail page shows price and result intact — 3dfe6e4
