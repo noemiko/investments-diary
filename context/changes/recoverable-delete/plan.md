@@ -322,6 +322,17 @@ None: single-row updates and one extra list query on a separate page.
 - Schema: `supabase/migrations/20260929141102_create_diary_core.sql`
 - Service pattern: `src/lib/services/positions.ts`
 
+## Addenda (from implementation review, 2026-10-16)
+
+- **Cancel is progressive enhancement, not JS-free.** `DeletePositionControl` renders Cancel as an
+  `<a href={cancelHref}>` back to the current page (closes the confirmation by reloading without JS)
+  with an inline `onclick` that closes `<details>` in place when JS runs. No island, no dependency.
+  The optional `cancelHref` prop (default `/dashboard`) lets the detail page return to itself.
+- **Not-found renders a page, not plain text.** Delete and restore answer a non-uuid id or
+  `not_found` with `context.rewrite("/dashboard/positions/not-found")`: status 404, the app layout,
+  the same "Position not found" body for every case, and a link back. Replaces the plain-text
+  `Response` in Phase 1 §3, which double-submitted Delete or Undo reached in normal use.
+
 ## Progress
 
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands. Do not rename step titles. See `references/progress-format.md`.
@@ -365,5 +376,5 @@ None: single-row updates and one extra list query on a separate page.
 
 #### Manual
 
-- [ ] 3.4 Deleting from the detail page lands on the Undo notice
-- [ ] 3.5 After Undo the detail page shows price and result intact
+- [x] 3.4 Deleting from the detail page lands on the Undo notice
+- [x] 3.5 After Undo the detail page shows price and result intact
