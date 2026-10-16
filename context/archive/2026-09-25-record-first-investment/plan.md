@@ -79,18 +79,18 @@ a second account.
 
 Decisions settled during planning:
 
-| Decision | Choice |
-| --- | --- |
-| Buy price | Per-share price; total = price × quantity only when quantity is given |
-| Same instrument bought twice | Two separate positions, each with its own reason |
-| Category creation | Pick an existing category or type a new one inside the entry form |
-| Buy date | Defaults to today; any past date accepted; future dates rejected |
-| Privacy proof | Extend `scripts/smoke.mjs` with a second account, run by the CI `smoke` job |
-| Form handling | `/dashboard/new` handles its own POST and re-renders with values on error |
-| Hard delete | No DELETE policy on either table; soft delete arrives with S-05 / S-08 |
-| Category names | Unique per user, case-insensitive, among non-deleted categories |
-| Number input | Accept `,` or `.` as decimal separator; must be greater than 0 |
-| List order | Buy date descending, then creation time descending |
+| Decision                     | Choice                                                                      |
+| ---------------------------- | --------------------------------------------------------------------------- |
+| Buy price                    | Per-share price; total = price × quantity only when quantity is given       |
+| Same instrument bought twice | Two separate positions, each with its own reason                            |
+| Category creation            | Pick an existing category or type a new one inside the entry form           |
+| Buy date                     | Defaults to today; any past date accepted; future dates rejected            |
+| Privacy proof                | Extend `scripts/smoke.mjs` with a second account, run by the CI `smoke` job |
+| Form handling                | `/dashboard/new` handles its own POST and re-renders with values on error   |
+| Hard delete                  | No DELETE policy on either table; soft delete arrives with S-05 / S-08      |
+| Category names               | Unique per user, case-insensitive, among non-deleted categories             |
+| Number input                 | Accept `,` or `.` as decimal separator; must be greater than 0              |
+| List order                   | Buy date descending, then creation time descending                          |
 
 ## Critical Implementation Details
 
@@ -102,7 +102,7 @@ Decisions settled during planning:
   checks `positions.user_id = auth.uid()`; a plain FK on `category_id` would accept another
   user's category id. The composite FK `(category_id, user_id) → reason_categories(id, user_id)`
   is what closes this, and Phase 3 tests it directly.
-- **Deploy order.** Phase 1 must be merged *and* pushed to the production database by the
+- **Deploy order.** Phase 1 must be merged _and_ pushed to the production database by the
   human before Phase 2 is merged to `master` (auto-deploy on merge). Preview deployments use
   the same Supabase project (deploy-plan open decision 1, recommendation (b)), so a Phase 2
   preview writes to production tables.
@@ -124,6 +124,7 @@ a typed Supabase client. No user-visible change.
 `/migration` template, so S-01 can store entries and later slices can extend them.
 
 **Contract**:
+
 - `reason_categories`: `id uuid pk`, `user_id uuid not null → auth.users on delete cascade`,
   `name text not null` (trimmed, 1–60 chars), `created_at`, `deleted_at timestamptz null`;
   `unique (id, user_id)` (target of the composite FK); unique index on
@@ -220,6 +221,7 @@ price, quantity, broker label, category name), `NewPositionInput` (parsed form v
 and yields per-field messages the form can show.
 
 **Contract**:
+
 - Required: `instrument` (trimmed, 1–100), `buy_price` (> 0), `buy_date` (valid date, not
   after today), and exactly one of `category_id` (uuid) or `new_category_name` (trimmed, 1–60).
 - Optional: `quantity` (> 0), `broker_label` (≤ 60), `reason_text` (≤ 10 000); empty strings
@@ -236,6 +238,7 @@ and yields per-field messages the form can show.
 from `createClient`, so RLS applies; the service-role key is never used.
 
 **Contract**:
+
 - `listCategories(client)` — the author's non-deleted categories, ordered by name.
 - `listPositions(client)` — non-deleted positions with category name, ordered
   `buy_date desc, created_at desc`.
@@ -319,6 +322,7 @@ another account's diary data.
 the existing auth steps intact.
 
 **Contract**:
+
 - `request()` also returns the response body text; cookie jars become per-account.
 - Steps for account A: sign up and sign in, see the empty state, POST `/dashboard/new` with a
   run-unique instrument and a new run-unique category (expect 302 → `/dashboard`), see the

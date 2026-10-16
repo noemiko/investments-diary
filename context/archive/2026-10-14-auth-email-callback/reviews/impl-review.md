@@ -1,4 +1,5 @@
 <!-- IMPL-REVIEW-REPORT -->
+
 # Implementation Review: Email confirmation callback fix
 
 - **Plan**: none (plan-less review of uncommitted diff)
@@ -10,14 +11,14 @@
 
 ## Verdicts
 
-| Dimension | Verdict |
-|-----------|---------|
-| Plan Adherence | N/A |
-| Scope Discipline | PASS |
-| Safety & Quality | FAIL |
-| Architecture | PASS |
-| Pattern Consistency | PASS |
-| Success Criteria | FAIL |
+| Dimension           | Verdict |
+| ------------------- | ------- |
+| Plan Adherence      | N/A     |
+| Scope Discipline    | PASS    |
+| Safety & Quality    | FAIL    |
+| Architecture        | PASS    |
+| Pattern Consistency | PASS    |
+| Success Criteria    | FAIL    |
 
 ## Findings
 

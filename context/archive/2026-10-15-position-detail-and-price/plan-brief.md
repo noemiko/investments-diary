@@ -25,26 +25,28 @@ smoke walk proves the price update and that account B can neither read nor repri
 
 ## Key Decisions Made
 
-| Decision | Choice | Why (1 sentence) |
-| --- | --- | --- |
-| Result format | Percentage always; amount too when quantity is set | Works for every position (buy price is per share) and shows money when the data allows. |
-| Price date | Entered by the author, default today, not future, not before buy date | The date describes the price itself, so a stale price never looks fresh. |
-| Before the first price | "No price yet", no number | Never shows a figure the author did not enter; S-03 shows the same honest state. |
-| Price storage | Latest price and date as two columns on `positions`, overwritten on update | Smallest migration and simplest list/S-03 queries; no FR asks for history. |
-| Price form | Plain Astro form posting to the detail page, re-render on error | Two fields, no client state; same pattern as `/dashboard/new`. |
-| Not-found | One 404 state for missing, foreign, deleted and malformed ids | Never reveals that an id exists for another account. |
-| Deleted positions | Every by-id read/write filters `deleted_at is null` | RLS checks ownership only; agreed with `recoverable-delete` (S-05). |
-| Verdict styling | No gain/loss colours; the sign carries direction | The PRD keeps results free of verdicts. |
+| Decision               | Choice                                                                     | Why (1 sentence)                                                                        |
+| ---------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Result format          | Percentage always; amount too when quantity is set                         | Works for every position (buy price is per share) and shows money when the data allows. |
+| Price date             | Entered by the author, default today, not future, not before buy date      | The date describes the price itself, so a stale price never looks fresh.                |
+| Before the first price | "No price yet", no number                                                  | Never shows a figure the author did not enter; S-03 shows the same honest state.        |
+| Price storage          | Latest price and date as two columns on `positions`, overwritten on update | Smallest migration and simplest list/S-03 queries; no FR asks for history.              |
+| Price form             | Plain Astro form posting to the detail page, re-render on error            | Two fields, no client state; same pattern as `/dashboard/new`.                          |
+| Not-found              | One 404 state for missing, foreign, deleted and malformed ids              | Never reveals that an id exists for another account.                                    |
+| Deleted positions      | Every by-id read/write filters `deleted_at is null`                        | RLS checks ownership only; agreed with `recoverable-delete` (S-05).                     |
+| Verdict styling        | No gain/loss colours; the sign carries direction                           | The PRD keeps results free of verdicts.                                                 |
 
 ## Scope
 
 **In scope:**
+
 - Migration with pair and date checks, down-script, regenerated types
 - Result helper and shared result component; shared number/date formatting
 - Detail page with full reason and price form; Result column and links in the list
 - Smoke steps for detail, price, date validation and cross-account read/write isolation
 
 **Out of scope:**
+
 - Price history, live prices, currencies
 - Closing positions (S-04), delete/restore UI (S-05), editing facts or reason (S-07)
 - A unit/integration test framework
@@ -59,11 +61,11 @@ renders it in the list and on the detail page, and S-03 will reuse both.
 
 ## Phases at a Glance
 
-| Phase | What it delivers | Key risk |
-| --- | --- | --- |
-| 1. Price columns | Two nullable columns, checks, down-script, types | `db reset` on the local stack shared with the S-05 worktree — use `migration up` |
-| 2. Detail page and result | Detail page, price form, result in list and detail | Forgetting the `deleted_at` filter, which nothing on this branch can catch |
-| 3. Smoke proof | Behaviour and two-account isolation steps | Scraping the position id from the list HTML |
+| Phase                     | What it delivers                                   | Key risk                                                                         |
+| ------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------- |
+| 1. Price columns          | Two nullable columns, checks, down-script, types   | `db reset` on the local stack shared with the S-05 worktree — use `migration up` |
+| 2. Detail page and result | Detail page, price form, result in list and detail | Forgetting the `deleted_at` filter, which nothing on this branch can catch       |
+| 3. Smoke proof            | Behaviour and two-account isolation steps          | Scraping the position id from the list HTML                                      |
 
 **Prerequisites:** Docker running for local Supabase; the human pushes the Phase 1 migration to production (`npx supabase db push`) before this change merges.
 **Estimated effort:** ~3 sessions, one per phase.

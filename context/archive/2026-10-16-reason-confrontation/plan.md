@@ -389,4 +389,4 @@ None. No schema change.
 
 #### Manual
 
-- [ ] 3.3 A deliberate break (e.g. temporarily dropping the `deleted_at` filter in `listConfrontationPositions`) makes the deleted-exclusion step fail, then is reverted
+- [x] 3.3 A deliberate break (e.g. temporarily dropping the `deleted_at` filter in `listConfrontationPositions`) makes the deleted-exclusion step fail, then is reverted

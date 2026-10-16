@@ -38,14 +38,14 @@ ergonomics were weighted up), **single region acceptable** (edge-native advantag
 discounted), **external providers fine** (co-located databases scored as neutral, not a
 bonus — Supabase is already the data and auth layer).
 
-| Platform | CLI-first | Managed / serverless | Agent-readable docs | Stable deploy API | MCP / integration | Cost at this volume |
-|---|---|---|---|---|---|---|
-| **Vercel** | Pass | Pass | Pass | Pass | Pass (public beta) | **$0** (Hobby) |
-| **Cloudflare Workers** | Pass | Pass | Pass | Pass | Pass (status unlabeled) | **$0** |
-| **Render** | Pass | Pass | Pass | Partial | Pass (GA) | $0 w/ cold starts, else $7/mo |
-| Netlify | Pass | Pass | Pass | Partial | Pass | Free tier ≈ 20 production deploys |
-| Railway | Pass | Pass | Pass | Partial | Partial (public testing) | $5/mo floor |
-| Fly.io | Pass | Partial | Pass | Partial | Partial (experimental) | ~$2–5/mo, no free tier |
+| Platform               | CLI-first | Managed / serverless | Agent-readable docs | Stable deploy API | MCP / integration        | Cost at this volume               |
+| ---------------------- | --------- | -------------------- | ------------------- | ----------------- | ------------------------ | --------------------------------- |
+| **Vercel**             | Pass      | Pass                 | Pass                | Pass              | Pass (public beta)       | **$0** (Hobby)                    |
+| **Cloudflare Workers** | Pass      | Pass                 | Pass                | Pass              | Pass (status unlabeled)  | **$0**                            |
+| **Render**             | Pass      | Pass                 | Pass                | Partial           | Pass (GA)                | $0 w/ cold starts, else $7/mo     |
+| Netlify                | Pass      | Pass                 | Pass                | Partial           | Pass                     | Free tier ≈ 20 production deploys |
+| Railway                | Pass      | Pass                 | Pass                | Partial           | Partial (public testing) | $5/mo floor                       |
+| Fly.io                 | Pass      | Partial              | Pass                | Partial           | Partial (experimental)   | ~$2–5/mo, no free tier            |
 
 Per-platform notes on the scores:
 
@@ -67,11 +67,11 @@ Per-platform notes on the scores:
 - **Netlify** — technically sound and `@astrojs/netlify` 8.2.6 shipped Astro 7 support
   day one. Eliminated on the credit model: a production deploy costs 15 credits against
   a 300-credit free cap, so roughly 20 deploys exhaust the tier, after which projects
-  *pause* with no top-up path. That is incompatible with six weeks of iterative
+  _pause_ with no top-up path. That is incompatible with six weeks of iterative
   after-hours work under a cost-minimising constraint.
 - **Railway** — no Dockerfile needed (Railpack autodetects Node), good docs, but no CLI
   rollback and a structural $5/mo floor because the Free plan's $1 credit cannot cover
-  an always-on SSR container. Additional trap: Railpack silently produces a *static*
+  an always-on SSR container. Additional trap: Railpack silently produces a _static_
   build unless `@astrojs/node` is configured, so a deploy "succeeds" with no SSR.
 - **Fly.io** — strongest for workloads this project does not have (persistent processes,
   multi-region, WebSockets). Partial on managed because you own a Dockerfile; partial on
@@ -175,7 +175,7 @@ than product depth and never more important.
   request count. `src/middleware.ts` awaits `supabase.auth.getUser()` on every request;
   that network wait is genuinely not billed, which is favourable — but it also means
   cost intuitions built from request-count tutorials do not transfer.
-- **`vercel install supabase` provisions a *new* Supabase project.** The Marketplace
+- **`vercel install supabase` provisions a _new_ Supabase project.** The Marketplace
   integration creates and links a fresh database and injects its credentials as
   environment variables. Running it to "connect Supabase" would silently give this
   project a second, empty database. Wire the existing project by setting env vars by hand.
@@ -213,7 +213,7 @@ than product depth and never more important.
   migrations do not roll back with the code. Reverting the application onto a
   forward-migrated database can break in ways the rollback cannot fix, so any deploy
   containing a migration needs a tested down-path before it ships.
-- **Approval**: promotion to production can be auto deploy on merge, any changes of env keys are  provided by human
+- **Approval**: promotion to production can be auto deploy on merge, any changes of env keys are provided by human
 - **Logs**: `vercel logs <deployment-url> --follow` for runtime logs (retained **1 hour**
   on Hobby — treat as a live tail, not an archive), and `vercel inspect --logs <url>` for
   build logs. Both are read-only and safe for an agent to run unattended. The Vercel MCP
@@ -223,20 +223,20 @@ than product depth and never more important.
 
 ## Risk Register
 
-| Risk | Source | Likelihood | Impact | Mitigation |
-|---|---|---|---|---|
-| Agent follows Vercel's stale Astro docs (`/serverless` subpath, `output: 'hybrid'`) and writes a config that will not build | Devil's advocate | H | M | Treat `docs.astro.build` as authoritative for adapter config, never `vercel.com/docs/frameworks/frontend/astro`. Record this in `AGENTS.md`. |
-| Hobby commercial-use clause triggers if the project becomes paid or portfolio-commercial work; enforcement is deployment pause | Devil's advocate | L | H | Keep the diary personal and non-monetised. If that changes, budget $20/mo Pro or fall back to Cloudflare Workers — the code is adapter-portable. |
-| One-hour Hobby log retention makes intermittent overnight failures unreproducible | Devil's advocate / Pre-mortem | M | M | Log auth failures to a Supabase table rather than relying on platform logs; check it the next evening. |
-| Missing `SUPABASE_URL` / `SUPABASE_KEY` deploys a site that renders correctly but silently fails every login | Research finding (verified in this repo) | M | H | `astro.config.mjs` marks both `optional: true`; `src/lib/supabase.ts` returns `null` and `src/middleware.ts` reads that as logged-out. Flip to `optional: false` so a missing secret fails the build. |
-| Agent rewrites `astro:env/server` imports to `process.env` while following Vercel's migration guide | Unknown unknowns | M | M | The migration guide's `locals.runtime.env` → `process.env` step does not apply here. Pin the rule in `AGENTS.md`. |
-| `vercel install supabase` provisions a second, empty Supabase project | Unknown unknowns | L | H | Wire the existing project by setting env vars manually. Do not run the Marketplace installer. |
-| Supabase migration rolls forward but `vercel rollback` only reverts code | Research finding | M | H | Write a down-migration for every schema change before deploying it; never ship a migration and a feature in the same deploy. |
-| Skew Protection does not fully cover Astro's hoisted scripts and inter-chunk imports | Devil's advocate | L | L | Low exposure at one user. Avoid deploying while actively using the app. |
-| No git repository exists, so previews, CI, and auto-deploy are all unavailable | Unknown unknowns (verified in this repo) | H | M | `git init` and push to GitHub before the first deploy — it is step 1 below. |
-| `@supabase/ssr` 0.12.7 is pre-1.0 and may ship breaking changes inside the six-week window | Research finding | M | M | Pin the exact version in `package.json` rather than carrying the `^` range through to the deadline. |
-| *(Fallback risk)* Returning to Cloudflare later reintroduces the open `nodejs_compat` stream bug in the Supabase auth path | Devil's advocate (Cloudflare pass) | — | H | Retained deliberately. If the fallback is ever exercised, verify supabase#37592 is closed first. |
-| *(Fallback risk)* `tech-stack.md` records `deployment_target: cloudflare-pages`, but adapter v13 dropped Pages entirely | Research finding (verified in this repo) | H | M | Correct `tech-stack.md` to `vercel`. The stale value would send a future reader to the wrong command family on either platform. |
+| Risk                                                                                                                           | Source                                   | Likelihood | Impact | Mitigation                                                                                                                                                                                            |
+| ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------- | ---------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Agent follows Vercel's stale Astro docs (`/serverless` subpath, `output: 'hybrid'`) and writes a config that will not build    | Devil's advocate                         | H          | M      | Treat `docs.astro.build` as authoritative for adapter config, never `vercel.com/docs/frameworks/frontend/astro`. Record this in `AGENTS.md`.                                                          |
+| Hobby commercial-use clause triggers if the project becomes paid or portfolio-commercial work; enforcement is deployment pause | Devil's advocate                         | L          | H      | Keep the diary personal and non-monetised. If that changes, budget $20/mo Pro or fall back to Cloudflare Workers — the code is adapter-portable.                                                      |
+| One-hour Hobby log retention makes intermittent overnight failures unreproducible                                              | Devil's advocate / Pre-mortem            | M          | M      | Log auth failures to a Supabase table rather than relying on platform logs; check it the next evening.                                                                                                |
+| Missing `SUPABASE_URL` / `SUPABASE_KEY` deploys a site that renders correctly but silently fails every login                   | Research finding (verified in this repo) | M          | H      | `astro.config.mjs` marks both `optional: true`; `src/lib/supabase.ts` returns `null` and `src/middleware.ts` reads that as logged-out. Flip to `optional: false` so a missing secret fails the build. |
+| Agent rewrites `astro:env/server` imports to `process.env` while following Vercel's migration guide                            | Unknown unknowns                         | M          | M      | The migration guide's `locals.runtime.env` → `process.env` step does not apply here. Pin the rule in `AGENTS.md`.                                                                                     |
+| `vercel install supabase` provisions a second, empty Supabase project                                                          | Unknown unknowns                         | L          | H      | Wire the existing project by setting env vars manually. Do not run the Marketplace installer.                                                                                                         |
+| Supabase migration rolls forward but `vercel rollback` only reverts code                                                       | Research finding                         | M          | H      | Write a down-migration for every schema change before deploying it; never ship a migration and a feature in the same deploy.                                                                          |
+| Skew Protection does not fully cover Astro's hoisted scripts and inter-chunk imports                                           | Devil's advocate                         | L          | L      | Low exposure at one user. Avoid deploying while actively using the app.                                                                                                                               |
+| No git repository exists, so previews, CI, and auto-deploy are all unavailable                                                 | Unknown unknowns (verified in this repo) | H          | M      | `git init` and push to GitHub before the first deploy — it is step 1 below.                                                                                                                           |
+| `@supabase/ssr` 0.12.7 is pre-1.0 and may ship breaking changes inside the six-week window                                     | Research finding                         | M          | M      | Pin the exact version in `package.json` rather than carrying the `^` range through to the deadline.                                                                                                   |
+| _(Fallback risk)_ Returning to Cloudflare later reintroduces the open `nodejs_compat` stream bug in the Supabase auth path     | Devil's advocate (Cloudflare pass)       | —          | H      | Retained deliberately. If the fallback is ever exercised, verify supabase#37592 is closed first.                                                                                                      |
+| _(Fallback risk)_ `tech-stack.md` records `deployment_target: cloudflare-pages`, but adapter v13 dropped Pages entirely        | Research finding (verified in this repo) | H          | M      | Correct `tech-stack.md` to `vercel`. The stale value would send a future reader to the wrong command family on either platform.                                                                       |
 
 ## Getting Started
 
@@ -276,6 +276,7 @@ Version-checked against this repository on 2026-09-23: Astro 7.3.2,
 ## Out of Scope
 
 The following were not evaluated in this research:
+
 - Docker image configuration
 - CI/CD pipeline setup (GitHub Actions workflow files)
 - Production-scale architecture (multi-region, HA, DR)

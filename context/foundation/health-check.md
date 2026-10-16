@@ -82,13 +82,13 @@ Provider: GitHub Actions
 Configuration: .github/workflows/ci.yml (jobs: ci, smoke; on push/PR to master)
 ```
 
-| Stage      | Status | Notes                                                                 |
-|------------|--------|-----------------------------------------------------------------------|
+| Stage      | Status | Notes                                                                            |
+| ---------- | ------ | -------------------------------------------------------------------------------- |
 | Lint       | ✓      | `npm run lint` (ESLint 10 + prettier via eslint-plugin-prettier; passes locally) |
-| Test       | ~      | Smoke job only (local Supabase + dev server + `npm run smoke`); no unit tests |
-| Build      | ✓      | `npm run build` (with Supabase secrets; passes locally)               |
-| Type check | ✓      | `npx astro check` (verified locally: 0 errors, 0 warnings, 0 hints)   |
-| Security   | ✗      | No `npm audit`, Dependabot, or CodeQL                                 |
+| Test       | ~      | Smoke job only (local Supabase + dev server + `npm run smoke`); no unit tests    |
+| Build      | ✓      | `npm run build` (with Supabase secrets; passes locally)                          |
+| Type check | ✓      | `npx astro check` (verified locally: 0 errors, 0 warnings, 0 hints)              |
+| Security   | ✗      | No `npm audit`, Dependabot, or CodeQL                                            |
 
 ## Configuration
 

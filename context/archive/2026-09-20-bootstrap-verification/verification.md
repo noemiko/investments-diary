@@ -57,10 +57,10 @@ likely. The edge runtime limits long-running work, which this product does not h
 
 ## Pre-scaffold verification
 
-| Signal      | Value                                                        | Severity | Notes                                                                                 |
-| ----------- | ------------------------------------------------------------ | -------- | ------------------------------------------------------------------------------------- |
-| npm package | not run                                                      | n/a      | cmd_template starts with `git clone`; there is no npm CLI package to resolve           |
-| GitHub repo | przeprogramowani/10x-astro-starter last pushed 2026-09-12    | fresh    | 7 days before this run; repository is not archived, default branch `master`           |
+| Signal      | Value                                                     | Severity | Notes                                                                        |
+| ----------- | --------------------------------------------------------- | -------- | ---------------------------------------------------------------------------- |
+| npm package | not run                                                   | n/a      | cmd_template starts with `git clone`; there is no npm CLI package to resolve |
+| GitHub repo | przeprogramowani/10x-astro-starter last pushed 2026-09-12 | fresh    | 7 days before this run; repository is not archived, default branch `master`  |
 
 **Tooling note.** The `gh` CLI was not authenticated in this environment, so the repository
 check fell back to an unauthenticated call to the public GitHub API. The signal is the same.
@@ -102,21 +102,21 @@ No advisories were reported against the dependency tree at the time of this run.
 
 ## Hints recorded but not acted on
 
-| Hint                    | Value             |
-| ----------------------- | ----------------- |
-| bootstrapper_confidence | first-class       |
-| quality_override        | false             |
-| path_taken              | standard          |
-| self_check_answers      | null              |
-| team_size               | solo              |
-| deployment_target       | cloudflare-pages  |
-| ci_provider             | github-actions    |
+| Hint                    | Value                |
+| ----------------------- | -------------------- |
+| bootstrapper_confidence | first-class          |
+| quality_override        | false                |
+| path_taken              | standard             |
+| self_check_answers      | null                 |
+| team_size               | solo                 |
+| deployment_target       | cloudflare-pages     |
+| ci_provider             | github-actions       |
 | ci_default_flow         | auto-deploy-on-merge |
-| has_auth                | true              |
-| has_payments            | false             |
-| has_realtime            | false             |
-| has_ai                  | false             |
-| has_background_jobs     | false             |
+| has_auth                | true                 |
+| has_payments            | false                |
+| has_realtime            | false                |
+| has_ai                  | false                |
+| has_background_jobs     | false                |
 
 Authentication is the only feature flag set. The scaffold was not modified on account of
 it; the starter already ships an auth layer. No CI/CD workflow was generated, so the
@@ -127,12 +127,12 @@ recorded provider and flow are metadata only, awaiting a later step.
 Not required by the bootstrap contract; run because the scaffolding confidence was
 first-class rather than verified, so the result deserved evidence rather than assumption.
 
-| Check                | Result                                                      |
-| -------------------- | ----------------------------------------------------------- |
-| Astro toolchain      | responds, v7.3.2                                             |
-| Node version         | **mismatch** — starter pins 22.14.0 in `.nvmrc`, machine runs v26.7.0 |
-| Lint, first run      | 20 errors, all `@typescript-eslint/no-unsafe-*` in the starter's own auth pages |
-| Lint, after fix      | clean, 0 errors                                              |
+| Check           | Result                                                                          |
+| --------------- | ------------------------------------------------------------------------------- |
+| Astro toolchain | responds, v7.3.2                                                                |
+| Node version    | **mismatch** — starter pins 22.14.0 in `.nvmrc`, machine runs v26.7.0           |
+| Lint, first run | 20 errors, all `@typescript-eslint/no-unsafe-*` in the starter's own auth pages |
+| Lint, after fix | clean, 0 errors                                                                 |
 
 **The 20 lint errors were not a defect in the scaffold.** Astro generates environment and
 content types into `.astro/` and that directory does not exist in a fresh clone, so every
@@ -156,6 +156,7 @@ symlinked to it. Those files describe the starter, not this product, so they are
 starting point rather than finished agent context.
 
 Useful manual steps in the meantime:
+
 - `git init` (if you have not already) to start your own repo history.
 - Review any `.scaffold` siblings the conflict policy created and decide which version of each file to keep. This run created none.
 - Address audit findings per your project's risk tolerance — the full breakdown is in this log. This run found none.

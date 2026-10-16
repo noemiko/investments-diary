@@ -1,4 +1,5 @@
 <!-- IMPL-REVIEW-REPORT -->
+
 # Implementation Review: Dashboard na tokenach (ui-tokens-onboarding)
 
 - **Plan**: context/changes/ui-tokens-onboarding/plan.md
@@ -10,14 +11,14 @@
 
 ## Verdicts
 
-| Dimension | Verdict |
-|-----------|---------|
-| Plan Adherence | PASS |
-| Scope Discipline | WARNING |
-| Safety & Quality | WARNING |
-| Architecture | PASS |
-| Pattern Consistency | PASS |
-| Success Criteria | WARNING |
+| Dimension           | Verdict |
+| ------------------- | ------- |
+| Plan Adherence      | PASS    |
+| Scope Discipline    | WARNING |
+| Safety & Quality    | WARNING |
+| Architecture        | PASS    |
+| Pattern Consistency | PASS    |
+| Success Criteria    | WARNING |
 
 Automated: `npx astro sync && npm run lint` PASS, `npx astro check` 0 errors, `npm run build` PASS. Palette grep (with /usr/bin/grep): only `bg-cosmic` at dashboard.astro:17 and kitchen-sink.astro:39 (approved Q4). DEV guard at kitchen-sink.astro:16. Production `/dev/kitchen-sink` → 404.
 

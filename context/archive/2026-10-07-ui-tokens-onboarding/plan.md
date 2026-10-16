@@ -110,6 +110,7 @@ wpływie na użytkownika, oraz listę odroczonych. To wejście dla faz 2–3 i d
 
 **Contract**: Tabela z kolumnami: kategoria (missing tokens / missing shared component /
 accidental architecture), `file:line`, wpływ na użytkownika, faza lub „deferred: powód”. Minimum:
+
 - missing tokens: `dashboard.astro:25,28,36,59,100` (fiolet i 4 przezroczystości `blue-100`
   poza tokenami, więc kolor nie podąża za motywem);
 - missing tokens: `dashboard.astro:21` + `global.css:114` (tło z surowego hexa);
@@ -120,8 +121,8 @@ accidental architecture), `file:line`, wpływ na użytkownika, faza lub „defer
   (`middleware.ts:14-17`), brak danych → pusty stan (`dashboard.astro:52-63`), bezpośredni link → OK;
 - focus: ręczne przyciski nie mają stylu `focus-visible`, zostaje tylko `outline-ring/50` z
   `global.css:119`.
-Odroczone: pozycje z „What We're NOT Doing”, które dotyczą zarzutów (formularze, inne widoki,
-`--success`, martwy kod).
+  Odroczone: pozycje z „What We're NOT Doing”, które dotyczą zarzutów (formularze, inne widoki,
+  `--success`, martwy kod).
 
 #### 2. Wartości fioletu
 
@@ -132,11 +133,11 @@ fiolet. Zmieniamy tylko trzy zmienne w każdym motywie; reszta neutral zostaje.
 
 **Contract**:
 
-| Zmienna | `:root` | `.dark` |
-| --- | --- | --- |
-| `--primary` | `oklch(0.558 0.288 302.321)` (purple-600) | `oklch(0.558 0.288 302.321)` (purple-600) |
-| `--primary-foreground` | `oklch(0.985 0 0)` | `oklch(0.985 0 0)` |
-| `--ring` | `oklch(0.627 0.265 303.9)` (purple-500) | `oklch(0.714 0.203 305.504)` (purple-400) |
+| Zmienna                | `:root`                                   | `.dark`                                   |
+| ---------------------- | ----------------------------------------- | ----------------------------------------- |
+| `--primary`            | `oklch(0.558 0.288 302.321)` (purple-600) | `oklch(0.558 0.288 302.321)` (purple-600) |
+| `--primary-foreground` | `oklch(0.985 0 0)`                        | `oklch(0.985 0 0)`                        |
+| `--ring`               | `oklch(0.627 0.265 303.9)` (purple-500)   | `oklch(0.714 0.203 305.504)` (purple-400) |
 
 `tokens.md` zapisuje tę tabelę, poprzednie wartości neutral, źródło
 (`node_modules/tailwindcss/theme.css:169-172`, Tailwind 4.2.x) i uzasadnienie (dzisiejszy CTA i
@@ -233,6 +234,7 @@ jako `<a href="/dashboard/new" class={buttonVariants()}>`. Copy bez zmian.
 klasy palety, `white/*` i `bg-cosmic`.
 
 **Contract**:
+
 - tło strony: `bg-background` zamiast `bg-cosmic` (`:21`);
 - kontener: Card (`:22`), bez `backdrop-blur` i `bg-white/10`;
 - `h1` „Your positions”: `text-foreground`, bez gradientu i `bg-clip-text` (`:25`);
@@ -240,7 +242,7 @@ klasy palety, `white/*` i `bg-cosmic`.
 - „New investment”: `<a class={buttonVariants()}>`, widoczny tylko gdy `positions.length > 0` (bez zmiany warunku, `:33`);
 - „Sign out”: `<button type="submit" class={buttonVariants({ variant: "outline" })}>` w tym samym `<form method="POST" action="/api/auth/signout">`;
 - gałąź `positions.length === 0` → `PositionsEmptyState`, w przeciwnym razie `PositionsTable`.
-Pobieranie danych (`:6-9`) bez zmian.
+  Pobieranie danych (`:6-9`) bez zmian.
 
 ### Success Criteria:
 

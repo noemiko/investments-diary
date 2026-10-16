@@ -106,6 +106,7 @@ with `deleted_at: string` and `category_name: string`.
 client.
 
 **Contract**:
+
 - `type SoftDeleteResult = { ok: true } | { ok: false; error: "not_found" | "unexpected" }`.
 - `deletePosition(client, id)` sets `deleted_at` to the current timestamp where `id` matches and
   `deleted_at is null`, selecting `id`; zero rows → `not_found`.
@@ -203,6 +204,7 @@ S-02's steps use.
 **Contract**: A records a dedicated position `DEL-<runId>` (reusing `categoryName` as
 `new_category_name`, which the service resolves to the existing category) and captures its id from
 the delete form action in the dashboard HTML. New steps, after "A: dashboard lists the position":
+
 - A: records the position to delete
 - A: deletes it → 302 to `/dashboard?deleted=<id>`
 - A: dashboard shows "Position deleted." and does not list `DEL-<runId>`

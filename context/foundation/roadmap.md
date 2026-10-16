@@ -1,7 +1,7 @@
 ---
 project: "Investments Diary"
 version: 1
-status: draft                    # draft | active | locked
+status: draft # draft | active | locked
 created: 2026-09-25
 updated: 2026-10-16
 prd_version: 1
@@ -9,7 +9,7 @@ main_goal: learn
 top_blocker: decisions
 milestone_id: first-honest-diary
 milestone_seq: 1
-milestone_status: open           # open | done
+milestone_status: open # open | done
 ---
 
 # Roadmap: Investments Diary
@@ -46,16 +46,16 @@ with your own past reasoning at the moment of deciding improves how you invest.
 
 ## At a glance
 
-| ID   | Change ID                  | Outcome (user can …)                                                                 | Prerequisites | PRD refs                        | Status   |
-| ---- | -------------------------- | ------------------------------------------------------------------------------------ | ------------- | ------------------------------- | -------- |
-| S-01 | record-first-investment    | record an investment with a reason category and optional reason, and see it listed   | —             | FR-003, FR-004, FR-005, FR-010  | done |
-| S-02 | position-detail-and-price  | open a position, read its full reason, update its price and see its dated result     | S-01          | FR-006, FR-011                  | done |
-| S-03 | reason-confrontation       | see earlier same-reason positions with their results before saving a new investment  | S-01, S-02    | US-01, FR-012                   | in-progress |
-| S-04 | close-position             | close a position with sell price and date and see its final result                   | S-02          | FR-007                          | proposed |
-| S-05 | recoverable-delete         | delete a position and restore it later                                               | S-01          | FR-009                          | done |
-| S-06 | private-diary-access       | register and reach only their own diary, with every diary page gated behind sign-in  | —             | FR-001, FR-002                  | ready    |
-| S-07 | reason-lock-editing        | correct an investment's facts and add a missing reason, after which the reason locks | S-01          | FR-008, FR-004                  | proposed |
-| S-08 | evolve-reason-categories   | rename a reason category everywhere, or remove it while past positions keep it       | S-01          | FR-005                          | proposed |
+| ID   | Change ID                 | Outcome (user can …)                                                                 | Prerequisites | PRD refs                       | Status      |
+| ---- | ------------------------- | ------------------------------------------------------------------------------------ | ------------- | ------------------------------ | ----------- |
+| S-01 | record-first-investment   | record an investment with a reason category and optional reason, and see it listed   | —             | FR-003, FR-004, FR-005, FR-010 | done        |
+| S-02 | position-detail-and-price | open a position, read its full reason, update its price and see its dated result     | S-01          | FR-006, FR-011                 | done        |
+| S-03 | reason-confrontation      | see earlier same-reason positions with their results before saving a new investment  | S-01, S-02    | US-01, FR-012                  | done |
+| S-04 | close-position            | close a position with sell price and date and see its final result                   | S-02          | FR-007                         | proposed    |
+| S-05 | recoverable-delete        | delete a position and restore it later                                               | S-01          | FR-009                         | done        |
+| S-06 | private-diary-access      | register and reach only their own diary, with every diary page gated behind sign-in  | —             | FR-001, FR-002                 | ready       |
+| S-07 | reason-lock-editing       | correct an investment's facts and add a missing reason, after which the reason locks | S-01          | FR-008, FR-004                 | proposed    |
+| S-08 | evolve-reason-categories  | rename a reason category everywhere, or remove it while past positions keep it       | S-01          | FR-005                         | proposed    |
 
 ## Baseline
 
@@ -116,7 +116,7 @@ which is exactly what this roadmap avoids.
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** The north star; placed as soon as a result exists. What could go wrong: it drifts into a verdict or score — the PRD forbids any recommendation, so it must present history only.
-- **Status:** in-progress
+- **Status:** done
 
 ### S-04: Close a position
 
@@ -186,16 +186,16 @@ which is exactly what this roadmap avoids.
 
 ## Backlog Handoff
 
-| Roadmap ID | Change ID                 | Suggested issue title                                    | Ready for `/10x-plan` | Notes |
-| ---------- | ------------------------- | -------------------------------------------------------- | --------------------- | ----- |
-| S-01       | record-first-investment   | Record an investment with reason and list positions       | yes                   | Run `/10x-plan record-first-investment` |
-| S-02       | position-detail-and-price | Position detail view with manual price and dated result   | no                    | Waits on S-01 |
-| S-03       | reason-confrontation      | Show same-reason history before saving a new investment   | no                    | North star; waits on S-01, S-02 |
-| S-04       | close-position            | Close a position and show final result                    | no                    | Waits on S-02 |
-| S-05       | recoverable-delete        | Delete and restore a position                             | no                    | Waits on S-01 |
-| S-06       | private-diary-access      | Gate every diary page and keep each diary owner-only      | yes                   | Run `/10x-plan private-diary-access` |
-| S-07       | reason-lock-editing       | Edit investment facts with a locked reason                | no                    | Waits on S-01 |
-| S-08       | evolve-reason-categories  | Rename and soft-remove reason categories                  | no                    | Waits on S-01 |
+| Roadmap ID | Change ID                 | Suggested issue title                                   | Ready for `/10x-plan` | Notes                                   |
+| ---------- | ------------------------- | ------------------------------------------------------- | --------------------- | --------------------------------------- |
+| S-01       | record-first-investment   | Record an investment with reason and list positions     | yes                   | Run `/10x-plan record-first-investment` |
+| S-02       | position-detail-and-price | Position detail view with manual price and dated result | no                    | Waits on S-01                           |
+| S-03       | reason-confrontation      | Show same-reason history before saving a new investment | no                    | North star; waits on S-01, S-02         |
+| S-04       | close-position            | Close a position and show final result                  | no                    | Waits on S-02                           |
+| S-05       | recoverable-delete        | Delete and restore a position                           | no                    | Waits on S-01                           |
+| S-06       | private-diary-access      | Gate every diary page and keep each diary owner-only    | yes                   | Run `/10x-plan private-diary-access`    |
+| S-07       | reason-lock-editing       | Edit investment facts with a locked reason              | no                    | Waits on S-01                           |
+| S-08       | evolve-reason-categories  | Rename and soft-remove reason categories                | no                    | Waits on S-01                           |
 
 ## Open Roadmap Questions
 

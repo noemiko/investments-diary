@@ -23,20 +23,21 @@ zmian. `/dev/kitchen-sink` pokazuje widok we wszystkich stanach i nie istnieje w
 
 ## Key Decisions Made
 
-| Decision | Choice | Why (1 sentence) | Source |
-| --- | --- | --- | --- |
-| Widok | `src/pages/dashboard.astro` | Jedyny widok z danymi; rozbudowują go S-02/S-03/S-04 | Research |
-| Motyw | `class="dark"` na `<html>` | Zachowuje wygląd, a inne widoki (wciąż na palecie) nie odstają | Plan |
-| Marka | Fiolet w `--primary`/`--primary-foreground`/`--ring` w obu motywach | Charakter zostaje, kolor ma jedno źródło | Plan |
-| Tło | `bg-background` na dashboardzie; `bg-cosmic` zostaje dla 5 innych widoków | Widok w 100% na tokenach, zakres = jeden widok | Plan |
-| Nagłówek | `text-foreground`, bez gradientu | Czytelny, bez nowego tokenu, nie konkuruje z CTA | Plan |
-| Prymitywy | `npx shadcn add table badge card`; `--success` → S-02; martwy kod odroczony | Zakres 10x-ui: jeden widok + globalne tokeny | Plan |
-| Reguła `client:*` | Zwolnienie dla `src/components/ui/` dopisane do `CLAUDE.md` | Te same prymitywy posłużą wyspie React w S-03 | Plan |
-| Bramka | Dev-only `/dev/kitchen-sink` + screenshoty desktop/390px | Wszystkie stany bez Supabase, bez instalowania Playwrighta | Plan |
+| Decision          | Choice                                                                      | Why (1 sentence)                                               | Source   |
+| ----------------- | --------------------------------------------------------------------------- | -------------------------------------------------------------- | -------- |
+| Widok             | `src/pages/dashboard.astro`                                                 | Jedyny widok z danymi; rozbudowują go S-02/S-03/S-04           | Research |
+| Motyw             | `class="dark"` na `<html>`                                                  | Zachowuje wygląd, a inne widoki (wciąż na palecie) nie odstają | Plan     |
+| Marka             | Fiolet w `--primary`/`--primary-foreground`/`--ring` w obu motywach         | Charakter zostaje, kolor ma jedno źródło                       | Plan     |
+| Tło               | `bg-background` na dashboardzie; `bg-cosmic` zostaje dla 5 innych widoków   | Widok w 100% na tokenach, zakres = jeden widok                 | Plan     |
+| Nagłówek          | `text-foreground`, bez gradientu                                            | Czytelny, bez nowego tokenu, nie konkuruje z CTA               | Plan     |
+| Prymitywy         | `npx shadcn add table badge card`; `--success` → S-02; martwy kod odroczony | Zakres 10x-ui: jeden widok + globalne tokeny                   | Plan     |
+| Reguła `client:*` | Zwolnienie dla `src/components/ui/` dopisane do `CLAUDE.md`                 | Te same prymitywy posłużą wyspie React w S-03                  | Plan     |
+| Bramka            | Dev-only `/dev/kitchen-sink` + screenshoty desktop/390px                    | Wszystkie stany bez Supabase, bez instalowania Playwrighta     | Plan     |
 
 ## Scope
 
 **In scope:**
+
 - `charges.md` (3–5 zarzutów) i `tokens.md` (wartości + źródło) w folderze zmiany
 - 3 zmienne × 2 motywy w `global.css`, `class="dark"` w `Layout.astro`
 - `table.tsx`, `badge.tsx`, `card.tsx` w `ui/`; jedno zdanie w `CLAUDE.md`
@@ -44,6 +45,7 @@ zmian. `/dev/kitchen-sink` pokazuje widok we wszystkich stanach i nie istnieje w
 - `/dev/kitchen-sink`, fixture'y, screenshoty
 
 **Out of scope:**
+
 - 6 pozostałych widoków, `bg-cosmic` na nich, komponenty z `components/auth/`, `PositionForm`
 - Input/Label/Select/Alert w `ui/`, token `--success`, usunięcie `Topbar`/`LibBadge`
 - Przełącznik motywu, jasny motyw, Playwright
@@ -58,11 +60,11 @@ komponenty z fixture'ów na stronie chronionej guardem `import.meta.env.DEV`.
 
 ## Phases at a Glance
 
-| Phase | What it delivers | Key risk |
-| --- | --- | --- |
+| Phase       | What it delivers                                                                | Key risk                                                                                |
+| ----------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | 1. Contract | Fioletowe tokeny, `.dark`, Table/Badge/Card, reguła w CLAUDE.md, charges/tokens | `shadcn add` dociąga drugi pakiet `Slot` lub próbuje nadpisać `button.tsx`/`global.css` |
-| 2. One view | Dashboard tylko na klasach semantycznych i komponentach `ui/` | Mobile 390px: tabela rozpycha stronę |
-| 3. States | Kitchen sink w stanach + screenshoty jako bramka | Guard DEV nie zadziała i strona trafi na produkcję |
+| 2. One view | Dashboard tylko na klasach semantycznych i komponentach `ui/`                   | Mobile 390px: tabela rozpycha stronę                                                    |
+| 3. States   | Kitchen sink w stanach + screenshoty jako bramka                                | Guard DEV nie zadziała i strona trafi na produkcję                                      |
 
 **Prerequisites:** lokalny Supabase (`npx supabase start`) dla `npm run dev` i smoke; dostęp do sieci dla `npx shadcn add`; Vercel preview brancha do sprawdzenia 404.
 **Estimated effort:** ~2 sesje wieczorne w 3 fazach.

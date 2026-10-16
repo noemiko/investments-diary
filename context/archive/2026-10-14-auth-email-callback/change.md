@@ -14,6 +14,7 @@ Plan-less bug fix; reviewed against the diff only (no `plan.md`).
 **Symptom:** the signup confirmation email linked to `http://localhost:3000/?error=access_denied&error_code=otp_expired`.
 
 **Root causes (from `docker logs supabase_auth_investments-diary`):**
+
 - `signUp` passed no `emailRedirectTo`, and the redirect allowlist held exact URLs only, so Supabase fell back to Site URL (hosted default `http://localhost:3000`; local `http://127.0.0.1:4321/`).
 - The app had no route exchanging the PKCE `?code=` for a session; landing on `/` silently dropped it, so the user clicked again and the second click hit "One-time token not found" → `otp_expired`.
 

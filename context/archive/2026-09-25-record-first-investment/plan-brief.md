@@ -25,26 +25,28 @@ attach a position to someone else's category.
 
 ## Key Decisions Made
 
-| Decision | Choice | Why (1 sentence) |
-| --- | --- | --- |
-| Buy price | Per share | Comparable with the per-share current price S-02 adds, so a result works even without quantity. |
-| Same stock twice | Two separate positions | Each reason keeps its own outcome, which the confrontation groups by. |
-| Category creation | Pick or create inside the form | No detour before the first entry; protects the 60-second target. |
-| Buy date | Today or earlier, default today | Allows back-filling existing holdings and catches mistyped years. |
-| Privacy proof | Extend the smoke walk with a second account | Zero new dependencies; CI's smoke job already runs a local database. |
-| Form handling | Form page handles its own POST, re-renders on error | Keeps the reason text out of URLs and request logs. |
-| Category ownership | Composite FK `(category_id, user_id)` | Row security alone would accept another user's category id. |
-| Hard delete | No delete policies | Deletes become soft deletes in S-05/S-08; nothing is destroyed. |
-| Numbers | `,` or `.` decimal, > 0 | The author may type Polish-style decimals. |
+| Decision           | Choice                                              | Why (1 sentence)                                                                                |
+| ------------------ | --------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Buy price          | Per share                                           | Comparable with the per-share current price S-02 adds, so a result works even without quantity. |
+| Same stock twice   | Two separate positions                              | Each reason keeps its own outcome, which the confrontation groups by.                           |
+| Category creation  | Pick or create inside the form                      | No detour before the first entry; protects the 60-second target.                                |
+| Buy date           | Today or earlier, default today                     | Allows back-filling existing holdings and catches mistyped years.                               |
+| Privacy proof      | Extend the smoke walk with a second account         | Zero new dependencies; CI's smoke job already runs a local database.                            |
+| Form handling      | Form page handles its own POST, re-renders on error | Keeps the reason text out of URLs and request logs.                                             |
+| Category ownership | Composite FK `(category_id, user_id)`               | Row security alone would accept another user's category id.                                     |
+| Hard delete        | No delete policies                                  | Deletes become soft deletes in S-05/S-08; nothing is destroyed.                                 |
+| Numbers            | `,` or `.` decimal, > 0                             | The author may type Polish-style decimals.                                                      |
 
 ## Scope
 
 **In scope:**
+
 - Two tables with owner-only row security, a tested down-script, generated types, typed client
 - Validation, service layer, entry form with inline category picker, positions list with empty state
 - Smoke-walk isolation checks in CI
 
 **Out of scope:**
+
 - Detail view, prices and results; confrontation; closing, deleting, editing, reason lock
 - Renaming or removing categories; gating pages outside `/dashboard`
 - A unit/integration test framework; currencies; merged holdings
@@ -59,11 +61,11 @@ through `src/types.ts` to the components.
 
 ## Phases at a Glance
 
-| Phase | What it delivers | Key risk |
-| --- | --- | --- |
-| 1. Data model | Tables, RLS, down-script, generated types, typed client | A missing or wrong policy fails silently — checked by querying `pg_policies` |
-| 2. Record and list | Entry form with inline categories, positions list, empty state | Entry form creeping past the 60-second target |
-| 3. Privacy proof | Two-account isolation steps in the CI smoke walk | Brittle HTML scraping of the category id in the smoke script |
+| Phase              | What it delivers                                               | Key risk                                                                     |
+| ------------------ | -------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| 1. Data model      | Tables, RLS, down-script, generated types, typed client        | A missing or wrong policy fails silently — checked by querying `pg_policies` |
+| 2. Record and list | Entry form with inline categories, positions list, empty state | Entry form creeping past the 60-second target                                |
+| 3. Privacy proof   | Two-account isolation steps in the CI smoke walk               | Brittle HTML scraping of the category id in the smoke script                 |
 
 **Prerequisites:** Docker running for the local Supabase stack; the human pushes the Phase 1 migration to production (`npx supabase db push`) before Phase 2 merges.
 **Estimated effort:** ~3 sessions, one per phase.
