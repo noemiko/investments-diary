@@ -3,6 +3,7 @@
 // an eslint-disable comment would not help, because the rule still runs. Nothing here passes promises as callbacks.
 /* eslint @typescript-eslint/no-misused-promises: "off" */
 import Layout from "@/layouts/Layout.astro";
+import DeletePositionControl from "@/components/positions/DeletePositionControl.astro";
 import PositionResult from "@/components/positions/PositionResult.astro";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -208,6 +209,15 @@ const inputClass =
                 </button>
               </div>
             </form>
+          </section>
+
+          <section class="flex flex-col gap-2">
+            <h2 class="text-lg font-semibold">Delete</h2>
+            <DeletePositionControl
+              id={position.id}
+              instrument={position.instrument}
+              cancelHref={`/dashboard/positions/${position.id}`}
+            />
           </section>
         </>
       )}

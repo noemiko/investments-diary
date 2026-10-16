@@ -3,7 +3,7 @@ change_id: recoverable-delete
 title: Delete and restore a position
 status: implementing
 created: 2026-10-15
-updated: 2026-10-15
+updated: 2026-10-16
 archived_at: null
 ---
 

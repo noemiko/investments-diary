@@ -281,7 +281,6 @@ const steps = [
       }),
     { status: 404, requiresIds: ["delPosition"] },
   ],
-
   ["signout clears session", () => request(a, "/api/auth/signout", { method: "POST" }), { status: 302, location: "/" }],
   ["dashboard redirects after signout", () => request(a, "/dashboard"), { status: 302, location: "/auth/signin" }],
 

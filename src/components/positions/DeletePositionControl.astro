@@ -4,12 +4,14 @@ import { buttonVariants } from "@/components/ui/button";
 interface Props {
   id: string;
   instrument: string;
+  /** Where Cancel goes without JS: the page the control sits on. */
+  cancelHref?: string;
 }
 
-const { id, instrument } = Astro.props;
+const { id, instrument, cancelHref = "/dashboard" } = Astro.props;
 
 // Native <details>, so the confirmation works without JS and nothing is deleted until the confirm
-// button posts the form. Cancel is a link back to the dashboard, which closes the confirmation by
+// button posts the form. Cancel is a link back to the current page, which closes the confirmation by
 // reloading without JS; the inline handler closes it in place (and refocuses Delete) when JS runs.
 ---
 
@@ -30,7 +32,7 @@ const { id, instrument } = Astro.props;
       </button>
     </form>
     <a
-      href="/dashboard"
+      href={cancelHref}
       class:list={buttonVariants({ variant: "ghost", size: "sm" })}
       onclick="const d = this.closest('details'); d.open = false; d.querySelector('summary').focus(); return false;"
     >

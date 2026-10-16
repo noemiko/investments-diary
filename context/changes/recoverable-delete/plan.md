@@ -359,9 +359,9 @@ None: single-row updates and one extra list query on a separate page.
 
 #### Automated
 
-- [ ] 3.1 Rebased branch passes verify
-- [ ] 3.2 Regenerating database types produces no diff
-- [ ] 3.3 Smoke walk passes including deleted-detail and refused-price steps
+- [x] 3.1 Rebased branch passes verify
+- [x] 3.2 Regenerating database types produces no diff
+- [x] 3.3 Smoke walk passes including deleted-detail and refused-price steps
 
 #### Manual
 
