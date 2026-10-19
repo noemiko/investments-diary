@@ -56,7 +56,7 @@ with your own past reasoning at the moment of deciding improves how you invest.
 | S-06 | private-diary-access      | register and reach only their own diary, with every diary page gated behind sign-in  | —             | FR-001, FR-002                 | ready       |
 | S-07 | reason-lock-editing       | correct an investment's facts and add a missing reason, after which the reason locks | S-01          | FR-008, FR-004                 | proposed    |
 | S-08 | evolve-reason-categories  | rename a reason category everywhere, or remove it while past positions keep it       | S-01          | FR-005                         | proposed    |
-| S-09 | named-wallets             | group investments into named wallets and see totals with missing-data and price-date context | S-01, S-02, S-05 | FR-013 (should-have)       | in-progress |
+| S-09 | named-wallets             | group investments into named wallets and see totals with missing-data and price-date context | S-01, S-02, S-05 | FR-013 (should-have)       | done |
 
 ## Baseline
 
@@ -200,7 +200,7 @@ which is exactly what this roadmap avoids.
   - Can an investment move between wallets? (PRD Open Question 6) — Owner: user. Block: no for initial assignment; resolve with S-07 before adding reassignment.
   - How should existing investments be assigned when wallets are introduced so each belongs to exactly one wallet? — Owner: user. Block: no (settle during `/10x-plan`).
 - **Risk:** An incomplete or stale total can look authoritative. Show excluded counts and the oldest included price date; keep wallets as the author's own groupings without currencies, fees, broker account numbers, or investment verdicts. Sequence after the core diary flow because FR-013 is should-have.
-- **Status:** in-progress
+- **Status:** done
 
 ## Backlog Handoff
 
@@ -240,3 +240,4 @@ which is exactly what this roadmap avoids.
 - **S-01: user can record an investment (instrument, buy price and buy date required; quantity and broker label optional), attach a reason category they defined and an optional reason text, and see it in their list of positions with its category.** — Archived 2026-10-02 → `context/archive/2026-09-25-record-first-investment/`. Lesson: —.
 - **S-02: user can open one position, read its full written reason, update its current price, and see its result together with the date that price was set — in the detail view and in the list.** — Archived 2026-10-16 → `context/archive/2026-10-15-position-detail-and-price/`. Lesson: —.
 - **S-05: user can delete a position, which disappears from the list and the confrontation, and restore it later.** — Archived 2026-10-16 → `context/archive/2026-10-15-recoverable-delete/`. Lesson: —.
+- **S-09: user can create several named wallets, edit each wallet's name and starting value, and assign every investment to exactly one wallet. Each wallet shows its starting value plus the sum of (current price − buy price) × quantity over its non-deleted investments, the number excluded for missing quantity or current price, and the oldest price date used in the total. Wallet deletion is excluded from the first version.** — Archived 2026-10-19 → `context/archive/2026-10-19-named-wallets/`. Lesson: —.

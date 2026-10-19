@@ -1,10 +1,10 @@
 ---
 change_id: named-wallets
 title: Group investments into named wallets
-status: impl_reviewed
+status: archived
 created: 2026-10-19
 updated: 2026-10-19
-archived_at: null
+archived_at: 2026-10-19T14:51:31Z
 ---
 
 ## Notes
