@@ -8,9 +8,10 @@ import type { PositionListItem } from "@/types";
 
 interface Props {
   positions: PositionListItem[];
+  showWallet?: boolean;
 }
 
-const { positions } = Astro.props;
+const { positions, showWallet = true } = Astro.props;
 ---
 
 <Table>
@@ -37,6 +38,11 @@ const { positions } = Astro.props;
       <TableHead scope="col" className="text-muted-foreground">
         Category
       </TableHead>
+      {showWallet && (
+        <TableHead scope="col" className="text-muted-foreground">
+          Wallet
+        </TableHead>
+      )}
       <TableHead scope="col">
         <span class="sr-only">Actions</span>
       </TableHead>
@@ -67,6 +73,16 @@ const { positions } = Astro.props;
         <TableCell>
           <Badge variant="secondary">{position.category_name}</Badge>
         </TableCell>
+        {showWallet && (
+          <TableCell>
+            <a
+              href={`/dashboard/wallets/${position.wallet_id}`}
+              class="underline underline-offset-4 hover:text-primary"
+            >
+              {position.wallet_name}
+            </a>
+          </TableCell>
+        )}
         <TableCell>
           <DeletePositionControl id={position.id} instrument={position.instrument} />
         </TableCell>

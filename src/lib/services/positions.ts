@@ -1,5 +1,6 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 import type { createClient } from "@/lib/supabase";
+import { readAll } from "@/lib/services/read-all";
 import type {
   ConfrontationPosition,
   DeletedPositionItem,
@@ -13,7 +14,7 @@ import type {
 // Always the request-scoped client, so RLS scopes every query to the signed-in author.
 type Client = ReturnType<typeof createClient>;
 
-export type CreatePositionError = "validation" | "category_not_found" | "unexpected";
+export type CreatePositionError = "validation" | "category_not_found" | "wallet_not_found" | "unexpected";
 
 export type CreatePositionResult = { ok: true; id: string } | { ok: false; error: CreatePositionError };
 
@@ -21,19 +22,23 @@ export type UpdatePriceResult = { ok: true } | { ok: false; error: "not_found" |
 export type SoftDeleteResult = { ok: true } | { ok: false; error: "not_found" | "unexpected" };
 
 const FOREIGN_KEY_VIOLATION = "23503";
-const UNIQUE_VIOLATION = "23505";
+export const UNIQUE_VIOLATION = "23505";
+// Named in 20261019112848_create_wallets.sql; the category FK shares the same error code.
+const WALLET_FOREIGN_KEY = "positions_wallet_fkey";
 // check_violation, not_null_violation, string_data_right_truncation, numeric_value_out_of_range,
 // invalid_text_representation, invalid_datetime_format: the database refused a value the form let through.
-const VALIDATION_CODES = new Set(["23514", "23502", "22001", "22003", "22P02", "22007", "22008"]);
+export const VALIDATION_CODES = new Set(["23514", "23502", "22001", "22003", "22P02", "22007", "22008"]);
 
 // Code and message only: `details` can carry the failing row, reason text included.
-function logUnexpected(where: string, error: { code?: string; message: string }) {
+export function logUnexpected(where: string, error: { code?: string; message: string }) {
   // eslint-disable-next-line no-console -- the only trace of a failed save in the function logs
   console.error(`${where} failed`, { code: error.code, message: error.message });
 }
 
 function failure(error: PostgrestError): CreatePositionResult {
-  if (error.code === FOREIGN_KEY_VIOLATION) return { ok: false, error: "category_not_found" };
+  if (error.code === FOREIGN_KEY_VIOLATION) {
+    return { ok: false, error: error.message.includes(WALLET_FOREIGN_KEY) ? "wallet_not_found" : "category_not_found" };
+  }
   if (VALIDATION_CODES.has(error.code)) return { ok: false, error: "validation" };
   logUnexpected("createPosition", error);
   return { ok: false, error: "unexpected" };
@@ -51,19 +56,24 @@ export async function listCategories(client: Client): Promise<ReasonCategory[]> 
 }
 
 /** The author's non-deleted positions with their category name, newest buy first. */
-export async function listPositions(client: Client): Promise<PositionListItem[]> {
-  const { data, error } = await client
-    .from("positions")
-    .select(
-      "id, instrument, buy_date, buy_price, quantity, broker_label, current_price, price_date, reason_categories(name)",
-    )
-    .is("deleted_at", null)
-    .order("buy_date", { ascending: false })
-    .order("created_at", { ascending: false });
-  if (error) throw new Error(`listPositions failed: ${error.message}`);
-  return data.map(({ reason_categories, ...position }) => ({
+export async function listPositions(client: Client, walletId?: string): Promise<PositionListItem[]> {
+  const data = await readAll("listPositions", (from, to) => {
+    let query = client
+      .from("positions")
+      .select(
+        "id, instrument, buy_date, buy_price, quantity, broker_label, current_price, price_date, wallet_id, wallets!positions_wallet_fkey(name), reason_categories(name)",
+      )
+      .is("deleted_at", null)
+      .order("buy_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false });
+    if (walletId !== undefined) query = query.eq("wallet_id", walletId);
+    return query.range(from, to);
+  });
+  return data.map(({ reason_categories, wallets, ...position }) => ({
     ...position,
     category_name: reason_categories.name,
+    wallet_name: wallets.name,
   }));
 }
 
@@ -91,15 +101,15 @@ export async function getPosition(client: Client, id: string): Promise<PositionD
   const { data, error } = await client
     .from("positions")
     .select(
-      "id, instrument, buy_date, buy_price, quantity, broker_label, current_price, price_date, reason_text, reason_categories(name)",
+      "id, instrument, buy_date, buy_price, quantity, broker_label, current_price, price_date, reason_text, wallet_id, wallets!positions_wallet_fkey(name), reason_categories(name)",
     )
     .eq("id", id)
     .is("deleted_at", null)
     .maybeSingle();
   if (error) throw new Error(`getPosition failed: ${error.message}`);
   if (!data) return null;
-  const { reason_categories, ...position } = data;
-  return { ...position, category_name: reason_categories.name };
+  const { reason_categories, wallets, ...position } = data;
+  return { ...position, category_name: reason_categories.name, wallet_name: wallets.name };
 }
 
 /** Replaces a non-deleted position's current price and its date (FR-006); no other column changes. */
@@ -245,6 +255,7 @@ export async function createPosition(
       broker_label: input.broker_label,
       reason_text: input.reason_text,
       category_id: categoryId,
+      wallet_id: input.wallet_id,
     })
     .select("id")
     .single();

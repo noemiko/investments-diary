@@ -1,0 +1,143 @@
+---
+// The rule crashes ("Expected node to have a parent") on a top-level `return` in frontmatter;
+// an eslint-disable comment would not help, because the rule still runs. Nothing here passes promises as callbacks.
+/* eslint @typescript-eslint/no-misused-promises: "off" */
+import Layout from "@/layouts/Layout.astro";
+import PositionsTable from "@/components/positions/PositionsTable.astro";
+import { listPositions } from "@/lib/services/positions";
+import { walletValue } from "@/lib/wallet";
+import WalletValue from "@/components/wallets/WalletValue.astro";
+import WalletForm from "@/components/wallets/WalletForm.astro";
+import { buttonVariants } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase";
+import { getWallet, updateWallet, type UpdateWalletResult } from "@/lib/services/wallets";
+import { parseWalletForm, readWalletForm } from "@/lib/validation/wallet";
+import { isUuid } from "@/lib/validation/uuid";
+import type { Wallet, WalletFormErrors, WalletFormValues } from "@/types";
+
+// Handles its own POST and re-renders on error, as /dashboard/positions/[id] does.
+
+const { user } = Astro.locals;
+if (!user) {
+  return Astro.redirect("/auth/signin");
+}
+
+const supabase = createClient(Astro.request.headers, Astro.cookies);
+
+const SAVE_ERRORS: Record<Exclude<UpdateWalletResult, { ok: true }>["error"], WalletFormErrors> = {
+  not_found: {},
+  name_taken: { name: "You already have a wallet with this name" },
+  validation: { form: "Some values could not be saved. Check them and try again." },
+  unexpected: { form: "Your wallet could not be saved. Please try again." },
+};
+
+const id = Astro.params.id ?? "";
+
+// "not_found" covers a malformed id, a missing one and another account's alike,
+// so the page never reveals whether an id exists for someone else.
+let state: "found" | "not_found" | "load_failed" = "not_found";
+let wallet: Wallet | null = null;
+if (isUuid(id)) {
+  try {
+    wallet = await getWallet(supabase, id);
+    state = wallet ? "found" : "not_found";
+  } catch {
+    // A failed read must not cost the author the page: render an error state instead of a 500.
+    state = "load_failed";
+  }
+}
+
+let values: WalletFormValues = wallet
+  ? { name: wallet.name, starting_value: String(wallet.starting_value) }
+  : { name: "", starting_value: "" };
+let errors: WalletFormErrors = {};
+
+if (wallet && Astro.request.method === "POST") {
+  values = readWalletForm(await Astro.request.formData());
+  const parsed = parseWalletForm(values);
+  if (parsed.success) {
+    const result = await updateWallet(supabase, wallet.id, parsed.data);
+    if (result.ok) {
+      return Astro.redirect("/dashboard/wallets");
+    }
+    if (result.error === "not_found") {
+      state = "not_found";
+      wallet = null;
+    } else {
+      errors = SAVE_ERRORS[result.error];
+    }
+  } else {
+    errors = parsed.errors;
+  }
+}
+
+// Never interpret a failed member read as an empty wallet: total and members share this dataset.
+let positions: Awaited<ReturnType<typeof listPositions>> | null = null;
+if (wallet) {
+  try {
+    positions = await listPositions(supabase, wallet.id);
+  } catch {
+    positions = null;
+  }
+}
+const result = wallet && positions !== null ? walletValue(wallet, positions) : null;
+
+if (state === "not_found") {
+  Astro.response.status = 404;
+}
+---
+
+<Layout title={wallet ? wallet.name : "Wallet not found"}>
+  <div class="bg-cosmic min-h-screen p-4">
+    <Card className="mx-auto max-w-5xl min-w-0 p-8">
+      {state === "load_failed" && (
+        <div class="flex flex-col items-center gap-4 text-center">
+          <p role="alert" class="max-w-md text-destructive">
+            This wallet could not be loaded.{Astro.request.method === "POST" && " Your changes were not saved."} Please
+            try again.
+          </p>
+          <a href={`/dashboard/wallets/${id}`} class:list={buttonVariants({ variant: "outline" })}>
+            Try again
+          </a>
+        </div>
+      )}
+
+      {state === "not_found" && (
+        <div class="flex flex-col items-center gap-4 text-center">
+          <h1 class="text-gradient-heading text-3xl font-bold">Wallet not found</h1>
+          <p class="max-w-md text-muted-foreground">The link may be wrong.</p>
+        </div>
+      )}
+
+      {wallet && (
+        <>
+          <h1 class="text-gradient-heading min-w-0 text-3xl font-bold break-words">{wallet.name}</h1>
+          {result && <WalletValue startingValue={wallet.starting_value} result={result} />}
+          <section class="flex min-w-0 flex-col gap-4" aria-labelledby="members-heading">
+            <h2 id="members-heading" class="text-lg font-semibold">
+              Investments
+            </h2>
+            {positions === null ? (
+              <p role="alert" class="text-destructive">
+                This wallet's investments and value could not be loaded. Please try again.
+              </p>
+            ) : positions.length === 0 ? (
+              <p class="text-muted-foreground">No investments in this wallet yet.</p>
+            ) : (
+              <PositionsTable positions={positions} showWallet={false} />
+            )}
+          </section>
+          <h2 class="text-lg font-semibold">Edit wallet</h2>
+          <WalletForm values={values} errors={errors} submitLabel="Save changes" />
+        </>
+      )}
+
+      <p class="text-sm">
+        <a href="/dashboard/wallets" class="text-primary hover:underline">
+          Back to your wallets
+        </a>
+      </p>
+    </Card>
+  </div>
+</Layout>

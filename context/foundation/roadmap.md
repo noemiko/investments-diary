@@ -3,7 +3,7 @@ project: "Investments Diary"
 version: 1
 status: draft # draft | active | locked
 created: 2026-09-25
-updated: 2026-10-16
+updated: 2026-10-19
 prd_version: 1
 main_goal: learn
 top_blocker: decisions
@@ -25,7 +25,7 @@ milestone_status: open # open | done
 - **Intent:** The author can record every position they hold with the reason they bought it, follow each position's result, and — before saving a new investment — see how their earlier investments made for the same reason turned out.
 - **Source materials:** `context/foundation/prd.md` (v1)
 - **Done when:** every S-NN below is `done`.
-- **Scope anchors:** FR-001 – FR-012, US-01, the four PRD Non-Functional Requirements.
+- **Scope anchors:** FR-001 – FR-013 (FR-013 is should-have), US-01, the four PRD Non-Functional Requirements.
 
 ## Vision recap
 
@@ -56,6 +56,7 @@ with your own past reasoning at the moment of deciding improves how you invest.
 | S-06 | private-diary-access      | register and reach only their own diary, with every diary page gated behind sign-in  | —             | FR-001, FR-002                 | ready       |
 | S-07 | reason-lock-editing       | correct an investment's facts and add a missing reason, after which the reason locks | S-01          | FR-008, FR-004                 | proposed    |
 | S-08 | evolve-reason-categories  | rename a reason category everywhere, or remove it while past positions keep it       | S-01          | FR-005                         | proposed    |
+| S-09 | named-wallets             | group investments into named wallets and see totals with missing-data and price-date context | S-01, S-02, S-05 | FR-013 (should-have)       | in-progress |
 
 ## Baseline
 
@@ -127,6 +128,7 @@ which is exactly what this roadmap avoids.
 - **Parallel with:** S-03, S-05, S-06, S-07, S-08
 - **Blockers:** —
 - **Unknowns:**
+  - How should a closed position's realised result count in its wallet? (PRD Open Question 6, FR-013) — Owner: user. Block: no for closing itself; resolve before integrating closed results into wallet totals.
   - Acceptance criteria for the closing path are missing (PRD Open Question 4) — Owner: user. Block: no (write them during `/10x-plan`).
 - **Risk:** Builds on the result concept from S-02; kept separate from it because a long-term investor rarely sells and this path should not delay the north star.
 - **Status:** proposed
@@ -166,6 +168,7 @@ which is exactly what this roadmap avoids.
 - **Parallel with:** S-02, S-03, S-04, S-05, S-06, S-08
 - **Blockers:** —
 - **Unknowns:**
+  - Can an investment move between wallets? (PRD Open Question 6, FR-013) — Owner: user. Block: no for factual corrections; resolve before adding wallet reassignment.
   - Can a rushed entry saved without a reason be completed later — resolved 2026-09-25: yes; the lock window starts when the reason is first written, not when the entry is created (PRD Open Question 1).
 - **Risk:** The lock is what keeps the diary honest; starting it at the first written reason means rushed entries are never stranded without one, while written reasoning still cannot be softened after the outcome is known.
 - **Status:** proposed
@@ -184,6 +187,21 @@ which is exactly what this roadmap avoids.
 - **Risk:** The confrontation groups history by category; because rename keeps the same category and removal only hides it, earlier positions never lose their grouping.
 - **Status:** proposed
 
+### S-09: Group investments into named wallets
+
+- **Outcome:** user can create several named wallets, edit each wallet's name and starting value, and assign every investment to exactly one wallet. Each wallet shows its starting value plus the sum of (current price − buy price) × quantity over its non-deleted investments, the number excluded for missing quantity or current price, and the oldest price date used in the total. Wallet deletion is excluded from the first version.
+- **Change ID:** named-wallets
+- **PRD refs:** FR-013 (should-have); NFR owner-only access and dated results
+- **Prerequisites:** S-01, S-02, S-05
+- **Parallel with:** S-06, S-08
+- **Blockers:** —
+- **Unknowns:**
+  - FR-013 says non-deleted investments, while PRD Open Question 6 describes open, non-deleted investments only. How should closed positions and their realised results count? — Owner: user. Block: no for open-position totals; resolve with S-04 before including closed results.
+  - Can an investment move between wallets? (PRD Open Question 6) — Owner: user. Block: no for initial assignment; resolve with S-07 before adding reassignment.
+  - How should existing investments be assigned when wallets are introduced so each belongs to exactly one wallet? — Owner: user. Block: no (settle during `/10x-plan`).
+- **Risk:** An incomplete or stale total can look authoritative. Show excluded counts and the oldest included price date; keep wallets as the author's own groupings without currencies, fees, broker account numbers, or investment verdicts. Sequence after the core diary flow because FR-013 is should-have.
+- **Status:** in-progress
+
 ## Backlog Handoff
 
 | Roadmap ID | Change ID                 | Suggested issue title                                   | Ready for `/10x-plan` | Notes                                   |
@@ -196,6 +214,7 @@ which is exactly what this roadmap avoids.
 | S-06       | private-diary-access      | Gate every diary page and keep each diary owner-only    | yes                   | Run `/10x-plan private-diary-access`    |
 | S-07       | reason-lock-editing       | Edit investment facts with a locked reason              | no                    | Waits on S-01                           |
 | S-08       | evolve-reason-categories  | Rename and soft-remove reason categories                | no                    | Waits on S-01                           |
+| S-09       | named-wallets             | Group investments into named wallets with transparent totals | yes              | Prerequisites S-01, S-02, S-05 are done; resolve assignment and total rules during planning |
 
 ## Open Roadmap Questions
 
@@ -204,6 +223,7 @@ which is exactly what this roadmap avoids.
 3. ~~**Sign-up behaviour and unauthenticated-visitor handling**~~ — Resolved 2026-09-25: open registration. Signed-out visitors on a gated page are assumed to be redirected to sign-in (confirm in S-06).
 4. **User stories for the remaining paths** — only the confrontation path has acceptance criteria. Back-filling an existing holding, updating a price and closing a position do not. Owner: user. Block: none (resolved per slice during `/10x-plan` for S-01, S-02, S-04).
 5. **Live price source as a later addition** — recorded as a secondary success criterion and an explicit non-goal for version one. Owner: user. Block: none.
+6. **Wallet rules for remaining position paths** — FR-013 defines totals over non-deleted investments, but PRD Open Question 6 narrows this to open investments. Resolve closed-position results with S-04 and wallet reassignment with S-07; settle assignment of existing investments during S-09 planning. Wallet deletion remains excluded from the first version; any later deletion policy stays open. Owner: user. Block: none for the open-position wallet slice.
 
 ## Parked
 

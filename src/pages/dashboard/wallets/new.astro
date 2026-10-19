@@ -1,0 +1,58 @@
+---
+// The rule crashes ("Expected node to have a parent") on a top-level `return` in frontmatter;
+// an eslint-disable comment would not help, because the rule still runs. Nothing here passes promises as callbacks.
+/* eslint @typescript-eslint/no-misused-promises: "off" */
+import Layout from "@/layouts/Layout.astro";
+import WalletForm from "@/components/wallets/WalletForm.astro";
+import { Card } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase";
+import { createWallet, type CreateWalletResult } from "@/lib/services/wallets";
+import { parseWalletForm, readWalletForm } from "@/lib/validation/wallet";
+import type { WalletFormErrors, WalletFormValues } from "@/types";
+
+// Handles its own POST and re-renders on error, as /dashboard/new does.
+
+const { user } = Astro.locals;
+if (!user) {
+  return Astro.redirect("/auth/signin");
+}
+
+const supabase = createClient(Astro.request.headers, Astro.cookies);
+
+const SAVE_ERRORS: Record<Exclude<CreateWalletResult, { ok: true }>["error"], WalletFormErrors> = {
+  name_taken: { name: "You already have a wallet with this name" },
+  validation: { form: "Some values could not be saved. Check them and try again." },
+  unexpected: { form: "Your wallet could not be saved. Please try again." },
+};
+
+let values: WalletFormValues = { name: "", starting_value: "" };
+let errors: WalletFormErrors = {};
+
+if (Astro.request.method === "POST") {
+  values = readWalletForm(await Astro.request.formData());
+  const parsed = parseWalletForm(values);
+  if (parsed.success) {
+    const result = await createWallet(supabase, user.id, parsed.data);
+    if (result.ok) {
+      return Astro.redirect("/dashboard/wallets");
+    }
+    errors = SAVE_ERRORS[result.error];
+  } else {
+    errors = parsed.errors;
+  }
+}
+---
+
+<Layout title="New wallet">
+  <div class="bg-cosmic min-h-screen p-4">
+    <Card className="mx-auto max-w-3xl min-w-0 p-8">
+      <h1 class="text-gradient-heading text-3xl font-bold">New wallet</h1>
+      <WalletForm values={values} errors={errors} submitLabel="Save wallet" />
+      <p class="text-sm">
+        <a href="/dashboard/wallets" class="text-primary hover:underline">
+          Back to your wallets
+        </a>
+      </p>
+    </Card>
+  </div>
+</Layout>
