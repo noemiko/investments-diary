@@ -1,7 +1,7 @@
 // Smoke test: proves the Supabase auth flow still works end-to-end over HTTP (redirects, cookies, gating),
 // that a deleted position can be restored, that the new-investment form confronts the author with their
-// same-category positions (server-rendered part only; the live reveal needs JS), and that one account
-// cannot see, borrow, delete or restore another account's diary data.
+// same-category positions (server-rendered part only; the live reveal needs JS), that a wallet counts its
+// positions (FR-013), and that one account cannot see, borrow, delete or restore another account's diary data.
 // Zero dependencies on purpose. Run against a live server: BASE_URL=http://localhost:4321 node scripts/smoke.mjs
 // Creates two accounts per run — never point it at production.
 
@@ -22,13 +22,30 @@ const anonymous = account("anon");
 const instrument = `SMOKE-${runId}`;
 const deletedInstrument = `DEL-${runId}`;
 const categoryName = `Smoke category ${runId}`;
+const walletName = `Smoke wallet ${runId}`;
 const reasonText = "Smoke walk reason";
 // Run-unique, so its absence from a page proves the deleted filter rather than a coincidence.
 const deletedReasonText = `Deleted position reason ${runId}`;
 
 // Ids captured from A's pages, so later steps can target them and check B never sees them.
-const ids = { category: "", mainPosition: "", delPosition: "" };
-const ID_LABELS = { category: "category", mainPosition: "main position", delPosition: "position to delete" };
+const ids = {
+  secondWallet: "",
+  pricedPosition: "",
+  wallet: "",
+  bWallet: "",
+  category: "",
+  mainPosition: "",
+  delPosition: "",
+};
+const ID_LABELS = {
+  secondWallet: "second wallet",
+  pricedPosition: "priced investment",
+  wallet: "wallet",
+  bWallet: "B's own wallet",
+  category: "category",
+  mainPosition: "main position",
+  delPosition: "position to delete",
+};
 // B's 404 body for an id that exists nowhere; a foreign id must render exactly the same page.
 let unknownIdBody = "";
 
@@ -82,6 +99,14 @@ function categoryIdFor(html, name) {
   return "";
 }
 
+// Each wallet row links to `/dashboard/wallets/<id>` with the wallet's name as the link text.
+function walletIdFor(html, name) {
+  for (const [, id, text] of html.matchAll(/href="\/dashboard\/wallets\/([0-9a-f-]{36})"[^>]*>\s*([^<]*?)\s*<\/a>/gi)) {
+    if (decodeEntities(text) === name) return id;
+  }
+  return "";
+}
+
 // Each position row carries a form posting to `/dashboard/positions/<id>/<action>`; match the row whose
 // cell text is exactly the run-unique instrument.
 function positionIdFor(html, name, action) {
@@ -99,6 +124,8 @@ function position(overrides = {}) {
     instrument,
     buy_price: "50,25",
     buy_date: new Date().toISOString().slice(0, 10),
+    // A's wallet by default; B's steps pass their own, so a rejection is never about the wallet by accident.
+    wallet_id: ids.wallet,
     category_id: "",
     new_category_name: "",
     reason_text: reasonText,
@@ -134,6 +161,14 @@ const rejectedEntry = (overrides) => position({ instrument: "", ...overrides });
 // `excludesIds` names captured ids that must not appear in the body; `requiresIds` names ids that must
 // have been captured. `location` is a prefix match unless `exactLocation` is set.
 const steps = [
+  ...["/dashboard/wallets", "/dashboard/wallets/new", `/dashboard/wallets/${randomUUID()}`].flatMap((path) => [
+    [`anonymous wallet GET ${path}`, () => request(anonymous, path), { status: 302, location: "/auth/signin" }],
+    [
+      `anonymous wallet POST ${path}`,
+      () => request(anonymous, path, { method: "POST", form: { name: "Forbidden", starting_value: "0" } }),
+      { status: 302, location: "/auth/signin" },
+    ],
+  ]),
   ["home renders", () => request(a, "/"), { status: 200 }],
   ["dashboard redirects anonymous user", () => request(a, "/dashboard"), { status: 302, location: "/auth/signin" }],
   [
@@ -155,6 +190,24 @@ const steps = [
 
   // Account A records a position under a new category.
   ["A: dashboard shows empty state", () => request(a, "/dashboard"), { status: 200, includes: [EMPTY_STATE] }],
+  [
+    "A: creates a wallet (FR-013)",
+    () =>
+      request(a, "/dashboard/wallets/new", {
+        method: "POST",
+        form: { name: walletName, starting_value: "1 000,50" },
+      }),
+    { status: 302, location: "/dashboard/wallets", exactLocation: true },
+  ],
+  [
+    "A: wallets page lists it with its starting value",
+    async () => {
+      const result = await request(a, "/dashboard/wallets");
+      ids.wallet = walletIdFor(result.body, walletName);
+      return result;
+    },
+    { status: 200, includes: [walletName, "1,000.50", "No priced positions"], requiresIds: ["wallet"] },
+  ],
   [
     "A: records a position with a new category",
     () => request(a, "/dashboard/new", { method: "POST", form: position({ new_category_name: categoryName }) }),
@@ -376,9 +429,51 @@ const steps = [
     { status: 200, includes: [EMPTY_STATE], excludes: [instrument] },
   ],
   [
-    "B: form does not offer A's category",
+    "B: form does not offer A's category or wallet",
     () => request(b, "/dashboard/new"),
-    { status: 200, excludes: [categoryName], requiresIds: ["category"], excludesIds: ["category"] },
+    {
+      status: 200,
+      excludes: [categoryName, walletName],
+      requiresIds: ["category", "wallet"],
+      excludesIds: ["category", "wallet"],
+    },
+  ],
+  [
+    "B: wallets page does not list A's wallet",
+    () => request(b, "/dashboard/wallets"),
+    { status: 200, excludes: [walletName], requiresIds: ["wallet"], excludesIds: ["wallet"] },
+  ],
+  [
+    "B: cannot open A's wallet",
+    () => request(b, `/dashboard/wallets/${ids.wallet}`),
+    { status: 404, includes: ["Wallet not found"], excludes: [walletName], requiresIds: ["wallet"] },
+  ],
+  [
+    "B: cannot rename A's wallet",
+    () =>
+      request(b, `/dashboard/wallets/${ids.wallet}`, { method: "POST", form: { name: "Taken", starting_value: "0" } }),
+    { status: 404, includes: ["Wallet not found"], requiresIds: ["wallet"] },
+  ],
+  [
+    "B: creates its own wallet",
+    async () => {
+      const result = await request(b, "/dashboard/wallets/new", {
+        method: "POST",
+        form: { name: `B ${walletName}`, starting_value: "0" },
+      });
+      ids.bWallet = walletIdFor((await request(b, "/dashboard/wallets")).body, `B ${walletName}`);
+      return result;
+    },
+    { status: 302, location: "/dashboard/wallets", exactLocation: true, requiresIds: ["bWallet"] },
+  ],
+  [
+    "B: cannot record a position into A's wallet",
+    () =>
+      request(b, "/dashboard/new", {
+        method: "POST",
+        form: position({ wallet_id: ids.wallet, new_category_name: `B ${categoryName}` }),
+      }),
+    { status: 200, includes: ["Choose a wallet from your list"], excludesIds: ["wallet"] },
   ],
   [
     // Every reason the author wrote is serialised into this page's island props, so this is the privacy line.
@@ -397,7 +492,12 @@ const steps = [
     () =>
       request(b, "/dashboard/new", {
         method: "POST",
-        form: rejectedEntry({ category_id: "__new__", new_category_name: categoryName, reason_text: "" }),
+        form: rejectedEntry({
+          wallet_id: ids.bWallet,
+          category_id: "__new__",
+          new_category_name: categoryName,
+          reason_text: "",
+        }),
       }),
     {
       status: 200,
@@ -408,7 +508,11 @@ const steps = [
   ],
   [
     "B: cannot record a position with A's category",
-    () => request(b, "/dashboard/new", { method: "POST", form: position({ category_id: ids.category }) }),
+    () =>
+      request(b, "/dashboard/new", {
+        method: "POST",
+        form: position({ wallet_id: ids.bWallet, category_id: ids.category }),
+      }),
     { status: 200, includes: ["Choose a category from your list"], excludesIds: ["category"] },
   ],
   [
@@ -436,7 +540,7 @@ const steps = [
     () =>
       request(b, "/dashboard/new", {
         method: "POST",
-        form: position({ buy_date: tomorrowUtc, new_category_name: `B ${categoryName}` }),
+        form: position({ wallet_id: ids.bWallet, buy_date: tomorrowUtc, new_category_name: `B ${categoryName}` }),
       }),
     { status: 200, includes: ["The buy date cannot be in the future"] },
   ],
@@ -493,9 +597,153 @@ const steps = [
     { status: 200, includes: [RESULT, "as of"] },
   ],
   [
+    // Main has no quantity; the no-JS entry has no price. Both are excluded; deleted entries are absent.
+    "A: wallet leaves the position without quantity out of its value",
+    () => request(a, "/dashboard/wallets"),
+    { status: 200, includes: [walletName, "1,000.50", 'data-wallet-not-counted="2"', "No priced positions"] },
+  ],
+  [
     "A: deleted position is still deleted",
     () => request(a, "/dashboard/deleted"),
     { status: 200, includes: [deletedInstrument], requiresIds: ["delPosition"] },
+  ],
+  [
+    "A: rejects a duplicate wallet name ignoring case and retains values",
+    () =>
+      request(a, "/dashboard/wallets/new", {
+        method: "POST",
+        form: { name: walletName.toUpperCase(), starting_value: "25" },
+      }),
+    { status: 200, includes: ["You already have a wallet with this name", walletName.toUpperCase(), 'value="25"'] },
+  ],
+  [
+    "A: creates a second wallet",
+    async () => {
+      const result = await request(a, "/dashboard/wallets/new", {
+        method: "POST",
+        form: { name: `Second ${walletName}`, starting_value: "1000" },
+      });
+      ids.secondWallet = walletIdFor((await request(a, "/dashboard/wallets")).body, `Second ${walletName}`);
+      return result;
+    },
+    { status: 302, location: "/dashboard/wallets", exactLocation: true, requiresIds: ["secondWallet"] },
+  ],
+  [
+    "A: records a priced-wallet investment",
+    async () => {
+      const result = await request(a, "/dashboard/new", {
+        method: "POST",
+        form: position({
+          instrument: `PRICED-${runId}`,
+          wallet_id: ids.secondWallet,
+          buy_price: "50",
+          quantity: "10",
+          category_id: ids.category,
+        }),
+      });
+      ids.pricedPosition = positionIdFor((await request(a, "/dashboard")).body, `PRICED-${runId}`, "delete");
+      return result;
+    },
+    { status: 302, location: "/dashboard", exactLocation: true, requiresIds: ["pricedPosition"] },
+  ],
+  [
+    "A: sets the priced-wallet investment's price",
+    () =>
+      request(a, `/dashboard/positions/${ids.pricedPosition}`, {
+        method: "POST",
+        form: { current_price: "60", price_date: todayUtc },
+      }),
+    { status: 302, location: () => `/dashboard/positions/${ids.pricedPosition}`, exactLocation: true },
+  ],
+  [
+    "A: wallet total and members agree: 1000 + (60 - 50) * 10 = 1100",
+    () => request(a, `/dashboard/wallets/${ids.secondWallet}`),
+    {
+      status: 200,
+      includes: [
+        'data-wallet-value="1,100.00"',
+        `PRICED-${runId}`,
+        categoryName,
+        "as of",
+        () => `/dashboard/positions/${ids.pricedPosition}`,
+      ],
+      excludes: [instrument, deletedInstrument],
+    },
+  ],
+  [
+    "A: first wallet excludes the second wallet's investment",
+    () => request(a, `/dashboard/wallets/${ids.wallet}`),
+    { status: 200, includes: [instrument, walletName], excludes: [`PRICED-${runId}`, deletedInstrument] },
+  ],
+  [
+    "A: dashboard links to the investment's wallet",
+    () => request(a, "/dashboard"),
+    { status: 200, includes: [() => `/dashboard/wallets/${ids.secondWallet}`, `Second ${walletName}`] },
+  ],
+  [
+    "A: position detail links to its wallet",
+    () => request(a, `/dashboard/positions/${ids.pricedPosition}`),
+    { status: 200, includes: [() => `/dashboard/wallets/${ids.secondWallet}`, `Second ${walletName}`] },
+  ],
+  [
+    "A: rejects invalid edits and retains entered values",
+    () =>
+      request(a, `/dashboard/wallets/${ids.secondWallet}`, {
+        method: "POST",
+        form: { name: "Pending rename", starting_value: "-1" },
+      }),
+    {
+      status: 200,
+      includes: ['value="Pending rename"', 'value="-1"', "Enter a number like 50.25", 'data-wallet-value="1,100.00"'],
+    },
+  ],
+  [
+    "A: edits wallet name and starting value",
+    () =>
+      request(a, `/dashboard/wallets/${ids.secondWallet}`, {
+        method: "POST",
+        form: { name: `Renamed ${walletName}`, starting_value: "2000" },
+      }),
+    { status: 302, location: "/dashboard/wallets", exactLocation: true },
+  ],
+  [
+    "A: edited wallet recomputes total",
+    () => request(a, `/dashboard/wallets/${ids.secondWallet}`),
+    { status: 200, includes: [`Renamed ${walletName}`, 'data-wallet-value="2,100.00"'] },
+  ],
+  [
+    "A: investment detail reflects renamed wallet",
+    () => request(a, `/dashboard/positions/${ids.pricedPosition}`),
+    { status: 200, includes: [`Renamed ${walletName}`], excludes: [`Second ${walletName}`] },
+  ],
+  [
+    "A: confrontation still spans wallets",
+    () => request(a, "/dashboard/new", { method: "POST", form: rejectedEntry({ category_id: ids.category }) }),
+    { status: 200, includes: [confronts("mainPosition"), confronts("pricedPosition")] },
+  ],
+  [
+    "A: deletes the priced investment",
+    () => request(a, `/dashboard/positions/${ids.pricedPosition}/delete`, { method: "POST" }),
+    { status: 302, location: () => `/dashboard?deleted=${ids.pricedPosition}`, exactLocation: true },
+  ],
+  [
+    "A: deletion removes member and its gain from total",
+    () => request(a, `/dashboard/wallets/${ids.secondWallet}`),
+    {
+      status: 200,
+      includes: ['data-wallet-value="2,000.00"', "No priced positions", "No investments in this wallet yet."],
+      excludes: [`PRICED-${runId}`],
+    },
+  ],
+  [
+    "A: restores the priced investment",
+    () => request(a, `/dashboard/positions/${ids.pricedPosition}/restore`, { method: "POST" }),
+    { status: 302, location: "/dashboard", exactLocation: true },
+  ],
+  [
+    "A: restoration returns member and its gain to the same wallet",
+    () => request(a, `/dashboard/wallets/${ids.secondWallet}`),
+    { status: 200, includes: ['data-wallet-value="2,100.00"', `PRICED-${runId}`] },
   ],
   [
     "A: signout clears session again",

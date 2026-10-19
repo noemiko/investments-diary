@@ -17,6 +17,8 @@ export const typicalPositions: PositionListItem[] = [
     broker_label: "XTB",
     current_price: 201.1,
     price_date: "2026-10-14",
+    wallet_id: "00000000-0000-4000-8000-000000000010",
+    wallet_name: "Retirement",
     category_name: "Quality growth",
   },
   {
@@ -28,6 +30,8 @@ export const typicalPositions: PositionListItem[] = [
     broker_label: "mBank",
     current_price: 88.5,
     price_date: "2026-10-01",
+    wallet_id: "00000000-0000-4000-8000-000000000010",
+    wallet_name: "Retirement",
     category_name: "Index core",
   },
   {
@@ -39,6 +43,8 @@ export const typicalPositions: PositionListItem[] = [
     broker_label: "Kraken",
     current_price: null,
     price_date: null,
+    wallet_id: "00000000-0000-4000-8000-000000000010",
+    wallet_name: "Retirement",
     category_name: "Speculation",
   },
 ];
@@ -53,6 +59,8 @@ export const positionsWithNulls: PositionListItem[] = [
     broker_label: null,
     current_price: 0.2,
     price_date: "2026-09-30",
+    wallet_id: "00000000-0000-4000-8000-000000000010",
+    wallet_name: "Retirement",
     category_name: "Turnaround",
   },
 ];
@@ -67,6 +75,8 @@ export const longTextPositions: PositionListItem[] = [
     broker_label: "Interactive Brokers Ireland",
     current_price: null,
     price_date: null,
+    wallet_id: "00000000-0000-4000-8000-000000000010",
+    wallet_name: "Retirement",
     category_name: LONG_CATEGORY,
   },
 ];

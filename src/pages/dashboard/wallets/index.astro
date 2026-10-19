@@ -1,0 +1,109 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { buttonVariants } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatAmount, formatDate, formatPercent, formatSignedAmount } from "@/lib/format";
+import { createClient } from "@/lib/supabase";
+import { listWalletPositions, listWallets } from "@/lib/services/wallets";
+import { groupByWallet, walletValue } from "@/lib/wallet";
+
+const supabase = createClient(Astro.request.headers, Astro.cookies);
+
+// A failed read must not cost the author the page: render an error state instead of a 500.
+let rows: { id: string; name: string; startingValue: number; result: ReturnType<typeof walletValue> }[] | null = null;
+try {
+  const [wallets, positions] = await Promise.all([listWallets(supabase), listWalletPositions(supabase)]);
+  const byWallet = groupByWallet(positions);
+  rows = wallets.map((wallet) => ({
+    id: wallet.id,
+    name: wallet.name,
+    startingValue: wallet.starting_value,
+    result: walletValue(wallet, byWallet.get(wallet.id) ?? []),
+  }));
+} catch {
+  // rows stays null → error state
+}
+---
+
+<Layout title="Wallets">
+  <div class="bg-cosmic min-h-screen p-4">
+    <Card className="mx-auto max-w-5xl min-w-0 p-8">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <h1 class="text-gradient-heading text-3xl font-bold">Your wallets</h1>
+        <a href="/dashboard/wallets/new" class:list={buttonVariants()}>
+          New wallet
+        </a>
+      </div>
+
+      {rows === null ? (
+        <p role="alert" class="text-destructive">
+          Your wallets could not be loaded. Please try again.
+        </p>
+      ) : rows.length === 0 ? (
+        <p class="text-muted-foreground">
+          No wallets yet. Create one to group your investments and follow their value.
+        </p>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead scope="col" className="text-muted-foreground">
+                Wallet
+              </TableHead>
+              <TableHead scope="col" className="text-right text-muted-foreground">
+                Starting value
+              </TableHead>
+              <TableHead scope="col" className="text-right text-muted-foreground">
+                Current value
+              </TableHead>
+              <TableHead scope="col" className="text-right text-muted-foreground">
+                Change
+              </TableHead>
+              <TableHead scope="col" className="text-muted-foreground">
+                Prices
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((row) => (
+              <TableRow>
+                <TableCell className="font-semibold">
+                  <a href={`/dashboard/wallets/${row.id}`} class="underline underline-offset-4 hover:text-primary">
+                    {row.name}
+                  </a>
+                </TableCell>
+                <TableCell className="text-right text-muted-foreground tabular-nums">
+                  {formatAmount(row.startingValue)}
+                </TableCell>
+                <TableCell className="text-right font-semibold tabular-nums">
+                  {formatAmount(row.result.value)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatSignedAmount(row.result.change)}
+                  {row.result.changePercent !== null && (
+                    <span class="text-muted-foreground"> ({formatPercent(row.result.changePercent)})</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {row.result.asOf ? `as of ${formatDate(row.result.asOf)}` : "No priced positions"}
+                  {row.result.notCounted > 0 && (
+                    <span class="block text-xs" data-wallet-not-counted={row.result.notCounted}>
+                      {row.result.notCounted} not counted (no quantity or no price)
+                    </span>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+
+      <p class="text-sm">
+        <a href="/dashboard" class="text-primary hover:underline">
+          Back to your positions
+        </a>
+      </p>
+    </Card>
+  </div>
+</Layout>

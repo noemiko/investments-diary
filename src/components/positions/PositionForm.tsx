@@ -1,4 +1,4 @@
-import React, { useState, useSyncExternalStore } from "react";
+import React, { useRef, useState, useSyncExternalStore } from "react";
 import { Briefcase, Calendar, CircleAlert, Hash, Save, Tag, TrendingUp, Wallet } from "lucide-react";
 import { FormField } from "@/components/auth/FormField";
 import { ServerError } from "@/components/auth/ServerError";
@@ -14,6 +14,7 @@ import {
   type ConfrontationPosition,
   type PositionFormValues,
   type ReasonCategory,
+  type Wallet as WalletOption,
 } from "@/types";
 
 const controlBase =
@@ -21,6 +22,8 @@ const controlBase =
 
 interface Props {
   categories: ReasonCategory[];
+  /** The author's wallets (FR-013); every position must belong to one. */
+  wallets: WalletOption[];
   values: PositionFormValues;
   errors: PositionFormErrors;
   /** The author's earlier positions; `null` when they could not be loaded. */
@@ -56,12 +59,14 @@ function FieldError({ message }: { message?: string }) {
 
 export default function PositionForm({
   categories,
+  wallets,
   values: initialValues,
   errors: initialErrors,
   earlierPositions,
 }: Props) {
   const [values, setValues] = useState<PositionFormValues>(initialValues);
   const [errors, setErrors] = useState<PositionFormErrors>(initialErrors);
+  const categorySelect = useRef<HTMLSelectElement>(null);
   const [categoryChoice, setCategoryChoice] = useState(() => {
     if (initialValues.category_id) return initialValues.category_id;
     if (initialValues.new_category_name || categories.length === 0) return NEW_CATEGORY;
@@ -92,6 +97,8 @@ export default function PositionForm({
 
     if (!values.buy_date) next.buy_date = "Enter the buy date";
     else if (values.buy_date > todayUtc()) next.buy_date = "The buy date cannot be in the future";
+
+    if (!values.wallet_id) next.wallet_id = "Choose a wallet";
 
     if (isNewCategory) {
       const name = values.new_category_name.trim();
@@ -160,16 +167,58 @@ export default function PositionForm({
       />
 
       <div>
+        <label htmlFor="wallet" className="mb-1 block text-sm text-blue-100/80">
+          Wallet
+        </label>
+        {wallets.length === 0 ? (
+          <p className="text-sm text-blue-100/80">
+            You have no wallets yet.{" "}
+            <a href="/dashboard/wallets/new" className="text-purple-300 hover:underline">
+              Create a wallet
+            </a>{" "}
+            first.
+          </p>
+        ) : (
+          <select
+            id="wallet"
+            name="wallet_id"
+            value={values.wallet_id}
+            onChange={(e) => {
+              update("wallet_id", e.target.value);
+            }}
+            aria-invalid={errors.wallet_id ? true : undefined}
+            className={cn(
+              controlBase,
+              "[&>option]:bg-popover [&>option]:text-popover-foreground",
+              errors.wallet_id ? "border-red-400/60 focus:ring-red-400" : "border-white/20 focus:ring-purple-400",
+            )}
+          >
+            <option value="" disabled>
+              Choose a wallet…
+            </option>
+            {wallets.map((wallet) => (
+              <option key={wallet.id} value={wallet.id} data-wallet-id={wallet.id}>
+                {wallet.name}
+              </option>
+            ))}
+          </select>
+        )}
+        <FieldError message={errors.wallet_id} />
+      </div>
+
+      <div>
         <label htmlFor="category" className="mb-1 block text-sm text-blue-100/80">
           Reason category
         </label>
         {/* "New category…" posts the sentinel; the server then reads new_category_name instead. */}
         <select
+          ref={categorySelect}
           id="category"
           name="category_id"
           value={categoryChoice}
           onChange={(e) => {
             setCategoryChoice(e.target.value);
+            if (e.target.value !== NEW_CATEGORY) update("new_category_name", "");
             setErrors((prev) => ({ ...prev, category_id: undefined, new_category_name: undefined, form: undefined }));
           }}
           aria-invalid={categoryError ? true : undefined}
@@ -179,11 +228,7 @@ export default function PositionForm({
             categoryError ? "border-red-400/60 focus:ring-red-400" : "border-white/20 focus:ring-purple-400",
           )}
         >
-          {categories.length > 0 && (
-            <option value="" disabled>
-              Choose a category…
-            </option>
-          )}
+          {categories.length > 0 && <option value="">Choose a category…</option>}
           {categories.map((category) => (
             <option key={category.id} value={category.id} data-category-id={category.id}>
               {category.name}
@@ -195,17 +240,38 @@ export default function PositionForm({
       </div>
 
       {(isNewCategory || !hydrated) && (
-        <FormField
-          id="new_category_name"
-          label={isNewCategory ? "New category name" : "New category name (only with “New category…”)"}
-          value={values.new_category_name}
-          onChange={(v) => {
-            update("new_category_name", v);
-          }}
-          placeholder="e.g. Dividend growth"
-          error={errors.new_category_name}
-          icon={<Tag className="size-4" />}
-        />
+        <div>
+          <FormField
+            id="new_category_name"
+            label={isNewCategory ? "New category name" : "New category name (only with “New category…”)"}
+            value={values.new_category_name}
+            onChange={(v) => {
+              update("new_category_name", v);
+            }}
+            placeholder="e.g. Dividend growth"
+            error={errors.new_category_name}
+            icon={<Tag className="size-4" />}
+          />
+          {hydrated && isNewCategory && categories.length > 0 && (
+            <button
+              type="button"
+              className="mt-2 text-sm text-purple-300 underline underline-offset-4 hover:text-purple-200 focus-visible:outline-2 focus-visible:outline-offset-4"
+              onClick={() => {
+                setCategoryChoice("");
+                update("new_category_name", "");
+                setErrors((prev) => ({
+                  ...prev,
+                  category_id: undefined,
+                  new_category_name: undefined,
+                  form: undefined,
+                }));
+                categorySelect.current?.focus();
+              }}
+            >
+              Cancel new category
+            </button>
+          )}
+        </div>
       )}
 
       <ConfrontationPanel state={confrontation} />

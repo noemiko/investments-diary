@@ -8,6 +8,14 @@ const percentFormat = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
   signDisplay: "exceptZero",
 });
+// Wallet values are sums, shown money-like: always two decimals.
+const amountFormat = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// A wallet's change, signed like a percentage.
+const signedAmountFormat = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+  signDisplay: "exceptZero",
+});
 const dateFormat = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" });
 // An instant (e.g. `deleted_at`) is shown on the author's calendar day, not UTC's.
 const timestampFormat = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "Europe/Warsaw" });
@@ -15,6 +23,16 @@ const timestampFormat = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", 
 /** A price or quantity, en-US, up to 8 fraction digits. */
 export function formatNumber(value: number): string {
   return numberFormat.format(value);
+}
+
+/** A wallet value, en-US, exactly 2 fraction digits, e.g. `1,234.50`. */
+export function formatAmount(value: number): string {
+  return amountFormat.format(value);
+}
+
+/** A wallet's change, e.g. `+120.00`: two decimals, sign shown except for zero. */
+export function formatSignedAmount(value: number): string {
+  return signedAmountFormat.format(value);
 }
 
 /** A `YYYY-MM-DD` date, en-US medium style, read as UTC so it never shifts a day. */

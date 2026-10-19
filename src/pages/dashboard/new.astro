@@ -11,8 +11,9 @@ import {
   listConfrontationPositions,
   type CreatePositionError,
 } from "@/lib/services/positions";
+import { listWallets } from "@/lib/services/wallets";
 import { parsePositionForm, readPositionForm, todayUtc } from "@/lib/validation/position";
-import type { ConfrontationPosition, PositionFormErrors, PositionFormValues } from "@/types";
+import type { ConfrontationPosition, PositionFormErrors, PositionFormValues, Wallet } from "@/types";
 
 // Handles its own POST and re-renders on error: redirecting with `?error=` would put the
 // submitted values, reason text included, into the URL and the request logs.
@@ -26,6 +27,7 @@ const supabase = createClient(Astro.request.headers, Astro.cookies);
 
 const SAVE_ERRORS: Record<CreatePositionError, PositionFormErrors> = {
   category_not_found: { category_id: "Choose a category from your list" },
+  wallet_not_found: { wallet_id: "Choose a wallet from your list" },
   validation: { form: "Some values could not be saved. Check them and try again." },
   unexpected: { form: "Your investment could not be saved. Please try again." },
 };
@@ -34,6 +36,7 @@ let values: PositionFormValues = {
   instrument: "",
   buy_price: "",
   buy_date: todayUtc(),
+  wallet_id: "",
   category_id: "",
   new_category_name: "",
   reason_text: "",
@@ -55,6 +58,9 @@ if (Astro.request.method === "POST") {
       // Do not echo an id that is not the author's back into the page.
       values = { ...values, category_id: "" };
     }
+    if (result.error === "wallet_not_found") {
+      values = { ...values, wallet_id: "" };
+    }
   } else {
     errors = parsed.errors;
   }
@@ -66,6 +72,17 @@ try {
   categories = await listCategories(supabase);
 } catch {
   errors = { ...errors, form: "Your categories could not be loaded. Please try again." };
+}
+
+let wallets: Wallet[] = [];
+try {
+  wallets = await listWallets(supabase);
+} catch {
+  errors = { ...errors, form: "Your wallets could not be loaded. Please try again." };
+}
+// One wallet is the only possible answer, so preselect it on the first render.
+if (Astro.request.method !== "POST" && wallets.length === 1) {
+  values = { ...values, wallet_id: wallets[0].id };
 }
 
 // Earlier positions only inform the decision: a failed read is the panel's notice (`null`, not `[]`
@@ -86,6 +103,7 @@ try {
       </h1>
       <PositionForm
         categories={categories}
+        wallets={wallets}
         values={values}
         errors={errors}
         earlierPositions={earlierPositions}

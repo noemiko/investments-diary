@@ -1,0 +1,38 @@
+---
+import { formatAmount, formatDate, formatPercent, formatSignedAmount } from "@/lib/format";
+import type { WalletValueResult } from "@/lib/wallet";
+
+interface Props {
+  startingValue: number;
+  result: WalletValueResult;
+}
+const { startingValue, result } = Astro.props;
+---
+
+<div class="flex flex-col gap-2" data-wallet-value={formatAmount(result.value)}>
+  <dl class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div>
+      <dt class="text-sm text-muted-foreground">Starting value</dt>
+      <dd class="tabular-nums">{formatAmount(startingValue)}</dd>
+    </div>
+    <div>
+      <dt class="text-sm text-muted-foreground">Current value</dt>
+      <dd class="font-semibold tabular-nums">{formatAmount(result.value)}</dd>
+    </div>
+    <div>
+      <dt class="text-sm text-muted-foreground">Change</dt>
+      <dd class="tabular-nums">
+        {formatSignedAmount(result.change)}
+        {result.changePercent !== null && <span> ({formatPercent(result.changePercent)})</span>}
+      </dd>
+    </div>
+  </dl>
+  <p class="text-sm text-muted-foreground">
+    {result.asOf ? `as of ${formatDate(result.asOf)}` : "No priced positions"}
+  </p>
+  {result.notCounted > 0 && (
+    <p class="text-sm text-muted-foreground" data-wallet-not-counted={result.notCounted}>
+      {result.notCounted} not counted (no quantity or no price)
+    </p>
+  )}
+</div>

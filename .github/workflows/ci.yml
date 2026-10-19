@@ -27,6 +27,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx astro sync
+      - run: npm test
       - run: npm run lint
       - run: npx astro check
       - run: npm run build
@@ -52,6 +53,7 @@ jobs:
         run: |
           supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,realtime,storage-api,postgres-meta,supavisor
           supabase status -o env | grep -E '^(API_URL|ANON_KEY)=' > supabase.env
+      - run: npm run test:wallet-db
       - name: Configure secrets
         run: |
           source supabase.env

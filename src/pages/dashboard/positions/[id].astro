@@ -116,6 +116,12 @@ const inputClass =
             </p>
           </div>
 
+          <p class="text-sm text-muted-foreground">
+            Wallet:{" "}
+            <a href={`/dashboard/wallets/${position.wallet_id}`} class="text-primary underline underline-offset-4">
+              {position.wallet_name}
+            </a>
+          </p>
           <dl class="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <div>
               <dt class="text-sm text-muted-foreground">Buy date</dt>

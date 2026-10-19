@@ -49,6 +49,7 @@ export type Database = {
           quantity: number | null
           reason_text: string | null
           user_id: string
+          wallet_id: string
         }
         Insert: {
           broker_label?: string | null
@@ -64,6 +65,7 @@ export type Database = {
           quantity?: number | null
           reason_text?: string | null
           user_id: string
+          wallet_id: string
         }
         Update: {
           broker_label?: string | null
@@ -79,6 +81,7 @@ export type Database = {
           quantity?: number | null
           reason_text?: string | null
           user_id?: string
+          wallet_id?: string
         }
         Relationships: [
           {
@@ -86,6 +89,13 @@ export type Database = {
             columns: ["category_id", "user_id"]
             isOneToOne: false
             referencedRelation: "reason_categories"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "positions_wallet_fkey"
+            columns: ["wallet_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
             referencedColumns: ["id", "user_id"]
           },
         ]
@@ -110,6 +120,33 @@ export type Database = {
           deleted_at?: string | null
           id?: string
           name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wallets: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          id: string
+          name: string
+          starting_value: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          name: string
+          starting_value: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          name?: string
+          starting_value?: number
           user_id?: string
         }
         Relationships: []

@@ -72,6 +72,7 @@ const positionFormSchema = z
     instrument: z.string().trim().min(1, "Enter the instrument").max(100, "Use at most 100 characters"),
     buy_price: requiredDecimal("Enter the buy price"),
     buy_date: buyDate,
+    wallet_id: z.string().trim().min(1, "Choose a wallet").refine(isUuid, "Choose a wallet from your list"),
     // Checked together below: exactly one of the two must be given. The "New category…" choice
     // counts as no id, so the form also works without JS (the select then posts the sentinel).
     category_id: z
