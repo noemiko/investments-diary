@@ -28,3 +28,7 @@ pnpm-debug.log*
 .idea/
 .vercel
 .env*
+
+# stryker temp files
+.stryker-tmp
+reports/mutation/

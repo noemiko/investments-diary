@@ -1,0 +1,22 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "_comment": "Command runner avoids Vitest 5 per-test filtering incompatibility. Mutate one financial module at a time; all tests remain available.",
+  "testRunner": "command",
+  "commandRunner": {
+    "command": "npm test"
+  },
+  "coverageAnalysis": "off",
+  "reporters": ["html", "json", "clear-text", "progress"],
+  "concurrency": 2,
+  "mutate": [
+    "src/lib/decimal.ts",
+    "src/lib/validation/decimal.ts",
+    "src/lib/result.ts",
+    "src/lib/wallet.ts",
+    "src/lib/format.ts",
+    "src/lib/services/decimal.ts",
+    "src/lib/services/read-all.ts",
+    "src/lib/services/positions.ts:65-123",
+    "src/lib/services/wallets.ts:29-66"
+  ]
+}

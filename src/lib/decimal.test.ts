@@ -27,6 +27,20 @@ describe("exact decimal primitives", () => {
     expect(roundedHundredths({ numerator, denominator })).toBe(expected);
   });
 
+  it.each([" 1", "1 ", "1000000000000", "1.123456789"])("rejects out-of-contract unit input %j", (value) => {
+    expect(() => decimalUnits(value)).toThrow();
+  });
+
+  it("rejects negative denominators instead of computing a financial result", () => {
+    expect(() => roundedHundredths({ numerator: 1n, denominator: -1n })).toThrow();
+  });
+
+  it("accepts database zero unless positivity is explicitly required", () => {
+    expect(readDecimal("0")).toBe("0");
+    expect(readDecimal("00.00000000")).toBe("0");
+    expect(() => readDecimal("00.00000000", true)).toThrow();
+  });
+
   it("rejects an invalid denominator and unsafe database responses", () => {
     expect(() => roundedHundredths({ numerator: 1n, denominator: 0n })).toThrow();
     for (const value of [1, null, undefined, "NaN", "1e2", "1,2", "-1", "1.123456789", "1000000000000"]) {

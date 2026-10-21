@@ -18,6 +18,9 @@ describe("exact formatting", () => {
   ])("formats %s without losing digits", (value, expected) => {
     expect(formatNumber(value)).toBe(expected);
   });
+  it("rejects malformed numeric text rather than displaying it", () => {
+    expect(() => formatNumber("1e2")).toThrow();
+  });
   it("rounds amounts without overflowing the input range", () => {
     expect(formatAmount("999999999999.99999999")).toBe("1,000,000,000,000.00");
     expect(formatAmount("1.005")).toBe("1.01");

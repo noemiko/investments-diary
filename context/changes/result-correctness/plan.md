@@ -178,4 +178,4 @@ Bez migracji SQL. Odczytywać dokładnie istniejący zapis; historycznie utracon
 
 - [x] 4.1 Końcowe `npm test` i `npm run test:decimal-db` przechodzą.
 - [x] 4.2 Końcowa sekwencja statycznej weryfikacji przechodzi.
-- [ ] 4.3 PR do `master` uruchamia istniejący job `ci` i nowy job transportu; oba przechodzą.
+- [x] 4.3 PR do `master` uruchamia istniejący job `ci` i nowy job transportu; oba przechodzą.
