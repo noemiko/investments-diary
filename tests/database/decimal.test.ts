@@ -1,3 +1,7 @@
+// Arithmetic tests assume their inputs are intact. These tests use real local Supabase
+// to prove numeric(20,8) digits survive saving, updating and reading through our services.
+// A missing ::text projection could otherwise lose digits while arithmetic tests still pass.
+// Run separately with npm run test:decimal-db; temporary accounts are cleaned up afterward.
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { createClient } from "@supabase/supabase-js";

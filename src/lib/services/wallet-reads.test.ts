@@ -25,6 +25,8 @@ function fixture(count: number, cap = 1000, failAfter?: number) {
   }));
   const client = createClient<ApiDatabase>("http://localhost:54321", "request-key", {
     auth: { persistSession: false, autoRefreshToken: false },
+    // Transport fixtures must surface failures immediately, without retry backoff.
+    db: { retry: false },
     global: {
       headers: { Authorization: "Bearer author-session" },
       fetch: (input, init) => {

@@ -127,3 +127,11 @@ completes without a mailbox.
 
 @.github/workflows/ci.yml — the `ci` job needs `SUPABASE_URL`/`SUPABASE_KEY` repo secrets; `smoke`
 needs none (it boots local Supabase).
+
+## Mutation testing
+
+Repo uses Stryker for selective mutation testing on risk-critical modules.
+Run it only for code covered by the current change or a risk from test-plan.md,
+prefer narrowed scope with --mutate "path/to/file.ts:start-end", and do not chase
+100% mutation score. Survived mutants should be reviewed one by one: add an
+assertion only when the mutant represents a user-visible or business-relevant bug.

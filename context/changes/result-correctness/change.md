@@ -1,7 +1,7 @@
 ---
 change_id: result-correctness
 title: Bootstrap unit tests and prove displayed result correctness
-status: implementing
+status: impl_reviewed
 created: 2026-10-19
 updated: 2026-10-21
 archived_at: null

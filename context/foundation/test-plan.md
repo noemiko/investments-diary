@@ -199,8 +199,7 @@ the relevant rollout phase ships; before that, the sub-section reads
   regression checks, not completion of rollout Phase 2 or a full RLS audit.
 - Existing database values are read exactly as stored. Digits lost before an
   earlier save cannot be reconstructed; corrections require the source record.
-- Pending: manual check 3.3 and remote CI criterion 4.3 in the change plan. Do not
-  mark this rollout done merely because its local automated checks pass.
+
 
 ## 7. What We Deliberately Don't Test
 
