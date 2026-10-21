@@ -20,13 +20,13 @@ export function todayUtc(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function toPositive(raw: string, ctx: z.RefinementCtx): number {
+function toPositive(raw: string, ctx: z.RefinementCtx): string {
   const value = parseDecimal(raw);
   if (value === null) {
     ctx.addIssue({ code: "custom", message: NUMBER_MESSAGE });
     return z.NEVER;
   }
-  if (value <= 0) {
+  if (value === "0") {
     ctx.addIssue({ code: "custom", message: POSITIVE_MESSAGE });
     return z.NEVER;
   }
@@ -35,7 +35,7 @@ function toPositive(raw: string, ctx: z.RefinementCtx): number {
 
 /** A required decimal field: `emptyMessage` when blank, else `parseDecimal` and greater than 0. */
 export const requiredDecimal = (emptyMessage: string) =>
-  z.string().transform((raw, ctx): number => {
+  z.string().transform((raw, ctx): string => {
     if (raw.trim() === "") {
       ctx.addIssue({ code: "custom", message: emptyMessage });
       return z.NEVER;

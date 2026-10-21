@@ -5,7 +5,17 @@ description: Run this repo's full static verification sequence (astro sync, lint
 
 # Verify
 
-There is no test framework in this repo. This sequence is the verification bar.
+Vitest covers unit contracts and server-rendered result surfaces (`npm test`).
+The sequence below is the static verification bar; run the tests as well before
+reporting a code change verified. If decimal parsing, numeric DTOs, result/wallet
+arithmetic, formatting or Supabase numeric projections/writes change, also run
+`npm run test:decimal-db` against the running **local** Supabase stack. That command
+creates disposable accounts, checks exact numeric round trips and cleans them up;
+it refuses a nonlocal API URL. It never resets the diary database.
+
+CI runs `npm test` in `ci` and the local transport test in `decimal-transport` on
+qualifying pull requests and master pushes. This describes workflow wiring, not
+GitHub branch-protection settings.
 
 Run these in order, from the repo root. **Do not reorder or skip steps** — each later step
 depends on artifacts the earlier ones produce.

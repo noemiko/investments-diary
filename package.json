@@ -16,7 +16,8 @@
     "smoke": "node scripts/smoke.mjs",
     "prepare": "husky",
     "test": "vitest run",
-    "test:wallet-db": "node scripts/test-wallet-database.mjs"
+    "test:wallet-db": "node scripts/test-wallet-database.mjs",
+    "test:decimal-db": "node scripts/test-decimal-database.mjs"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.10",

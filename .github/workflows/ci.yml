@@ -35,6 +35,30 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
 
+  decimal-transport:
+    name: Decimal transport (local Supabase)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: npm ci
+      - run: npx astro sync
+      - name: Start local Supabase
+        # Startup prints local credentials; keep them out of the Actions log.
+        run: supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,realtime,storage-api,postgres-meta,supavisor > /dev/null 2>&1
+      - name: Prove exact decimal transport and service round trips
+        run: npm run test:decimal-db
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop --no-backup
+
   smoke:
     # Slow (local Supabase); runs after merge to master only, not on PRs.
     if: github.event_name == 'push'

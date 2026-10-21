@@ -1,104 +1,145 @@
 import { describe, expect, it } from "vitest";
 import { groupByWallet, walletValue } from "@/lib/wallet";
+import { formatAmount, formatPercent, formatSignedAmount } from "@/lib/format";
 import type { WalletPosition } from "@/types";
 
-// Every expected value is computed by hand in the comment beside it, never with the formula under
-// test (test-plan §3 Phase 1).
-
-const priced = (buy_price: number, current_price: number, quantity: number | null, price_date: string) => ({
+const priced = (buy_price: string, current_price: string, quantity: string | null, price_date: string) => ({
   buy_price,
   current_price,
   quantity,
   price_date,
 });
+// Observe the public display contract; every expected string below is independently hand computed.
+function displayed(result: ReturnType<typeof walletValue>) {
+  return {
+    ...result,
+    value: formatAmount(result.value),
+    change: formatSignedAmount(result.change),
+    changePercent: result.changePercent === null ? null : formatPercent(result.changePercent),
+  };
+}
 
 describe("walletValue", () => {
   it("is the starting value when the wallet has no positions", () => {
-    expect(walletValue({ starting_value: 1000 }, [])).toEqual({
-      value: 1000,
-      change: 0,
-      changePercent: 0,
+    expect(displayed(walletValue({ starting_value: "1000" }, []))).toEqual({
+      value: "1,000.00",
+      change: "0.00",
+      changePercent: "0.00%",
       counted: 0,
       notCounted: 0,
       asOf: null,
     });
   });
-
-  it("adds a gain: (60 − 50) × 10 = +100 on 1000", () => {
-    expect(walletValue({ starting_value: 1000 }, [priced(50, 60, 10, "2026-10-01")])).toEqual({
-      value: 1100,
-      change: 100,
-      changePercent: 10, // 100 / 1000 × 100
+  it("adds a gain of 100 to 1000", () => {
+    expect(displayed(walletValue({ starting_value: "1000" }, [priced("50", "60", "10", "2026-10-01")]))).toEqual({
+      value: "1,100.00",
+      change: "+100.00",
+      changePercent: "+10.00%",
       counted: 1,
       notCounted: 0,
       asOf: "2026-10-01",
     });
   });
-
   it("nets a loss against a gain and reports the oldest price date", () => {
-    const result = walletValue({ starting_value: 1000 }, [
-      priced(100, 80, 2, "2026-10-01"), // (80 − 100) × 2 = −40
-      priced(10, 15, 4, "2026-09-15"), // (15 − 10) × 4 = +20
+    // -40 + 20 = -20; 1000 - 20 = 980; -2%.
+    const result = walletValue({ starting_value: "1000" }, [
+      priced("100", "80", "2", "2026-10-01"),
+      priced("10", "15", "4", "2026-09-15"),
     ]);
-    expect(result).toEqual({
-      value: 980, // 1000 − 40 + 20
-      change: -20,
-      changePercent: -2, // −20 / 1000 × 100
+    expect(displayed(result)).toEqual({
+      value: "980.00",
+      change: "-20.00",
+      changePercent: "-2.00%",
       counted: 2,
       notCounted: 0,
       asOf: "2026-09-15",
     });
   });
-
-  it("reports the oldest price date whatever order the positions come in", () => {
-    const result = walletValue({ starting_value: 0 }, [
-      priced(10, 15, 4, "2026-09-15"), // oldest first this time
-      priced(100, 80, 2, "2026-10-01"),
-    ]);
-    expect(result.asOf).toBe("2026-09-15");
+  it("reports the oldest date regardless of input order", () => {
+    expect(
+      walletValue({ starting_value: "0" }, [
+        priced("10", "15", "4", "2026-09-15"),
+        priced("100", "80", "2", "2026-10-01"),
+      ]).asOf,
+    ).toBe("2026-09-15");
   });
-
-  it("leaves out a position without a quantity and counts it as not counted", () => {
-    const result = walletValue({ starting_value: 500 }, [priced(50, 60, null, "2026-10-01")]);
-    expect(result).toMatchObject({ value: 500, change: 0, counted: 0, notCounted: 1, asOf: null });
+  it("excludes a position without quantity", () => {
+    expect(displayed(walletValue({ starting_value: "500" }, [priced("50", "60", null, "2026-10-01")]))).toMatchObject({
+      value: "500.00",
+      change: "0.00",
+      counted: 0,
+      notCounted: 1,
+      asOf: null,
+    });
   });
-
-  it("leaves out a position without a current price and counts it as not counted", () => {
-    const result = walletValue({ starting_value: 500 }, [
-      { buy_price: 50, current_price: null, quantity: 10, price_date: null },
-    ]);
-    expect(result).toMatchObject({ value: 500, change: 0, counted: 0, notCounted: 1, asOf: null });
+  it("excludes a position without a price", () => {
+    expect(
+      displayed(
+        walletValue({ starting_value: "500" }, [
+          { buy_price: "50", quantity: "10", current_price: null, price_date: null },
+        ]),
+      ),
+    ).toMatchObject({ value: "500.00", change: "0.00", counted: 0, notCounted: 1, asOf: null });
   });
-
   it("takes the oldest date from counted positions only", () => {
-    const result = walletValue({ starting_value: 0 }, [
-      priced(10, 12, null, "2026-01-01"), // not counted: its older date must not become asOf
-      priced(10, 12, 5, "2026-10-01"), // (12 − 10) × 5 = +10
-    ]);
-    expect(result).toMatchObject({ change: 10, counted: 1, notCounted: 1, asOf: "2026-10-01" });
+    expect(
+      displayed(
+        walletValue({ starting_value: "0" }, [
+          priced("10", "12", null, "2026-01-01"),
+          priced("10", "12", "5", "2026-10-01"),
+        ]),
+      ),
+    ).toMatchObject({ change: "+10.00", counted: 1, notCounted: 1, asOf: "2026-10-01" });
   });
-
-  it("has no change percentage when the starting value is 0", () => {
-    const result = walletValue({ starting_value: 0 }, [priced(10, 12, 5, "2026-10-01")]);
-    expect(result).toMatchObject({ value: 10, change: 10, changePercent: null });
+  it("has no percentage when the starting value is zero", () => {
+    expect(displayed(walletValue({ starting_value: "0" }, [priced("10", "12", "5", "2026-10-01")]))).toMatchObject({
+      value: "10.00",
+      change: "+10.00",
+      changePercent: null,
+    });
   });
-
-  it("sums decimal prices to within display precision", () => {
-    // (0.3 − 0.1) × 3 = 0.6, twice = 1.2; floats drift in the last digits, so compare to 8 places.
-    const result = walletValue({ starting_value: 100 }, [
-      priced(0.1, 0.3, 3, "2026-10-01"),
-      priced(0.1, 0.3, 3, "2026-10-01"),
+  it("sums decimals exactly rather than to a tolerance", () => {
+    // (0.3 - 0.1) * 3 = 0.6 twice = 1.2.
+    const result = walletValue({ starting_value: "100" }, [
+      priced("0.1", "0.3", "3", "2026-10-01"),
+      priced("0.1", "0.3", "3", "2026-10-01"),
     ]);
-    expect(result.change).toBeCloseTo(1.2, 8);
-    expect(result.value).toBeCloseTo(101.2, 8);
+    expect(result.change).toEqual({ units: 12_000_000_000_000_000n, scale: 16 });
+    expect(result.value).toEqual({ units: 1_012_000_000_000_000_000n, scale: 16 });
+  });
+  it("rounds only after summing sub-cent results", () => {
+    const result = walletValue({ starting_value: "1" }, [
+      priced("1", "1.004", "1", "2026-10-01"),
+      priced("1", "1.004", "1", "2026-10-01"),
+    ]);
+    expect(result.change).toEqual({ units: 80_000_000_000_000n, scale: 16 });
+    expect(displayed(result)).toMatchObject({ value: "1.01", change: "+0.01", changePercent: "+0.80%" });
+  });
+  it("retains low digits after cancellation of very large products", () => {
+    const result = walletValue({ starting_value: "0" }, [
+      priced("0.00000001", "999999999999.99999999", "999999999999.99999999", "2026-10-01"),
+      priced("999999999999.99999999", "0.00000001", "999999999999.99999999", "2026-10-01"),
+      priced("0.00000001", "0.00000002", "0.00000001", "2026-10-01"),
+    ]);
+    expect(result.change).toEqual({ units: 1n, scale: 16 });
+  });
+  it("does not cap totals at the input column range", () => {
+    const result = walletValue({ starting_value: "999999999999.99999999" }, [priced("1", "2", "1", "2026-10-01")]);
+    expect(formatAmount(result.value)).toBe("1,000,000,000,001.00");
   });
 });
 
 describe("groupByWallet", () => {
-  it("groups positions by wallet id, keeping their order", () => {
-    const one: WalletPosition = { wallet_id: "w1", buy_price: 1, quantity: 1, current_price: null, price_date: null };
-    const two: WalletPosition = { ...one, wallet_id: "w2", buy_price: 2 };
-    const three: WalletPosition = { ...one, buy_price: 3 };
+  it("groups by id while keeping input order", () => {
+    const one: WalletPosition = {
+      wallet_id: "w1",
+      buy_price: "1",
+      quantity: "1",
+      current_price: null,
+      price_date: null,
+    };
+    const two: WalletPosition = { ...one, wallet_id: "w2", buy_price: "2" };
+    const three: WalletPosition = { ...one, buy_price: "3" };
     const groups = groupByWallet([one, two, three]);
     expect(groups.get("w1")).toEqual([one, three]);
     expect(groups.get("w2")).toEqual([two]);

@@ -49,7 +49,7 @@ if (isUuid(id)) {
 }
 
 let values: WalletFormValues = wallet
-  ? { name: wallet.name, starting_value: String(wallet.starting_value) }
+  ? { name: wallet.name, starting_value: wallet.starting_value }
   : { name: "", starting_value: "" };
 let errors: WalletFormErrors = {};
 

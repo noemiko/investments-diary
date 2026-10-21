@@ -1,3 +1,4 @@
+import { decimalUnits, exactAmount, type ExactAmount, type ExactRatio } from "@/lib/decimal";
 import { formatDate, formatPercent } from "@/lib/format";
 import type { PositionListItem } from "@/types";
 
@@ -7,9 +8,9 @@ export type PositionResultInput = Pick<PositionListItem, "buy_price" | "quantity
 /** A position's result against its last manually entered price. */
 export interface PositionResultValue {
   /** `(current_price − buy_price) / buy_price × 100`. */
-  percent: number;
+  percent: ExactRatio;
   /** `(current_price − buy_price) × quantity`, or `null` when the position has no quantity. */
-  amount: number | null;
+  amount: ExactAmount | null;
   /** The date the current price was entered for (`YYYY-MM-DD`). */
   priceDate: string;
 }
@@ -23,9 +24,11 @@ export function positionResult(input: PositionResultInput): PositionResultValue 
   if (input.current_price === null || input.price_date === null) {
     return null;
   }
+  const buy = decimalUnits(input.buy_price);
+  const difference = decimalUnits(input.current_price) - buy;
   return {
-    percent: ((input.current_price - input.buy_price) / input.buy_price) * 100,
-    amount: input.quantity == null ? null : (input.current_price - input.buy_price) * input.quantity,
+    percent: { numerator: difference * 100n, denominator: buy },
+    amount: input.quantity === null ? null : exactAmount(difference * decimalUnits(input.quantity)),
     priceDate: input.price_date,
   };
 }

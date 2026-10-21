@@ -11,7 +11,7 @@ import { groupByWallet, walletValue } from "@/lib/wallet";
 const supabase = createClient(Astro.request.headers, Astro.cookies);
 
 // A failed read must not cost the author the page: render an error state instead of a 500.
-let rows: { id: string; name: string; startingValue: number; result: ReturnType<typeof walletValue> }[] | null = null;
+let rows: { id: string; name: string; startingValue: string; result: ReturnType<typeof walletValue> }[] | null = null;
 try {
   const [wallets, positions] = await Promise.all([listWallets(supabase), listWalletPositions(supabase)]);
   const byWallet = groupByWallet(positions);
