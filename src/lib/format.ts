@@ -1,51 +1,53 @@
-// One number and date format for the positions list, the detail page and the result.
+import { AMOUNT_FACTOR, decimalUnits, roundedHundredths, type ExactAmount, type ExactRatio } from "@/lib/decimal";
 
-// Prices and quantities are stored as numeric(20,8); no currency, since a broker is only a label.
-const numberFormat = new Intl.NumberFormat("en-US", { maximumFractionDigits: 8 });
-// Sign shown for gains and losses, not for a (rounded) zero.
-const percentFormat = new Intl.NumberFormat("en-US", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-  signDisplay: "exceptZero",
-});
-// Wallet values are sums, shown money-like: always two decimals.
-const amountFormat = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-// A wallet's change, signed like a percentage.
-const signedAmountFormat = new Intl.NumberFormat("en-US", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-  signDisplay: "exceptZero",
-});
 const dateFormat = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" });
-// An instant (e.g. `deleted_at`) is shown on the author's calendar day, not UTC's.
 const timestampFormat = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "Europe/Warsaw" });
 
-/** A price or quantity, en-US, up to 8 fraction digits. */
-export function formatNumber(value: number): string {
-  return numberFormat.format(value);
+function grouped(integer: string): string {
+  return integer.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
-/** A wallet value, en-US, exactly 2 fraction digits, e.g. `1,234.50`. */
-export function formatAmount(value: number): string {
-  return amountFormat.format(value);
+function twoPlaces(ratio: ExactRatio, signed: boolean): string {
+  const rounded = roundedHundredths(ratio);
+  const magnitude = rounded < 0n ? -rounded : rounded;
+  const digits = magnitude.toString().padStart(3, "0");
+  const prefix = rounded < 0n ? "-" : signed && rounded > 0n ? "+" : "";
+  return `${prefix}${grouped(digits.slice(0, -2))}.${digits.slice(-2)}`;
 }
 
-/** A wallet's change, e.g. `+120.00`: two decimals, sign shown except for zero. */
-export function formatSignedAmount(value: number): string {
-  return signedAmountFormat.format(value);
+/** Exact price or quantity, en-US, with at most eight fraction digits. */
+export function formatNumber(value: string): string {
+  // Validates the domain value without passing through Number.
+  decimalUnits(value);
+  const [whole, fraction = ""] = value.split(".");
+  const part = fraction.replace(/0+$/, "");
+  return `${grouped(whole)}${part ? `.${part}` : ""}`;
 }
 
-/** A `YYYY-MM-DD` date, en-US medium style, read as UTC so it never shifts a day. */
+function amountRatio(value: string | ExactAmount): ExactRatio {
+  return typeof value === "string"
+    ? { numerator: decimalUnits(value), denominator: 100_000_000n }
+    : { numerator: value.units, denominator: AMOUNT_FACTOR };
+}
+
+/** Wallet values have two places; only the final result is rounded. */
+export function formatAmount(value: string | ExactAmount): string {
+  return twoPlaces(amountRatio(value), false);
+}
+
+export function formatSignedAmount(value: string | ExactAmount): string {
+  return twoPlaces(amountRatio(value), true);
+}
+
+/** Date-only values never shift with the runtime's timezone. */
 export function formatDate(isoDate: string): string {
   return dateFormat.format(new Date(`${isoDate}T00:00:00Z`));
 }
 
-/** An ISO timestamp as its date, en-US medium style, on the author's (Europe/Warsaw) calendar day. */
 export function formatTimestamp(isoTimestamp: string): string {
   return timestampFormat.format(new Date(isoTimestamp));
 }
 
-/** A result percentage, e.g. `+20.00%`: two decimals, sign shown except for zero. */
-export function formatPercent(value: number): string {
-  return `${percentFormat.format(value)}%`;
+export function formatPercent(value: ExactRatio): string {
+  return `${twoPlaces(value, true)}%`;
 }

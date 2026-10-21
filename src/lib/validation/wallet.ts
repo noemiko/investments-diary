@@ -10,7 +10,7 @@ import {
 
 // Unlike a price, a starting value may be 0 (a wallet that only tracks results), so this does not
 // reuse `requiredDecimal`, which rejects 0.
-const startingValue = z.string().transform((raw, ctx): number => {
+const startingValue = z.string().transform((raw, ctx): string => {
   if (raw.trim() === "") {
     ctx.addIssue({ code: "custom", message: "Enter the starting value" });
     return z.NEVER;

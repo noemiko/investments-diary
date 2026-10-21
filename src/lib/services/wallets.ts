@@ -1,3 +1,5 @@
+import { readDecimal } from "@/lib/decimal";
+import { decodePosition } from "@/lib/services/decimal";
 import type { PostgrestError } from "@supabase/supabase-js";
 import type { createClient } from "@/lib/supabase";
 import { readAll } from "@/lib/services/read-all";
@@ -27,11 +29,11 @@ function failure(
 export async function listWallets(client: Client): Promise<Wallet[]> {
   const { data, error } = await client
     .from("wallets")
-    .select("id, name, starting_value")
+    .select("id, name, starting_value::text")
     .is("deleted_at", null)
     .order("name", { ascending: true });
   if (error) throw new Error(`listWallets failed: ${error.message}`);
-  return data;
+  return data.map((wallet) => ({ ...wallet, starting_value: readDecimal(wallet.starting_value) }));
 }
 
 /**
@@ -41,24 +43,26 @@ export async function listWallets(client: Client): Promise<Wallet[]> {
 export async function getWallet(client: Client, id: string): Promise<Wallet | null> {
   const { data, error } = await client
     .from("wallets")
-    .select("id, name, starting_value")
+    .select("id, name, starting_value::text")
     .eq("id", id)
     .is("deleted_at", null)
     .maybeSingle();
   if (error) throw new Error(`getWallet failed: ${error.message}`);
-  return data;
+  return data ? { ...data, starting_value: readDecimal(data.starting_value) } : null;
 }
 
 /** Every non-deleted position of the author, with only the fields a wallet's value needs. */
 export async function listWalletPositions(client: Client): Promise<WalletPosition[]> {
-  return readAll("listWalletPositions", (from, to) =>
+  const rows = await readAll("listWalletPositions", (from, to) =>
     client
       .from("positions")
-      .select("wallet_id, buy_price, quantity, current_price, price_date")
+      .select("wallet_id, buy_price::text, quantity::text, current_price::text, price_date")
       .is("deleted_at", null)
       .order("id", { ascending: true })
-      .range(from, to),
+      .range(from, to)
+      .overrideTypes<WalletPosition[], { merge: false }>(),
   );
+  return rows.map(decodePosition);
 }
 
 /** Creates a wallet for the author (FR-013). */

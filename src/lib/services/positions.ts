@@ -1,3 +1,4 @@
+import { decodePosition } from "@/lib/services/decimal";
 import type { PostgrestError } from "@supabase/supabase-js";
 import type { createClient } from "@/lib/supabase";
 import { readAll } from "@/lib/services/read-all";
@@ -13,6 +14,11 @@ import type {
 
 // Always the request-scoped client, so RLS scopes every query to the signed-in author.
 type Client = ReturnType<typeof createClient>;
+type PositionListTransport = Omit<PositionListItem, "category_name" | "wallet_name"> & {
+  wallets: { name: string };
+  reason_categories: { name: string };
+};
+type PositionDetailTransport = PositionListTransport & Pick<PositionDetail, "reason_text">;
 
 export type CreatePositionError = "validation" | "category_not_found" | "wallet_not_found" | "unexpected";
 
@@ -61,17 +67,17 @@ export async function listPositions(client: Client, walletId?: string): Promise<
     let query = client
       .from("positions")
       .select(
-        "id, instrument, buy_date, buy_price, quantity, broker_label, current_price, price_date, wallet_id, wallets!positions_wallet_fkey(name), reason_categories(name)",
+        "id, instrument, buy_date, buy_price::text, quantity::text, broker_label, current_price::text, price_date, wallet_id, wallets!positions_wallet_fkey(name), reason_categories(name)",
       )
       .is("deleted_at", null)
       .order("buy_date", { ascending: false })
       .order("created_at", { ascending: false })
       .order("id", { ascending: false });
     if (walletId !== undefined) query = query.eq("wallet_id", walletId);
-    return query.range(from, to);
+    return query.range(from, to).overrideTypes<PositionListTransport[], { merge: false }>();
   });
   return data.map(({ reason_categories, wallets, ...position }) => ({
-    ...position,
+    ...decodePosition(position),
     category_name: reason_categories.name,
     wallet_name: wallets.name,
   }));
@@ -84,12 +90,15 @@ export async function listPositions(client: Client, walletId?: string): Promise<
 export async function listConfrontationPositions(client: Client): Promise<ConfrontationPosition[]> {
   const { data, error } = await client
     .from("positions")
-    .select("id, category_id, instrument, buy_date, buy_price, quantity, current_price, price_date, reason_text")
+    .select(
+      "id, category_id, instrument, buy_date, buy_price::text, quantity::text, current_price::text, price_date, reason_text",
+    )
     .is("deleted_at", null)
     .order("buy_date", { ascending: false })
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .overrideTypes<ConfrontationPosition[], { merge: false }>();
   if (error) throw new Error(`listConfrontationPositions failed: ${error.message}`);
-  return data;
+  return data.map(decodePosition);
 }
 
 /**
@@ -101,15 +110,16 @@ export async function getPosition(client: Client, id: string): Promise<PositionD
   const { data, error } = await client
     .from("positions")
     .select(
-      "id, instrument, buy_date, buy_price, quantity, broker_label, current_price, price_date, reason_text, wallet_id, wallets!positions_wallet_fkey(name), reason_categories(name)",
+      "id, instrument, buy_date, buy_price::text, quantity::text, broker_label, current_price::text, price_date, reason_text, wallet_id, wallets!positions_wallet_fkey(name), reason_categories(name)",
     )
     .eq("id", id)
     .is("deleted_at", null)
-    .maybeSingle();
+    .maybeSingle()
+    .overrideTypes<PositionDetailTransport | null, { merge: false }>();
   if (error) throw new Error(`getPosition failed: ${error.message}`);
   if (!data) return null;
   const { reason_categories, wallets, ...position } = data;
-  return { ...position, category_name: reason_categories.name, wallet_name: wallets.name };
+  return { ...decodePosition(position), category_name: reason_categories.name, wallet_name: wallets.name };
 }
 
 /** Replaces a non-deleted position's current price and its date (FR-006); no other column changes. */

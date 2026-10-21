@@ -39,7 +39,7 @@ function checkDecimal(raw: string, required: boolean, requiredMessage: string): 
   if (!raw.trim()) return required ? requiredMessage : undefined;
   const value = parseDecimal(raw);
   if (value === null) return "Enter a number like 50.25";
-  if (value <= 0) return "Must be greater than 0";
+  if (value === "0") return "Must be greater than 0";
   return undefined;
 }
 

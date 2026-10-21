@@ -1,8 +1,12 @@
 import type { Tables } from "@/db/database.types";
 
 type CategoryRow = Tables<"reason_categories">;
-type PositionRow = Tables<"positions">;
-type WalletRow = Tables<"wallets">;
+type PositionRow = Omit<Tables<"positions">, "buy_price" | "quantity" | "current_price"> & {
+  buy_price: string;
+  quantity: string | null;
+  current_price: string | null;
+};
+type WalletRow = Omit<Tables<"wallets">, "starting_value"> & { starting_value: string };
 
 /** A reason category the author can file a position under (FR-005). */
 export type ReasonCategory = Pick<CategoryRow, "id" | "name">;
@@ -79,7 +83,7 @@ export type PositionFormErrors = Partial<Record<PositionFormField | "form", stri
 
 /** The price form after parsing (FR-006): both fields are required. */
 export interface PriceUpdateInput {
-  current_price: number;
+  current_price: string;
   price_date: string;
 }
 

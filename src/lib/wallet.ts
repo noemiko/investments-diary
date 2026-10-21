@@ -1,14 +1,15 @@
+import { INPUT_FACTOR, decimalUnits, exactAmount, type ExactAmount, type ExactRatio } from "@/lib/decimal";
 import { positionResult, type PositionResultInput } from "@/lib/result";
 import type { Wallet, WalletPosition } from "@/types";
 
 /** A wallet's value against the last manually entered prices of its positions (FR-013). */
 export interface WalletValueResult {
   /** `starting_value + change`. */
-  value: number;
+  value: ExactAmount;
   /** Σ `amount` of the counted positions, i.e. Σ (current_price − buy_price) × quantity. */
-  change: number;
+  change: ExactAmount;
   /** `change / starting_value × 100`, or `null` when the starting value is 0. */
-  changePercent: number | null;
+  changePercent: ExactRatio | null;
   /** Positions whose result went into `change`. */
   counted: number;
   /** Positions left out because they have no quantity or no current price yet. */
@@ -26,7 +27,7 @@ export function walletValue(
   wallet: Pick<Wallet, "starting_value">,
   positions: readonly PositionResultInput[],
 ): WalletValueResult {
-  let change = 0;
+  let change = 0n;
   let counted = 0;
   let notCounted = 0;
   let asOf: string | null = null;
@@ -39,17 +40,18 @@ export function walletValue(
       continue;
     }
 
-    change += result.amount;
+    change += result.amount.units;
     counted++;
 
     if (asOf === null || result.priceDate < asOf) {
       asOf = result.priceDate;
     }
   }
+  const starting = decimalUnits(wallet.starting_value) * INPUT_FACTOR;
   return {
-    value: wallet.starting_value + change,
-    change,
-    changePercent: wallet.starting_value === 0 ? null : (change / wallet.starting_value) * 100,
+    value: exactAmount(starting + change),
+    change: exactAmount(change),
+    changePercent: starting === 0n ? null : { numerator: change * 100n, denominator: starting },
     counted,
     notCounted,
     asOf,

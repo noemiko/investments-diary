@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
-import type { Database } from "@/db/database.types";
+import type { ApiDatabase } from "@/db/api.types";
+import { formatAmount } from "@/lib/format";
 import { listPositions } from "@/lib/services/positions";
 import { listWalletPositions } from "@/lib/services/wallets";
 import { groupByWallet, walletValue } from "@/lib/wallet";
@@ -12,9 +13,9 @@ function fixture(count: number, cap = 1000, failAfter?: number) {
   const rows = Array.from({ length: count }, (_, index) => ({
     id: String(index).padStart(6, "0"),
     wallet_id: index % 2 === 0 ? "one" : "two",
-    buy_price: 10,
-    current_price: 12,
-    quantity: index === count - 1 ? null : 1,
+    buy_price: "10",
+    current_price: "12",
+    quantity: index === count - 1 ? null : "1",
     price_date: index === count - 2 ? "2026-01-01" : "2026-10-01",
     buy_date: "2026-01-01",
     created_at: "2026-01-01T00:00:00Z",
@@ -22,13 +23,16 @@ function fixture(count: number, cap = 1000, failAfter?: number) {
     wallets: { name: index % 2 === 0 ? "One" : "Two" },
     reason_categories: { name: "Category" },
   }));
-  const client = createClient<Database>("http://localhost:54321", "request-key", {
+  const client = createClient<ApiDatabase>("http://localhost:54321", "request-key", {
     auth: { persistSession: false, autoRefreshToken: false },
     global: {
       headers: { Authorization: "Bearer author-session" },
       fetch: (input, init) => {
         const url = new URL(input instanceof Request ? input.url : input);
         requests.push(url);
+        expect(url.searchParams.get("select")).toContain("buy_price::text");
+        expect(url.searchParams.get("select")).toContain("quantity::text");
+        expect(url.searchParams.get("select")).toContain("current_price::text");
         expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer author-session");
         expect(url.searchParams.get("deleted_at")).toBe("is.null");
         expect(url.searchParams.get("order")?.split(",").at(-1)).toMatch(/^id\.(asc|desc)$/);
@@ -51,7 +55,10 @@ function fixture(count: number, cap = 1000, failAfter?: number) {
 }
 
 describe("complete wallet reads", () => {
-  it.each([1200, 2400])("agrees across summary and detail for %i positions", async (count) => {
+  it.each([
+    { count: 1200, one: "1,300.00", two: "1,298.00", members: 600 },
+    { count: 2400, one: "2,500.00", two: "2,498.00", members: 1200 },
+  ])("agrees across summary and detail for $count positions", async ({ count, one, two, members: memberCount }) => {
     const { client } = fixture(count);
     const all = await listWalletPositions(client);
     expect(all).toHaveLength(count);
@@ -61,13 +68,16 @@ describe("complete wallet reads", () => {
       expect(members).toHaveLength(count / 2);
       expect(members.every((member) => member.wallet_id === walletId)).toBe(true);
       const expected = {
-        value: 100 + count - (walletId === "two" ? 2 : 0),
-        counted: count / 2 - (walletId === "two" ? 1 : 0),
+        counted: memberCount - (walletId === "two" ? 1 : 0),
         notCounted: walletId === "two" ? 1 : 0,
         asOf: walletId === "one" ? "2026-01-01" : "2026-10-01",
       };
-      expect(walletValue({ starting_value: 100 }, groups.get(walletId) ?? [])).toMatchObject(expected);
-      expect(walletValue({ starting_value: 100 }, members)).toMatchObject(expected);
+      expect(walletValue({ starting_value: "100" }, groups.get(walletId) ?? [])).toMatchObject(expected);
+      expect(walletValue({ starting_value: "100" }, members)).toMatchObject(expected);
+      expect(formatAmount(walletValue({ starting_value: "100" }, members).value)).toBe(walletId === "one" ? one : two);
+      expect(formatAmount(walletValue({ starting_value: "100" }, groups.get(walletId) ?? []).value)).toBe(
+        walletId === "one" ? one : two,
+      );
     }
   });
 

@@ -5,14 +5,14 @@ describe("wallet form", () => {
   it("trims names and accepts localized starting values", () => {
     expect(parseWalletForm({ name: " Retirement ", starting_value: "1 000,50" })).toEqual({
       success: true,
-      data: { name: "Retirement", starting_value: 1000.5 },
+      data: { name: "Retirement", starting_value: "1000.5" },
     });
   });
 
   it("allows a starting value of zero", () => {
     expect(parseWalletForm({ name: "Main", starting_value: "0" })).toEqual({
       success: true,
-      data: { name: "Main", starting_value: 0 },
+      data: { name: "Main", starting_value: "0" },
     });
   });
 

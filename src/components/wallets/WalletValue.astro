@@ -3,7 +3,7 @@ import { formatAmount, formatDate, formatPercent, formatSignedAmount } from "@/l
 import type { WalletValueResult } from "@/lib/wallet";
 
 interface Props {
-  startingValue: number;
+  startingValue: string;
   result: WalletValueResult;
 }
 const { startingValue, result } = Astro.props;
