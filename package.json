@@ -18,7 +18,8 @@
     "test": "vitest run",
     "test:wallet-db": "node scripts/test-wallet-database.mjs",
     "test:decimal-db": "node scripts/test-decimal-database.mjs",
-    "test:mutation": "node scripts/mutation-financial.mjs"
+    "test:mutation": "node scripts/mutation-financial.mjs",
+    "verify": "astro sync && eslint . --no-warn-ignored && vitest run"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.10",
