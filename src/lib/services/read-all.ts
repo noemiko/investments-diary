@@ -1,3 +1,5 @@
+import { serviceError } from "@/lib/observability/reporter";
+
 // Stay below the configured API cap. Advance by received rows so a lower server cap is safe too.
 const PAGE_SIZE = 500;
 
@@ -9,7 +11,7 @@ export async function readAll<T>(
   const rows: T[] = [];
   for (;;) {
     const { data, error } = await page(rows.length, rows.length + PAGE_SIZE - 1);
-    if (error) throw new Error(`${where} failed: ${error.message}`);
+    if (error) throw serviceError(where, error);
     if (data === null) throw new Error(`${where} failed: missing response data`);
     if (data.length === 0) return rows;
     rows.push(...data);

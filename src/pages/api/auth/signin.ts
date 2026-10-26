@@ -1,3 +1,4 @@
+import { reportAuthError } from "@/lib/observability/auth";
 import type { APIRoute } from "astro";
 import { createClient } from "@/lib/supabase";
 
@@ -9,6 +10,7 @@ export const POST: APIRoute = async (context) => {
   const supabase = createClient(context.request.headers, context.cookies);
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
+  reportAuthError(error, "auth.signIn");
   if (error) {
     return context.redirect(`/auth/signin?error=${encodeURIComponent(error.message)}`);
   }

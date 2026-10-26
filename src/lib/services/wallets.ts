@@ -1,3 +1,4 @@
+import { serviceError } from "@/lib/observability/reporter";
 import { readDecimal } from "@/lib/decimal";
 import { decodePosition } from "@/lib/services/decimal";
 import type { PostgrestError } from "@supabase/supabase-js";
@@ -32,7 +33,7 @@ export async function listWallets(client: Client): Promise<Wallet[]> {
     .select("id, name, starting_value::text")
     .is("deleted_at", null)
     .order("name", { ascending: true });
-  if (error) throw new Error(`listWallets failed: ${error.message}`);
+  if (error) throw serviceError("listWallets", error);
   return data.map((wallet) => ({ ...wallet, starting_value: readDecimal(wallet.starting_value) }));
 }
 
@@ -47,7 +48,7 @@ export async function getWallet(client: Client, id: string): Promise<Wallet | nu
     .eq("id", id)
     .is("deleted_at", null)
     .maybeSingle();
-  if (error) throw new Error(`getWallet failed: ${error.message}`);
+  if (error) throw serviceError("getWallet", error);
   return data ? { ...data, starting_value: readDecimal(data.starting_value) } : null;
 }
 

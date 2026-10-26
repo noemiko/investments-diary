@@ -2,6 +2,7 @@
 // The rule crashes ("Expected node to have a parent") on a top-level `return` in frontmatter;
 // an eslint-disable comment would not help, because the rule still runs. Nothing here passes promises as callbacks.
 /* eslint @typescript-eslint/no-misused-promises: "off" */
+import { reportUnexpected } from "@/lib/observability/reporter";
 import Layout from "@/layouts/Layout.astro";
 import PositionForm from "@/components/positions/PositionForm";
 import { createClient } from "@/lib/supabase";
@@ -70,14 +71,16 @@ if (Astro.request.method === "POST") {
 let categories: Awaited<ReturnType<typeof listCategories>> = [];
 try {
   categories = await listCategories(supabase);
-} catch {
+} catch (error) {
+  reportUnexpected(error, { operation: "listCategories" });
   errors = { ...errors, form: "Your categories could not be loaded. Please try again." };
 }
 
 let wallets: Wallet[] = [];
 try {
   wallets = await listWallets(supabase);
-} catch {
+} catch (error) {
+  reportUnexpected(error, { operation: "listWallets" });
   errors = { ...errors, form: "Your wallets could not be loaded. Please try again." };
 }
 // One wallet is the only possible answer, so preselect it on the first render.
@@ -90,7 +93,8 @@ if (Astro.request.method !== "POST" && wallets.length === 1) {
 let earlierPositions: ConfrontationPosition[] | null;
 try {
   earlierPositions = await listConfrontationPositions(supabase);
-} catch {
+} catch (error) {
+  reportUnexpected(error, { operation: "listConfrontationPositions" });
   earlierPositions = null;
 }
 ---

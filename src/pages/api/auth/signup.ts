@@ -1,3 +1,4 @@
+import { reportAuthError } from "@/lib/observability/auth";
 import type { APIRoute } from "astro";
 import { createClient } from "@/lib/supabase";
 
@@ -14,6 +15,7 @@ export const POST: APIRoute = async (context) => {
     options: { emailRedirectTo: new URL("/auth/callback", context.url.origin).toString() },
   });
 
+  reportAuthError(error, "auth.signUp");
   if (error) {
     return context.redirect(`/auth/signup?error=${encodeURIComponent(error.message)}`);
   }

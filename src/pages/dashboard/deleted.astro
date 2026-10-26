@@ -1,4 +1,5 @@
 ---
+import { reportUnexpected } from "@/lib/observability/reporter";
 import Layout from "@/layouts/Layout.astro";
 import DeletedPositionsTable from "@/components/positions/DeletedPositionsTable.astro";
 import { buttonVariants } from "@/components/ui/button";
@@ -12,7 +13,8 @@ const supabase = createClient(Astro.request.headers, Astro.cookies);
 let positions: Awaited<ReturnType<typeof listDeletedPositions>> | null = null;
 try {
   positions = await listDeletedPositions(supabase);
-} catch {
+} catch (error) {
+  reportUnexpected(error, { operation: "listDeletedPositions" });
   // positions stays null → error state
 }
 ---

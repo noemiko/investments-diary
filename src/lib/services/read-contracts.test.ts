@@ -149,17 +149,17 @@ describe("financial read contracts", () => {
   it("preserves read failures instead of returning empty lists or missing details", async () => {
     await expect(
       listWallets(transport({ table: "wallets", columns: walletColumns, order: "name.asc" }, [], true)),
-    ).rejects.toThrow("upstream read failed");
+    ).rejects.toHaveProperty("cause.message", "upstream read failed");
     await expect(
       getWallet(transport({ table: "wallets", columns: walletColumns, id: wallet.id }, [], true), wallet.id),
-    ).rejects.toThrow("upstream read failed");
+    ).rejects.toHaveProperty("cause.message", "upstream read failed");
     await expect(
       getPosition(transport({ table: "positions", columns: positionColumns, id: position.id }, [], true), position.id),
-    ).rejects.toThrow("upstream read failed");
+    ).rejects.toHaveProperty("cause.message", "upstream read failed");
     await expect(
       listConfrontationPositions(
         transport({ table: "positions", columns: ["reason_text"], order: "buy_date.desc,created_at.desc" }, [], true),
       ),
-    ).rejects.toThrow("upstream read failed");
+    ).rejects.toHaveProperty("cause.message", "upstream read failed");
   });
 });
