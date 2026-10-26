@@ -90,11 +90,11 @@ npx supabase init
 npx supabase start
 ```
 
-4. Copy the credentials printed by the CLI into your `.env`:
+4. Copy the local URL and publishable key printed by the CLI into your ignored `.env`.
 
 ```
 SUPABASE_URL=http://127.0.0.1:54321
-SUPABASE_KEY=<anon key from CLI output>
+SUPABASE_KEY=<your-local-publishable-key>
 ```
 
 5. To stop the stack when done:
