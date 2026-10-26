@@ -39,9 +39,13 @@ export async function investmentData() {
     expect(categories.error).toBeNull();
     const wallets = await admin.from("wallets").delete().eq("user_id", owner).eq("name", token);
     expect(wallets.error).toBeNull();
-    for (const table of ["positions", "reason_categories", "wallets"] as const) {
-      const column = table === "positions" ? "instrument" : "name";
-      const remaining = await admin.from(table).select("id").eq("user_id", owner).eq(column, token);
+    const checks = [
+      ["positions", admin.from("positions").select("id").eq("user_id", owner).eq("instrument", token)],
+      ["reason_categories", admin.from("reason_categories").select("id").eq("user_id", owner).eq("name", token)],
+      ["wallets", admin.from("wallets").select("id").eq("user_id", owner).eq("name", token)],
+    ] as const;
+    for (const [table, query] of checks) {
+      const remaining = await query;
       expect(remaining.error).toBeNull();
       expect(remaining.data, `${table}: test residue`).toEqual([]);
     }
