@@ -1,3 +1,4 @@
+import { reportUnexpected, serviceError } from "@/lib/observability/reporter";
 import { decodePosition } from "@/lib/services/decimal";
 import type { PostgrestError } from "@supabase/supabase-js";
 import type { createClient } from "@/lib/supabase";
@@ -35,10 +36,9 @@ const WALLET_FOREIGN_KEY = "positions_wallet_fkey";
 // invalid_text_representation, invalid_datetime_format: the database refused a value the form let through.
 export const VALIDATION_CODES = new Set(["23514", "23502", "22001", "22003", "22P02", "22007", "22008"]);
 
-// Code and message only: `details` can carry the failing row, reason text included.
-export function logUnexpected(where: string, error: { code?: string; message: string }) {
-  // eslint-disable-next-line no-console -- the only trace of a failed save in the function logs
-  console.error(`${where} failed`, { code: error.code, message: error.message });
+// One reporting boundary for unexpected write results; expected domain outcomes stay quiet.
+export function logUnexpected(where: string, error: unknown) {
+  reportUnexpected(error, { operation: where });
 }
 
 function failure(error: PostgrestError): CreatePositionResult {
@@ -57,7 +57,7 @@ export async function listCategories(client: Client): Promise<ReasonCategory[]> 
     .select("id, name")
     .is("deleted_at", null)
     .order("name", { ascending: true });
-  if (error) throw new Error(`listCategories failed: ${error.message}`);
+  if (error) throw serviceError("listCategories", error);
   return data;
 }
 
@@ -97,7 +97,7 @@ export async function listConfrontationPositions(client: Client): Promise<Confro
     .order("buy_date", { ascending: false })
     .order("created_at", { ascending: false })
     .overrideTypes<ConfrontationPosition[], { merge: false }>();
-  if (error) throw new Error(`listConfrontationPositions failed: ${error.message}`);
+  if (error) throw serviceError("listConfrontationPositions", error);
   return data.map(decodePosition);
 }
 
@@ -116,7 +116,7 @@ export async function getPosition(client: Client, id: string): Promise<PositionD
     .is("deleted_at", null)
     .maybeSingle()
     .overrideTypes<PositionDetailTransport | null, { merge: false }>();
-  if (error) throw new Error(`getPosition failed: ${error.message}`);
+  if (error) throw serviceError("getPosition", error);
   if (!data) return null;
   const { reason_categories, wallets, ...position } = data;
   return { ...decodePosition(position), category_name: reason_categories.name, wallet_name: wallets.name };
@@ -151,7 +151,7 @@ export async function listDeletedPositions(client: Client): Promise<DeletedPosit
     .select("id, instrument, buy_date, deleted_at, reason_categories(name)")
     .not("deleted_at", "is", null)
     .order("deleted_at", { ascending: false });
-  if (error) throw new Error(`listDeletedPositions failed: ${error.message}`);
+  if (error) throw serviceError("listDeletedPositions", error);
   return data.map(({ reason_categories, ...position }) => ({
     ...position,
     category_name: reason_categories.name,
@@ -241,7 +241,7 @@ export async function createPosition(
     try {
       category = await findOrCreateCategory(client, userId, input.new_category_name);
     } catch (error) {
-      logUnexpected("findOrCreateCategory", { message: error instanceof Error ? error.message : String(error) });
+      logUnexpected("findOrCreateCategory", error);
       return { ok: false, error: "unexpected" };
     }
     if ("error" in category) {

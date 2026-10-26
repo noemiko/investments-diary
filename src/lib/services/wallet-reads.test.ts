@@ -97,7 +97,7 @@ describe("complete wallet reads", () => {
 
   it("rejects the whole read when a later page fails", async () => {
     const { client } = fixture(2400, 1000, 500);
-    await expect(listWalletPositions(client)).rejects.toThrow("later page failed");
-    await expect(listPositions(client, "one")).rejects.toThrow("later page failed");
+    await expect(listWalletPositions(client)).rejects.toHaveProperty("cause.message", "later page failed");
+    await expect(listPositions(client, "one")).rejects.toHaveProperty("cause.message", "later page failed");
   });
 });

@@ -2,6 +2,7 @@
 // The rule crashes ("Expected node to have a parent") on a top-level `return` in frontmatter;
 // an eslint-disable comment would not help, because the rule still runs. Nothing here passes promises as callbacks.
 /* eslint @typescript-eslint/no-misused-promises: "off" */
+import { reportUnexpected } from "@/lib/observability/reporter";
 import Layout from "@/layouts/Layout.astro";
 import DeletePositionControl from "@/components/positions/DeletePositionControl.astro";
 import PositionResult from "@/components/positions/PositionResult.astro";
@@ -41,7 +42,8 @@ if (isUuid(id)) {
   try {
     position = await getPosition(supabase, id);
     state = position ? "found" : "not_found";
-  } catch {
+  } catch (error) {
+    reportUnexpected(error, { operation: "getPosition" });
     // A failed read must not cost the author the page: render an error state instead of a 500.
     state = "load_failed";
   }

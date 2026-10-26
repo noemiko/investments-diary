@@ -1,21 +1,30 @@
+import "../sentry.server.config";
+import { withIsolationScope } from "@sentry/astro";
+import { reportAuthError } from "@/lib/observability/auth";
 import { defineMiddleware } from "astro:middleware";
 import { createClient } from "@/lib/supabase";
 
 const PROTECTED_ROUTES = ["/dashboard"];
 
-export const onRequest = defineMiddleware(async (context, next) => {
-  const supabase = createClient(context.request.headers, context.cookies);
+export const onRequest = defineMiddleware((context, next) =>
+  withIsolationScope(async (scope) => {
+    scope.setTag("request_id", crypto.randomUUID());
+    scope.setTag("route", context.routePattern);
+    const supabase = createClient(context.request.headers, context.cookies);
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  context.locals.user = user ?? null;
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
+    reportAuthError(error, "auth.getUser");
+    context.locals.user = user ?? null;
 
-  if (PROTECTED_ROUTES.some((route) => context.url.pathname.startsWith(route))) {
-    if (!context.locals.user) {
-      return context.redirect("/auth/signin");
+    if (PROTECTED_ROUTES.some((route) => context.url.pathname.startsWith(route))) {
+      if (!context.locals.user) {
+        return context.redirect("/auth/signin");
+      }
     }
-  }
 
-  return next();
-});
+    return next();
+  }),
+);

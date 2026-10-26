@@ -1,3 +1,4 @@
+import { reportAuthError } from "@/lib/observability/auth";
 import type { APIRoute } from "astro";
 import { createClient } from "@/lib/supabase";
 
@@ -16,6 +17,7 @@ export const GET: APIRoute = async (context) => {
 
   const supabase = createClient(context.request.headers, context.cookies);
   const { error } = await supabase.auth.exchangeCodeForSession(code);
+  reportAuthError(error, "auth.exchangeCode");
   const redirectUrl = error ? `/auth/signin?error=${encodeURIComponent(LINK_FAILED)}` : "/dashboard";
   return context.redirect(redirectUrl);
 };
