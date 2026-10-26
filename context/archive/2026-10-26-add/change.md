@@ -1,10 +1,10 @@
 ---
 change_id: add
 title: Add Sentry to the project
-status: impl_reviewed
+status: archived
 created: 2026-10-26
 updated: 2026-10-26
-archived_at: null
+archived_at: 2026-10-26T20:32:24Z
 ---
 
 ## Notes
