@@ -1,8 +1,9 @@
 ---
 id: mutation-baseline
-status: implemented
+status: archived
 created: 2026-10-21
-updated: 2026-10-21
+updated: 2026-10-26
+archived_at: 2026-10-26T18:21:13Z
 ---
 
 # Trustworthy financial mutation testing
