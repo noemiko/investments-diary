@@ -1,10 +1,10 @@
 ---
 change_id: result-correctness
 title: Bootstrap unit tests and prove displayed result correctness
-status: impl_reviewed
+status: archived
 created: 2026-10-19
-updated: 2026-10-21
-archived_at: null
+updated: 2026-10-26
+archived_at: 2026-10-26T18:21:13Z
 ---
 
 ## Notes
