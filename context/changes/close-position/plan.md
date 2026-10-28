@@ -194,21 +194,21 @@ When saving this plan, advance the change to `planned` and S-04 to `planning`. T
 
 #### Automated
 
-- [x] 2.1 Unit and SSR tests prove sale precedence, zero-price total loss and identical final percentage/date wiring across detail, list, wallet members and confrontation.
-- [x] 2.2 Wallet tests prove realised/open sums, missing-data counts and open-only freshness, including realised-only and empty cases.
-- [x] 2.3 Route/render tests prove action dispatch, preserved errors, required acknowledgement and absence of write forms on closed detail.
+- [x] 2.1 Unit and SSR tests prove sale precedence, zero-price total loss and identical final percentage/date wiring across detail, list, wallet members and confrontation. — 4a8e459
+- [x] 2.2 Wallet tests prove realised/open sums, missing-data counts and open-only freshness, including realised-only and empty cases. — 4a8e459
+- [x] 2.3 Route/render tests prove action dispatch, preserved errors, required acknowledgement and absence of write forms on closed detail. — 4a8e459
 
 #### Manual
 
-- [x] 2.4 The closing form works with JavaScript disabled, errors remain readable, and the closed detail clearly shows the sale and final result at desktop and mobile widths.
+- [x] 2.4 The closing form works with JavaScript disabled, errors remain readable, and the closed detail clearly shows the sale and final result at desktop and mobile widths. — 4a8e459
 
 ### Phase 3: Verification
 
 #### Automated
 
-- [ ] 3.1 Local database and HTTP tests pass for competing closes, stale price updates, foreign/deleted/missing ids, reload persistence and delete/restore preservation.
-- [ ] 3.2 The repository verification sequence passes in order: `npx astro sync`, `npm run lint`, `npx astro check`, `npm run build`; `npm test`, `npm run test:decimal-db` and the local HTTP smoke walk also pass.
+- [x] 3.1 Local database and HTTP tests pass for competing closes, stale price updates, foreign/deleted/missing ids, reload persistence and delete/restore preservation.
+- [x] 3.2 The repository verification sequence passes in order: `npx astro sync`, `npm run lint`, `npx astro check`, `npm run build`; `npm test`, `npm run test:decimal-db` and the local HTTP smoke walk also pass.
 
 #### Manual
 
-- [ ] 3.3 A mixed open/closed wallet and the same-reason history show the agreed results and date labels; a mistaken repeat close never replaces the saved sale.
+- [x] 3.3 A mixed open/closed wallet and the same-reason history show the agreed results and date labels; a mistaken repeat close never replaces the saved sale.
