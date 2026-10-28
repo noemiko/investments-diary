@@ -1,7 +1,7 @@
 ---
 change_id: close-position
 title: Close position
-status: implemented
+status: impl_reviewed
 created: 2026-10-27
 updated: 2026-10-28
 archived_at: null
