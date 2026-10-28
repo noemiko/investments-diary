@@ -11,11 +11,12 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatDate, formatNumber } from "@/lib/format";
 import { createClient } from "@/lib/supabase";
-import { getPosition, updatePositionPrice, type UpdatePriceResult } from "@/lib/services/positions";
+import { closePosition, getPosition, updatePositionPrice, type UpdatePriceResult } from "@/lib/services/positions";
 import { todayUtc } from "@/lib/validation/position";
 import { parsePriceForm, readPriceForm } from "@/lib/validation/price";
+import { emptyClosePositionForm, parseClosePositionForm, readClosePositionForm } from "@/lib/validation/close-position";
 import { isUuid } from "@/lib/validation/uuid";
-import type { PositionDetail, PriceFormErrors, PriceFormValues } from "@/types";
+import type { ClosePositionFormErrors, PositionDetail, PriceFormErrors, PriceFormValues } from "@/types";
 
 // Handles its own POST and re-renders on error, as /dashboard/new does.
 
@@ -33,6 +34,9 @@ const SAVE_ERRORS: Record<Exclude<UpdatePriceResult, { ok: true }>["error"], Pri
 };
 
 const id = Astro.params.id ?? "";
+const form = Astro.request.method === "POST" ? await Astro.request.formData() : null;
+const action = form?.get("action") ?? "price";
+const attemptedAction = action === "close" ? "sale" : action === "price" ? "price" : "submission";
 
 // "not_found" covers a malformed id, a missing one, another account's and a deleted one alike,
 // so the page never reveals whether an id exists for someone else.
@@ -52,22 +56,45 @@ if (isUuid(id)) {
 let values: PriceFormValues = { current_price: "", price_date: todayUtc() };
 let errors: PriceFormErrors = {};
 
-if (position && Astro.request.method === "POST") {
-  values = readPriceForm(await Astro.request.formData());
-  const parsed = parsePriceForm(values, position.buy_date);
-  if (parsed.success) {
-    const result = await updatePositionPrice(supabase, position.id, parsed.data);
-    if (result.ok) {
-      return Astro.redirect(`/dashboard/positions/${position.id}`);
-    }
-    if (result.error === "not_found") {
-      state = "not_found";
-      position = null;
-    } else {
-      errors = SAVE_ERRORS[result.error];
+let closeValues = emptyClosePositionForm();
+let closeErrors: ClosePositionFormErrors = {};
+let actionError = "";
+
+if (position && form) {
+  if (action !== "price" && action !== "close") {
+    actionError = "This submission was not recognised. Please try again.";
+  } else if (position.sell_date !== null) {
+    actionError = "This position is already closed. Sale corrections and reopening are not available yet.";
+  } else if (action === "close") {
+    closeValues = readClosePositionForm(form);
+    const parsed = parseClosePositionForm(closeValues, position.buy_date);
+    if (!parsed.success) closeErrors = parsed.errors;
+    else {
+      const result = await closePosition(supabase, position.id, parsed.data);
+      if (result.ok) return Astro.redirect(`/dashboard/positions/${position.id}`, 303);
+      if (result.error === "not_found") {
+        state = "not_found";
+        position = null;
+      } else {
+        closeErrors = {
+          form:
+            result.error === "validation"
+              ? "This sale could not be saved. Check it and try again."
+              : "The sale could not be saved. Please try again.",
+        };
+      }
     }
   } else {
-    errors = parsed.errors;
+    values = readPriceForm(form);
+    const parsed = parsePriceForm(values, position.buy_date);
+    if (parsed.success) {
+      const result = await updatePositionPrice(supabase, position.id, parsed.data);
+      if (result.ok) return Astro.redirect(`/dashboard/positions/${position.id}`, 303);
+      if (result.error === "not_found") {
+        state = "not_found";
+        position = null;
+      } else errors = SAVE_ERRORS[result.error];
+    } else errors = parsed.errors;
   }
 }
 
@@ -85,8 +112,8 @@ const inputClass =
       {state === "load_failed" && (
         <div class="flex flex-col items-center gap-4 text-center">
           <p role="alert" class="max-w-md text-destructive">
-            This position could not be loaded.{Astro.request.method === "POST" && " Your price was not saved."} Please
-            try again.
+            This position could not be loaded.
+            {Astro.request.method === "POST" && ` Your ${attemptedAction} was not saved.`} Please try again.
           </p>
           <a href={`/dashboard/positions/${id}`} class:list={buttonVariants({ variant: "outline" })}>
             Try again
@@ -107,6 +134,7 @@ const inputClass =
             <div class="flex flex-wrap items-center gap-3">
               <h1 class="text-gradient-heading min-w-0 text-3xl font-bold break-words">{position.instrument}</h1>
               <Badge variant="secondary">{position.category_name}</Badge>
+              {position.sell_date !== null && <Badge variant="secondary">Closed</Badge>}
             </div>
             <p class="text-lg">
               <PositionResult
@@ -114,6 +142,8 @@ const inputClass =
                 quantity={position.quantity}
                 current_price={position.current_price}
                 price_date={position.price_date}
+                sell_price={position.sell_price}
+                sell_date={position.sell_date}
               />
             </p>
           </div>
@@ -152,72 +182,178 @@ const inputClass =
             )}
           </section>
 
-          <section class="flex flex-col gap-4">
-            <h2 class="text-lg font-semibold">Current price</h2>
-            {position.current_price !== null && position.price_date !== null && (
-              <p class="text-sm text-muted-foreground">
-                Currently{" "}
-                <span class="font-semibold text-foreground tabular-nums">{formatNumber(position.current_price)}</span>{" "}
-                as of {formatDate(position.price_date)}
-              </p>
-            )}
-            <form method="POST" class="flex flex-col gap-4" novalidate>
-              <div class="grid gap-4 sm:grid-cols-2">
-                <div class="flex flex-col gap-1">
-                  <label for="current_price" class="text-sm text-muted-foreground">
-                    Price (per share)
-                  </label>
-                  <input
-                    id="current_price"
-                    name="current_price"
-                    type="text"
-                    inputmode="decimal"
-                    placeholder="50.25"
-                    value={values.current_price}
-                    aria-invalid={errors.current_price ? "true" : undefined}
-                    aria-describedby={errors.current_price ? "current_price-error" : undefined}
-                    class:list={inputClass}
-                  />
-                  {errors.current_price && (
-                    <p id="current_price-error" class="text-xs text-destructive">
-                      {errors.current_price}
+          {actionError && (
+            <p role="alert" class="text-sm text-destructive">
+              {actionError}
+            </p>
+          )}
+          {position.sell_price !== null && position.sell_date !== null ? (
+            <section class="flex flex-col gap-2">
+              <h2 class="text-lg font-semibold">Sale</h2>
+              <dl class="grid grid-cols-2 gap-4">
+                <div>
+                  <dt class="text-sm text-muted-foreground">Sell price</dt>
+                  <dd class="tabular-nums">{formatNumber(position.sell_price)}</dd>
+                </div>
+                <div>
+                  <dt class="text-sm text-muted-foreground">Sell date</dt>
+                  <dd>{formatDate(position.sell_date)}</dd>
+                </div>
+              </dl>
+            </section>
+          ) : (
+            <>
+              <section class="flex flex-col gap-4">
+                <h2 class="text-lg font-semibold">Current price</h2>
+                {position.current_price !== null && position.price_date !== null && (
+                  <p class="text-sm text-muted-foreground">
+                    Currently{" "}
+                    <span class="font-semibold text-foreground tabular-nums">
+                      {formatNumber(position.current_price)}
+                    </span>{" "}
+                    as of {formatDate(position.price_date)}
+                  </p>
+                )}
+                <form method="POST" class="flex flex-col gap-4" novalidate>
+                  <input type="hidden" name="action" value="price" />
+                  <div class="grid gap-4 sm:grid-cols-2">
+                    <div class="flex flex-col gap-1">
+                      <label for="current_price" class="text-sm text-muted-foreground">
+                        Price (per share)
+                      </label>
+                      <input
+                        id="current_price"
+                        name="current_price"
+                        type="text"
+                        inputmode="decimal"
+                        placeholder="50.25"
+                        value={values.current_price}
+                        aria-invalid={errors.current_price ? "true" : undefined}
+                        aria-describedby={errors.current_price ? "current_price-error" : undefined}
+                        class:list={inputClass}
+                      />
+                      {errors.current_price && (
+                        <p id="current_price-error" class="text-xs text-destructive">
+                          {errors.current_price}
+                        </p>
+                      )}
+                    </div>
+                    <div class="flex flex-col gap-1">
+                      <label for="price_date" class="text-sm text-muted-foreground">
+                        Price date
+                      </label>
+                      <input
+                        id="price_date"
+                        name="price_date"
+                        type="date"
+                        min={position.buy_date}
+                        max={todayUtc()}
+                        value={values.price_date}
+                        aria-invalid={errors.price_date ? "true" : undefined}
+                        aria-describedby={errors.price_date ? "price_date-error" : undefined}
+                        class:list={inputClass}
+                      />
+                      {errors.price_date && (
+                        <p id="price_date-error" class="text-xs text-destructive">
+                          {errors.price_date}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  {errors.form && (
+                    <p role="alert" class="text-sm text-destructive">
+                      {errors.form}
                     </p>
                   )}
-                </div>
-                <div class="flex flex-col gap-1">
-                  <label for="price_date" class="text-sm text-muted-foreground">
-                    Price date
-                  </label>
-                  <input
-                    id="price_date"
-                    name="price_date"
-                    type="date"
-                    min={position.buy_date}
-                    max={todayUtc()}
-                    value={values.price_date}
-                    aria-invalid={errors.price_date ? "true" : undefined}
-                    aria-describedby={errors.price_date ? "price_date-error" : undefined}
-                    class:list={inputClass}
-                  />
-                  {errors.price_date && (
-                    <p id="price_date-error" class="text-xs text-destructive">
-                      {errors.price_date}
+                  <div>
+                    <button type="submit" class:list={buttonVariants()}>
+                      Save price
+                    </button>
+                  </div>
+                </form>
+              </section>
+
+              <section class="flex flex-col gap-4">
+                <h2 class="text-lg font-semibold">Close position</h2>
+                <form method="POST" class="flex flex-col gap-4" novalidate>
+                  <input type="hidden" name="action" value="close" />
+                  <div class="grid gap-4 sm:grid-cols-2">
+                    <div class="flex flex-col gap-1">
+                      <label for="sell_price" class="text-sm text-muted-foreground">
+                        Sell price (per share)
+                      </label>
+                      <input
+                        id="sell_price"
+                        name="sell_price"
+                        type="text"
+                        inputmode="decimal"
+                        placeholder="50.25"
+                        value={closeValues.sell_price}
+                        aria-invalid={closeErrors.sell_price ? "true" : undefined}
+                        aria-describedby={closeErrors.sell_price ? "sell_price-error" : undefined}
+                        class:list={inputClass}
+                      />
+                      {closeErrors.sell_price && (
+                        <p id="sell_price-error" class="text-xs text-destructive">
+                          {closeErrors.sell_price}
+                        </p>
+                      )}
+                    </div>
+                    <div class="flex flex-col gap-1">
+                      <label for="sell_date" class="text-sm text-muted-foreground">
+                        Sell date
+                      </label>
+                      <input
+                        id="sell_date"
+                        name="sell_date"
+                        type="date"
+                        min={position.buy_date}
+                        max={todayUtc()}
+                        value={closeValues.sell_date}
+                        aria-invalid={closeErrors.sell_date ? "true" : undefined}
+                        aria-describedby={closeErrors.sell_date ? "sell_date-error" : undefined}
+                        class:list={inputClass}
+                      />
+                      {closeErrors.sell_date && (
+                        <p id="sell_date-error" class="text-xs text-destructive">
+                          {closeErrors.sell_date}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div class="flex flex-col gap-1">
+                    <label for="acknowledgement" class="flex items-start gap-2 text-sm">
+                      <input
+                        id="acknowledgement"
+                        name="acknowledgement"
+                        type="checkbox"
+                        checked={closeValues.acknowledgement === "on"}
+                        aria-invalid={closeErrors.acknowledgement ? "true" : undefined}
+                        aria-describedby={closeErrors.acknowledgement ? "acknowledgement-error" : undefined}
+                        class="mt-1 shrink-0"
+                      />
+                      I am closing the entire position. Sale corrections and reopening are not available yet.
+                    </label>
+                    {closeErrors.acknowledgement && (
+                      <p id="acknowledgement-error" class="text-xs text-destructive">
+                        {closeErrors.acknowledgement}
+                      </p>
+                    )}
+                  </div>
+                  {closeErrors.form && (
+                    <p role="alert" class="text-sm text-destructive">
+                      {closeErrors.form}
                     </p>
                   )}
-                </div>
-              </div>
-              {errors.form && (
-                <p role="alert" class="text-sm text-destructive">
-                  {errors.form}
-                </p>
-              )}
-              <div>
-                <button type="submit" class:list={buttonVariants()}>
-                  Save price
-                </button>
-              </div>
-            </form>
-          </section>
+                  <div>
+                    <button type="submit" class:list={buttonVariants()}>
+                      Close position
+                    </button>
+                  </div>
+                </form>
+              </section>
+            </>
+          )}
 
           <section class="flex flex-col gap-2">
             <h2 class="text-lg font-semibold">Delete</h2>

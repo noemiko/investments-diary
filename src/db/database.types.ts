@@ -48,6 +48,8 @@ export type Database = {
           price_date: string | null
           quantity: number | null
           reason_text: string | null
+          sell_date: string | null
+          sell_price: number | null
           user_id: string
           wallet_id: string
         }
@@ -64,6 +66,8 @@ export type Database = {
           price_date?: string | null
           quantity?: number | null
           reason_text?: string | null
+          sell_date?: string | null
+          sell_price?: number | null
           user_id: string
           wallet_id: string
         }
@@ -80,6 +84,8 @@ export type Database = {
           price_date?: string | null
           quantity?: number | null
           reason_text?: string | null
+          sell_date?: string | null
+          sell_price?: number | null
           user_id?: string
           wallet_id?: string
         }

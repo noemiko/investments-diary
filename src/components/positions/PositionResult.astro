@@ -3,8 +3,8 @@ import { describeResult, NO_PRICE, type PositionResultInput } from "@/lib/result
 
 type Props = PositionResultInput;
 
-const { buy_price, quantity, current_price, price_date } = Astro.props;
-const result = describeResult({ buy_price, quantity, current_price, price_date });
+const { buy_price, quantity, current_price, price_date, sell_price, sell_date } = Astro.props;
+const result = describeResult({ buy_price, quantity, current_price, price_date, sell_price, sell_date });
 
 // Percent only, by the author's decision (2026-10-15); `positionResult().amount` is computed but not shown.
 ---

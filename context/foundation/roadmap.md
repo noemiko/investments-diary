@@ -3,7 +3,7 @@ project: "Investments Diary"
 version: 1
 status: draft # draft | active | locked
 created: 2026-09-25
-updated: 2026-10-19
+updated: 2026-10-28
 prd_version: 1
 main_goal: learn
 top_blocker: decisions
@@ -51,7 +51,7 @@ with your own past reasoning at the moment of deciding improves how you invest.
 | S-01 | record-first-investment   | record an investment with a reason category and optional reason, and see it listed   | —             | FR-003, FR-004, FR-005, FR-010 | done        |
 | S-02 | position-detail-and-price | open a position, read its full reason, update its price and see its dated result     | S-01          | FR-006, FR-011                 | done        |
 | S-03 | reason-confrontation      | see earlier same-reason positions with their results before saving a new investment  | S-01, S-02    | US-01, FR-012                  | done |
-| S-04 | close-position            | close a position with sell price and date and see its final result                   | S-02          | FR-007                         | proposed    |
+| S-04 | close-position            | close a position with sell price and date and see its final result                   | S-02          | FR-007                         | done |
 | S-05 | recoverable-delete        | delete a position and restore it later                                               | S-01          | FR-009                         | done        |
 | S-06 | private-diary-access      | register and reach only their own diary, with every diary page gated behind sign-in  | —             | FR-001, FR-002                 | ready       |
 | S-07 | reason-lock-editing       | correct an investment's facts and add a missing reason, after which the reason locks | S-01          | FR-008, FR-004                 | proposed    |
@@ -131,7 +131,7 @@ which is exactly what this roadmap avoids.
   - How should a closed position's realised result count in its wallet? (PRD Open Question 6, FR-013) — Owner: user. Block: no for closing itself; resolve before integrating closed results into wallet totals.
   - Acceptance criteria for the closing path are missing (PRD Open Question 4) — Owner: user. Block: no (write them during `/10x-plan`).
 - **Risk:** Builds on the result concept from S-02; kept separate from it because a long-term investor rarely sells and this path should not delay the north star.
-- **Status:** proposed
+- **Status:** done
 
 ### S-05: Delete and restore a position
 
@@ -236,6 +236,8 @@ which is exactly what this roadmap avoids.
 ## Milestone History
 
 ## Done
+
+- **S-04: user can close an open position by recording sell price and sell date, and from then on see its final gain or loss wherever results are shown, including the confrontation once S-03 has landed.** — Archived 2026-10-28 → `context/archive/2026-10-27-close-position/`. Lesson: —.
 
 - **S-01: user can record an investment (instrument, buy price and buy date required; quantity and broker label optional), attach a reason category they defined and an optional reason text, and see it in their list of positions with its category.** — Archived 2026-10-02 → `context/archive/2026-09-25-record-first-investment/`. Lesson: —.
 - **S-02: user can open one position, read its full written reason, update its current price, and see its result together with the date that price was set — in the detail view and in the list.** — Archived 2026-10-16 → `context/archive/2026-10-15-position-detail-and-price/`. Lesson: —.

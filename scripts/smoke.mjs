@@ -7,7 +7,11 @@
 
 import { randomBytes, randomUUID } from "node:crypto";
 
-const BASE_URL = process.env.BASE_URL ?? "http://localhost:4321";
+const smokeUrl = new URL(process.env.BASE_URL ?? "http://localhost:4321");
+if (smokeUrl.protocol !== "http:" || !["localhost", "127.0.0.1", "[::1]"].includes(smokeUrl.hostname)) {
+  throw new Error("Account-creating smoke tests require a local HTTP server");
+}
+const BASE_URL = smokeUrl.origin;
 const runId = `${Date.now()}-${randomBytes(3).toString("hex")}`;
 const password = "Smoke-Test-Passw0rd!";
 
@@ -31,6 +35,7 @@ const deletedReasonText = `Deleted position reason ${runId}`;
 const ids = {
   secondWallet: "",
   pricedPosition: "",
+  openPosition: "",
   wallet: "",
   bWallet: "",
   category: "",
@@ -40,6 +45,7 @@ const ids = {
 const ID_LABELS = {
   secondWallet: "second wallet",
   pricedPosition: "priced investment",
+  openPosition: "open investment",
   wallet: "wallet",
   bWallet: "B's own wallet",
   category: "category",
@@ -155,6 +161,24 @@ const CONFRONTATION_ITEM = "data-confrontation-position-id";
 const confronts = (key) => () => `${CONFRONTATION_ITEM}="${ids[key]}"`;
 // An empty instrument is rejected, so the form re-renders (no JS) with the submitted category kept.
 const rejectedEntry = (overrides) => position({ instrument: "", ...overrides });
+const pricedPath = () => `/dashboard/positions/${ids.pricedPosition}`;
+const closeForm = (overrides = {}) => ({
+  action: "close",
+  sell_price: "55",
+  sell_date: yesterdayUtc,
+  acknowledgement: "on",
+  ...overrides,
+});
+const soldDateLabel = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" }).format(
+  new Date(`${yesterdayUtc}T00:00:00Z`),
+);
+function recordBody(result, id, history = false) {
+  const pattern = history ? /<li\b[^>]*>[\s\S]*?<\/li>/g : /<tr\b[^>]*>[\s\S]*?<\/tr>/g;
+  const marker = history ? `data-confrontation-position-id="${id}"` : `href="/dashboard/positions/${id}"`;
+  const record = [...result.body.matchAll(pattern)].find(([html]) => html.includes(marker))?.[0];
+  if (!record) throw new Error("Expected result record missing");
+  return { ...result, body: record };
+}
 
 // Each step: [name, run, expected]. `includes` / `excludes` are checked against the (entity-decoded) body;
 // an entry (or `location`) may be a function, read when the step runs, to use an id captured earlier.
@@ -206,7 +230,7 @@ const steps = [
       ids.wallet = walletIdFor(result.body, walletName);
       return result;
     },
-    { status: 200, includes: [walletName, "1,000.50", "No priced positions"], requiresIds: ["wallet"] },
+    { status: 200, includes: [walletName, "1,000.50", "No counted results"], requiresIds: ["wallet"] },
   ],
   [
     "A: records a position with a new category",
@@ -360,7 +384,7 @@ const steps = [
   [
     "A: sets a current price",
     () => request(a, detailPath(), { method: "POST", form: { current_price: "60,3", price_date: todayUtc } }),
-    { status: 302, location: detailPath, exactLocation: true },
+    { status: 303, location: detailPath, exactLocation: true },
   ],
   ["A: dashboard shows the result", () => request(a, "/dashboard"), { status: 200, includes: [RESULT, "as of"] }],
   [
@@ -580,6 +604,11 @@ const steps = [
     },
   ],
   [
+    "B: cannot close A's position and sees the same missing-id page",
+    () => request(b, detailPath(), { method: "POST", form: closeForm({ sell_date: todayUtc }) }),
+    { status: 404, excludes: [instrument, reasonText], sameBodyAs: () => unknownIdBody },
+  ],
+  [
     "B: signout clears session",
     () => request(b, "/api/auth/signout", { method: "POST" }),
     { status: 302, location: "/" },
@@ -600,7 +629,7 @@ const steps = [
     // Main has no quantity; the no-JS entry has no price. Both are excluded; deleted entries are absent.
     "A: wallet leaves the position without quantity out of its value",
     () => request(a, "/dashboard/wallets"),
-    { status: 200, includes: [walletName, "1,000.50", 'data-wallet-not-counted="2"', "No priced positions"] },
+    { status: 200, includes: [walletName, "1,000.50", 'data-wallet-not-counted="2"', "No counted results"] },
   ],
   [
     "A: deleted position is still deleted",
@@ -635,6 +664,7 @@ const steps = [
         method: "POST",
         form: position({
           instrument: `PRICED-${runId}`,
+          buy_date: yesterdayUtc,
           wallet_id: ids.secondWallet,
           buy_price: "50",
           quantity: "10",
@@ -653,7 +683,7 @@ const steps = [
         method: "POST",
         form: { current_price: "60", price_date: todayUtc },
       }),
-    { status: 302, location: () => `/dashboard/positions/${ids.pricedPosition}`, exactLocation: true },
+    { status: 303, location: () => `/dashboard/positions/${ids.pricedPosition}`, exactLocation: true },
   ],
   [
     "A: wallet total and members agree: 1000 + (60 - 50) * 10 = 1100",
@@ -731,7 +761,7 @@ const steps = [
     () => request(a, `/dashboard/wallets/${ids.secondWallet}`),
     {
       status: 200,
-      includes: ['data-wallet-value="2,000.00"', "No priced positions", "No investments in this wallet yet."],
+      includes: ['data-wallet-value="2,000.00"', "No counted results", "No investments in this wallet yet."],
       excludes: [`PRICED-${runId}`],
     },
   ],
@@ -744,6 +774,153 @@ const steps = [
     "A: restoration returns member and its gain to the same wallet",
     () => request(a, `/dashboard/wallets/${ids.secondWallet}`),
     { status: 200, includes: ['data-wallet-value="2,100.00"', `PRICED-${runId}`] },
+  ],
+  // Full close acceptance: sale is older than its retained quote, so stale quote leakage is visible.
+  [
+    "A: close rejects absent acknowledgement and preserves values",
+    () => request(a, pricedPath(), { method: "POST", form: closeForm({ acknowledgement: "" }) }),
+    { status: 200, includes: ["Confirm that you are closing the entire position", 'value="55"'] },
+  ],
+  [
+    "A: closes the entire position and receives a redirect",
+    () => request(a, pricedPath(), { method: "POST", form: closeForm() }),
+    { status: 303, location: pricedPath, exactLocation: true },
+  ],
+  [
+    "A: follows close redirect and sees persisted sale facts",
+    () => request(a, pricedPath()),
+    {
+      status: 200,
+      includes: ["Closed", "Final +10.00%", "· sold", soldDateLabel, "Sell price", "55", "Sell date"],
+      excludes: ['name="current_price"', 'name="sell_price"', "Currently"],
+    },
+  ],
+  [
+    "A: reloading closed detail keeps its final result",
+    () => request(a, pricedPath()),
+    { status: 200, includes: ["Final +10.00%", soldDateLabel], excludes: ["Final +20.00%"] },
+  ],
+  [
+    "A: dashboard row uses final sale rather than retained quote",
+    async () => recordBody(await request(a, "/dashboard"), ids.pricedPosition),
+    { status: 200, includes: ["Closed", "Final +10.00%", "· sold", soldDateLabel], excludes: ["+20.00%", "as of"] },
+  ],
+  [
+    "A: wallet member uses the same final result",
+    async () => recordBody(await request(a, `/dashboard/wallets/${ids.secondWallet}`), ids.pricedPosition),
+    { status: 200, includes: ["Closed", "Final +10.00%", soldDateLabel], excludes: ["+20.00%", "as of"] },
+  ],
+  [
+    "A: same-reason history retains the closed sale result",
+    async () =>
+      recordBody(
+        await request(a, "/dashboard/new", { method: "POST", form: rejectedEntry({ category_id: ids.category }) }),
+        ids.pricedPosition,
+        true,
+      ),
+    { status: 200, includes: ["Closed", "Final +10.00%", soldDateLabel], excludes: ["+20.00%", "as of"] },
+  ],
+  [
+    "A: realised-only wallet totals the sale gain of 50",
+    () => request(a, `/dashboard/wallets/${ids.secondWallet}`),
+    {
+      status: 200,
+      includes: ['data-wallet-value="2,050.00"', "Realised results only"],
+      excludes: ["Open prices as of"],
+    },
+  ],
+  [
+    "A: repeat close cannot replace the first saved sale",
+    () => request(a, pricedPath(), { method: "POST", form: closeForm({ sell_price: "0", sell_date: todayUtc }) }),
+    { status: 200, includes: ["already closed", "Final +10.00%", soldDateLabel], excludes: ["Final -100.00%"] },
+  ],
+  [
+    "A: stale price form cannot reprice a closed sale",
+    () => request(a, pricedPath(), { method: "POST", form: { current_price: "999", price_date: todayUtc } }),
+    { status: 200, includes: ["already closed", "Final +10.00%", soldDateLabel], excludes: ['name="current_price"'] },
+  ],
+  [
+    "A: records an open gain alongside the closed position",
+    async () => {
+      const result = await request(a, "/dashboard/new", {
+        method: "POST",
+        form: position({
+          instrument: `OPEN-${runId}`,
+          wallet_id: ids.secondWallet,
+          category_id: ids.category,
+          buy_price: "10",
+          quantity: "20",
+        }),
+      });
+      ids.openPosition = positionIdFor((await request(a, "/dashboard")).body, `OPEN-${runId}`, "delete");
+      return result;
+    },
+    { status: 302, location: "/dashboard", requiresIds: ["openPosition"] },
+  ],
+  [
+    "A: prices the open contribution at 12",
+    () =>
+      request(a, `/dashboard/positions/${ids.openPosition}`, {
+        method: "POST",
+        form: { current_price: "12", price_date: todayUtc },
+      }),
+    { status: 303, location: () => `/dashboard/positions/${ids.openPosition}`, exactLocation: true },
+  ],
+  [
+    "A: mixed wallet counts realised 50 plus open 40 with open quote freshness",
+    () => request(a, `/dashboard/wallets/${ids.secondWallet}`),
+    { status: 200, includes: ['data-wallet-value="2,090.00"', "Open prices as of", "Includes realised gains/losses"] },
+  ],
+  [
+    "A: deletes the closed position",
+    () => request(a, `${pricedPath()}/delete`, { method: "POST" }),
+    { status: 302, location: () => `/dashboard?deleted=${ids.pricedPosition}`, exactLocation: true },
+  ],
+  [
+    "A: closed deletion removes only realised gain and the closed member",
+    () => request(a, `/dashboard/wallets/${ids.secondWallet}`),
+    {
+      status: 200,
+      includes: ['data-wallet-value="2,040.00"', `OPEN-${runId}`],
+      excludes: [`PRICED-${runId}`, "Includes realised gains/losses"],
+    },
+  ],
+  [
+    "A: deleted closed position leaves same-reason history",
+    () => request(a, "/dashboard/new", { method: "POST", form: rejectedEntry({ category_id: ids.category }) }),
+    { status: 200, excludes: [confronts("pricedPosition")], includes: [confronts("openPosition")] },
+  ],
+  [
+    "A: restores the closed position",
+    () => request(a, `${pricedPath()}/restore`, { method: "POST" }),
+    { status: 302, location: "/dashboard", exactLocation: true },
+  ],
+  [
+    "A: restored sale retains its price, date and final result",
+    () => request(a, pricedPath()),
+    {
+      status: 200,
+      includes: ["Final +10.00%", "Sell price", "55", soldDateLabel],
+      excludes: ['name="current_price"', 'name="sell_price"'],
+    },
+  ],
+  [
+    "A: restoration reinstates realised gain in mixed wallet",
+    () => request(a, `/dashboard/wallets/${ids.secondWallet}`),
+    {
+      status: 200,
+      includes: ['data-wallet-value="2,090.00"', "Includes realised gains/losses", `PRICED-${runId}`, `OPEN-${runId}`],
+    },
+  ],
+  [
+    "A: restored closed result returns to same-reason history",
+    async () =>
+      recordBody(
+        await request(a, "/dashboard/new", { method: "POST", form: rejectedEntry({ category_id: ids.category }) }),
+        ids.pricedPosition,
+        true,
+      ),
+    { status: 200, includes: ["Final +10.00%", soldDateLabel] },
   ],
   [
     "A: signout clears session again",

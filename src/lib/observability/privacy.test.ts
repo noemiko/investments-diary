@@ -115,3 +115,19 @@ describe("final event privacy boundary", () => {
     expect(result.message).toBe("Unexpected application failure: unexpected");
   });
 });
+
+it("retains the close operation while removing all financial submission data", () => {
+  const result = scrubEvent({
+    message: "sale 12345.67891234 on 2026-09-15 failed",
+    tags: { operation: "closePosition", code: "XX000", sell_price: "12345.67891234", sell_date: "2026-09-15" },
+    extra: { form: { sell_price: "12345.67891234", sell_date: "2026-09-15", acknowledgement: "on" } },
+    request: { data: "sell_price=12345.67891234&sell_date=2026-09-15" },
+    exception: { values: [{ type: "PostgrestError", value: "sale 12345.67891234 failed" }] },
+  });
+  expect(result.tags).toEqual({ operation: "closePosition", code: "XX000" });
+  expect(result.message).toBe("Unexpected application failure: closePosition");
+  expect(JSON.stringify(result)).not.toContain("12345.67891234");
+  expect(JSON.stringify(result)).not.toContain("2026-09-15");
+  expect(result.request).toBeUndefined();
+  expect(result.extra).toBeUndefined();
+});

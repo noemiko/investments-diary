@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { History } from "lucide-react";
 import type { ConfrontationState } from "@/lib/confrontation";
 import { formatDate } from "@/lib/format";
@@ -51,7 +52,9 @@ function EarlierPosition({ position }: { position: ConfrontationPosition }) {
   return (
     <li data-confrontation-position-id={position.id} className="space-y-1 rounded-lg border border-white/10 p-3">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="font-medium">{position.instrument}</span>
+        <span className="font-medium">
+          {position.instrument} {position.sell_date !== null && <Badge variant="secondary">Closed</Badge>}
+        </span>
         <span className="text-xs text-blue-100/60">Bought {formatDate(position.buy_date)}</span>
       </div>
       {position.reason_text ? (

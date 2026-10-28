@@ -1,7 +1,13 @@
 import type { ApiDatabase } from "@/db/api.types";
 import { createClient } from "@supabase/supabase-js";
 import { beforeEach, expect, it, vi } from "vitest";
-import { createPosition, updatePositionPrice, deletePosition, restorePosition } from "@/lib/services/positions";
+import {
+  closePosition,
+  createPosition,
+  updatePositionPrice,
+  deletePosition,
+  restorePosition,
+} from "@/lib/services/positions";
 import { createWallet, updateWallet } from "@/lib/services/wallets";
 import { reportUnexpected } from "@/lib/observability/reporter";
 vi.mock("@/lib/observability/reporter", async (original) => ({
@@ -51,16 +57,23 @@ const writes = [
     operation: "updateWallet",
     run: (c: ReturnType<typeof client>) => updateWallet(c, "id", { name: "private", starting_value: "0" }),
   },
+  {
+    operation: "closePosition",
+    run: (c: ReturnType<typeof client>) => closePosition(c, "id", { sell_price: "0", sell_date: "2026-01-02" }),
+  },
 ];
 it.each(writes)("$operation reports unexpected returned errors once", async ({ operation, run }) => {
   expect(await run(client("XX000"))).toEqual({ ok: false, error: "unexpected" });
   expect(reportUnexpected).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ code: "XX000" }), { operation });
 });
-it.each([writes[0], writes[1], writes[4], writes[5]])("$operation keeps validation quiet", async ({ run }) => {
-  expect(await run(client("23514"))).toEqual({ ok: false, error: "validation" });
-  expect(reportUnexpected).not.toHaveBeenCalled();
-});
-it.each([writes[2], writes[3], writes[5]])("$operation keeps missing rows quiet", async ({ run }) => {
+it.each([writes[0], writes[1], writes[4], writes[5], writes[6]])(
+  "$operation keeps validation quiet",
+  async ({ run }) => {
+    expect(await run(client("23514"))).toEqual({ ok: false, error: "validation" });
+    expect(reportUnexpected).not.toHaveBeenCalled();
+  },
+);
+it.each([writes[2], writes[3], writes[5], writes[6]])("$operation keeps missing rows quiet", async ({ run }) => {
   expect(await run(client("", []))).toEqual({ ok: false, error: "not_found" });
   expect(reportUnexpected).not.toHaveBeenCalled();
 });

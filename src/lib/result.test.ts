@@ -1,11 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { describeResult, positionResult, NO_PRICE, type PositionResultInput } from "@/lib/result";
 
-const priced: PositionResultInput = { buy_price: "50", current_price: "60", quantity: "10", price_date: "2026-10-01" };
+const priced: PositionResultInput = {
+  sell_price: null,
+  sell_date: null,
+  buy_price: "50",
+  current_price: "60",
+  quantity: "10",
+  price_date: "2026-10-01",
+};
 
 describe("position result", () => {
   it("computes a gain and carries the price date", () => {
     expect(positionResult(priced)).toEqual({
+      kind: "open",
       percent: { numerator: 100_000_000_000n, denominator: 5_000_000_000n },
       amount: { units: 1_000_000_000_000_000_000n, scale: 16 },
       priceDate: "2026-10-01",
@@ -57,5 +65,39 @@ describe("position result", () => {
     ["99.994999", "-0.01%"],
   ])("rounds the exact percentage at price %s", (current_price, expected) => {
     expect(describeResult({ ...priced, buy_price: "100", current_price })?.percent).toBe(expected);
+  });
+});
+
+describe("final sale results", () => {
+  it("uses the sale pair over a different later quote", () => {
+    const input = {
+      ...priced,
+      current_price: "80",
+      price_date: "2026-10-10",
+      sell_price: "60",
+      sell_date: "2026-09-01",
+    };
+    expect(positionResult(input)).toEqual({
+      kind: "closed",
+      percent: { numerator: 100_000_000_000n, denominator: 5_000_000_000n },
+      amount: { units: 1_000_000_000_000_000_000n, scale: 16 },
+      priceDate: "2026-09-01",
+    });
+    expect(describeResult(input)).toEqual({ percent: "Final +20.00%", asOf: "· sold Sep 1, 2026" });
+  });
+  it("counts a zero sale as a total loss without any quote", () => {
+    const input = { ...priced, current_price: null, price_date: null, sell_price: "0", sell_date: "2026-02-01" };
+    expect(positionResult(input)?.amount).toEqual({ units: -5_000_000_000_000_000_000n, scale: 16 });
+    expect(describeResult(input)).toEqual({ percent: "Final -100.00%", asOf: "· sold Feb 1, 2026" });
+    expect(positionResult({ ...input, quantity: null })?.amount).toBeNull();
+    expect(describeResult({ ...input, quantity: null })?.percent).toBe("Final -100.00%");
+  });
+  it.each([
+    ["40", "Final -20.00%"],
+    ["50", "Final 0.00%"],
+    ["50.0025", "Final +0.01%"],
+    ["49.9975", "Final -0.01%"],
+  ])("keeps exact final display at %s", (sell_price, expected) => {
+    expect(describeResult({ ...priced, sell_price, sell_date: "2026-01-01" })?.percent).toBe(expected);
   });
 });

@@ -1,20 +1,23 @@
 import { INPUT_FACTOR, decimalUnits, exactAmount, type ExactAmount, type ExactRatio } from "@/lib/decimal";
+import { formatDate } from "@/lib/format";
 import { positionResult, type PositionResultInput } from "@/lib/result";
 import type { Wallet, WalletPosition } from "@/types";
 
-/** A wallet's value against the last manually entered prices of its positions (FR-013). */
+/** Starting value plus realised and open-position results (FR-013). */
 export interface WalletValueResult {
   /** `starting_value + change`. */
   value: ExactAmount;
-  /** Σ `amount` of the counted positions, i.e. Σ (current_price − buy_price) × quantity. */
+  /** Σ `amount` of the counted positions, i.e. Σ (result_price − buy_price) × quantity. */
   change: ExactAmount;
   /** `change / starting_value × 100`, or `null` when the starting value is 0. */
   changePercent: ExactRatio | null;
   /** Positions whose result went into `change`. */
   counted: number;
-  /** Positions left out because they have no quantity or no current price yet. */
+  realisedCount: number;
+  openCount: number;
+  /** Missing quantity, or an open position without a current quote. */
   notCounted: number;
-  /** The oldest price date among the counted positions (`YYYY-MM-DD`), or `null` when none counted. */
+  /** Oldest counted open quote date (`YYYY-MM-DD`), or null without counted open quotes. */
   asOf: string | null;
 }
 
@@ -29,6 +32,8 @@ export function walletValue(
 ): WalletValueResult {
   let change = 0n;
   let counted = 0;
+  let realisedCount = 0;
+  let openCount = 0;
   let notCounted = 0;
   let asOf: string | null = null;
 
@@ -43,8 +48,10 @@ export function walletValue(
     change += result.amount.units;
     counted++;
 
-    if (asOf === null || result.priceDate < asOf) {
-      asOf = result.priceDate;
+    if (result.kind === "closed") realisedCount++;
+    else {
+      openCount++;
+      if (asOf === null || result.priceDate < asOf) asOf = result.priceDate;
     }
   }
   const starting = decimalUnits(wallet.starting_value) * INPUT_FACTOR;
@@ -53,6 +60,8 @@ export function walletValue(
     change: exactAmount(change),
     changePercent: starting === 0n ? null : { numerator: change * 100n, denominator: starting },
     counted,
+    realisedCount,
+    openCount,
     notCounted,
     asOf,
   };
@@ -67,4 +76,12 @@ export function groupByWallet(positions: readonly WalletPosition[]): Map<string,
     else groups.set(position.wallet_id, [position]);
   }
   return groups;
+}
+
+/** Shared wording for summary and detail so realised sales never imply quote freshness. */
+export function describeWalletResults(result: WalletValueResult): string {
+  if (result.counted === 0) return "No counted results";
+  if (result.openCount === 0) return "Realised results only";
+  const freshness = result.asOf === null ? "" : `Open prices as of ${formatDate(result.asOf)}`;
+  return result.realisedCount > 0 ? `${freshness} · Includes realised gains/losses` : freshness;
 }

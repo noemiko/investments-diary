@@ -12,6 +12,7 @@ const OPERATIONS = new Set([
   "loadWallets",
   "createPosition",
   "updatePositionPrice",
+  "closePosition",
   "deletePosition",
   "restorePosition",
   "findOrCreateCategory",
