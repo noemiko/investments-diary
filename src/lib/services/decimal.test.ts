@@ -6,16 +6,19 @@ import { getPosition, listConfrontationPositions, listPositions } from "@/lib/se
 import { getWallet, listWalletPositions, listWallets } from "@/lib/services/wallets";
 
 it("decodes nullable text without coercing already rounded JSON numbers", () => {
-  expect(decodePosition({ buy_price: "50.00000000", current_price: null, quantity: null })).toEqual({
+  expect(decodePosition({ sell_price: null, buy_price: "50.00000000", current_price: null, quantity: null })).toEqual({
+    sell_price: null,
     buy_price: "50",
     current_price: null,
     quantity: null,
   });
   for (const field of ["buy_price", "current_price", "quantity"] as const) {
     expect(() =>
-      decodePosition({ buy_price: "50", current_price: "60", quantity: "1", [field]: 12.12345678 }),
+      decodePosition({ sell_price: null, buy_price: "50", current_price: "60", quantity: "1", [field]: 12.12345678 }),
     ).toThrow();
-    expect(() => decodePosition({ buy_price: "50", current_price: "60", quantity: "1", [field]: "0" })).toThrow();
+    expect(() =>
+      decodePosition({ sell_price: null, buy_price: "50", current_price: "60", quantity: "1", [field]: "0" }),
+    ).toThrow();
   }
 });
 
@@ -49,4 +52,11 @@ it("every service rejects corrupted decimal transport instead of displaying a pa
   await expect(listWallets(client)).rejects.toThrow("decimal text");
   await expect(getWallet(client, "fixture")).rejects.toThrow("decimal text");
   await expect(listWalletPositions(client)).rejects.toThrow("decimal text");
+});
+
+it("accepts exact zero and maximum sale prices but refuses numeric sale transport", () => {
+  const row = { buy_price: "50", quantity: null, current_price: null };
+  expect(decodePosition({ ...row, sell_price: "0.00000000" }).sell_price).toBe("0");
+  expect(decodePosition({ ...row, sell_price: "999999999999.99999999" }).sell_price).toBe("999999999999.99999999");
+  expect(() => decodePosition({ ...row, sell_price: 0 })).toThrow("decimal text");
 });

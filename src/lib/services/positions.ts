@@ -4,6 +4,7 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import type { createClient } from "@/lib/supabase";
 import { readAll } from "@/lib/services/read-all";
 import type {
+  ClosePositionInput,
   ConfrontationPosition,
   DeletedPositionItem,
   NewPositionInput,
@@ -67,7 +68,7 @@ export async function listPositions(client: Client, walletId?: string): Promise<
     let query = client
       .from("positions")
       .select(
-        "id, instrument, buy_date, buy_price::text, quantity::text, broker_label, current_price::text, price_date, wallet_id, wallets!positions_wallet_fkey(name), reason_categories(name)",
+        "id, instrument, buy_date, buy_price::text, quantity::text, broker_label, current_price::text, price_date, sell_price::text, sell_date, wallet_id, wallets!positions_wallet_fkey(name), reason_categories(name)",
       )
       .is("deleted_at", null)
       .order("buy_date", { ascending: false })
@@ -91,7 +92,7 @@ export async function listConfrontationPositions(client: Client): Promise<Confro
   const { data, error } = await client
     .from("positions")
     .select(
-      "id, category_id, instrument, buy_date, buy_price::text, quantity::text, current_price::text, price_date, reason_text",
+      "id, category_id, instrument, buy_date, buy_price::text, quantity::text, current_price::text, price_date, sell_price::text, sell_date, reason_text",
     )
     .is("deleted_at", null)
     .order("buy_date", { ascending: false })
@@ -110,7 +111,7 @@ export async function getPosition(client: Client, id: string): Promise<PositionD
   const { data, error } = await client
     .from("positions")
     .select(
-      "id, instrument, buy_date, buy_price::text, quantity::text, broker_label, current_price::text, price_date, reason_text, wallet_id, wallets!positions_wallet_fkey(name), reason_categories(name)",
+      "id, instrument, buy_date, buy_price::text, quantity::text, broker_label, current_price::text, price_date, sell_price::text, sell_date, reason_text, wallet_id, wallets!positions_wallet_fkey(name), reason_categories(name)",
     )
     .eq("id", id)
     .is("deleted_at", null)
@@ -133,6 +134,8 @@ export async function updatePositionPrice(
     .update({ current_price: input.current_price, price_date: input.price_date })
     .eq("id", id)
     .is("deleted_at", null)
+    .is("sell_price", null)
+    .is("sell_date", null)
     .select("id");
   if (error) {
     if (VALIDATION_CODES.has(error.code)) return { ok: false, error: "validation" };
@@ -271,4 +274,34 @@ export async function createPosition(
     .single();
   if (error) return failure(error);
   return { ok: true, id: data.id };
+}
+
+export type ClosePositionResult = { ok: true } | { ok: false; error: "not_found" | "validation" | "unexpected" };
+
+/** Atomically closes an open, non-deleted position (FR-007), preserving its retained quote. */
+export async function closePosition(
+  client: Client,
+  id: string,
+  input: ClosePositionInput,
+): Promise<ClosePositionResult> {
+  try {
+    const { data, error } = await client
+      .from("positions")
+      .update({ sell_price: input.sell_price, sell_date: input.sell_date })
+      .eq("id", id)
+      .is("deleted_at", null)
+      .is("sell_price", null)
+      .is("sell_date", null)
+      .select("id");
+    if (error) {
+      if (VALIDATION_CODES.has(error.code)) return { ok: false, error: "validation" };
+      logUnexpected("closePosition", error);
+      return { ok: false, error: "unexpected" };
+    }
+    if (data.length === 0) return { ok: false, error: "not_found" };
+    return { ok: true };
+  } catch (error) {
+    logUnexpected("closePosition", error);
+    return { ok: false, error: "unexpected" };
+  }
 }

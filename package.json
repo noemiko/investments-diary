@@ -16,6 +16,7 @@
     "smoke": "node scripts/smoke.mjs",
     "prepare": "husky",
     "test": "vitest run",
+    "test:close-db": "node scripts/test-close-database.mjs",
     "test:wallet-db": "node scripts/test-wallet-database.mjs",
     "test:decimal-db": "node scripts/test-decimal-database.mjs",
     "test:mutation": "node scripts/mutation-financial.mjs",

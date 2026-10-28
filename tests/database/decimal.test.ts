@@ -7,6 +7,7 @@ import { afterAll, beforeAll, expect, it } from "vitest";
 import { createClient } from "@supabase/supabase-js";
 import type { ApiDatabase } from "@/db/api.types";
 import {
+  closePosition,
   createPosition,
   getPosition,
   listPositions,
@@ -15,6 +16,7 @@ import {
 } from "@/lib/services/positions";
 import { createWallet, getWallet, listWallets, listWalletPositions, updateWallet } from "@/lib/services/wallets";
 import { parsePositionForm } from "@/lib/validation/position";
+import { parseClosePositionForm } from "@/lib/validation/close-position";
 import { parsePriceForm } from "@/lib/validation/price";
 import { parseWalletForm } from "@/lib/validation/wallet";
 import { positionResult, describeResult } from "@/lib/result";
@@ -257,4 +259,92 @@ it("preserves form digits through every production service and exact arithmetic"
   });
   expect(await getPosition(author, id)).toMatchObject(expected);
   expect(await getWallet(author, walletId)).toMatchObject({ name: "Service proof", starting_value: "0" });
+});
+
+it("enforces sale pair, nonnegative and buy-date constraints without changing an open record", async () => {
+  const created = await createPosition(author, owner, {
+    instrument: "Sale constraints",
+    buy_date: "2026-01-01",
+    buy_price: "50",
+    quantity: "10",
+    broker_label: null,
+    reason_text: "Keep",
+    category_id: category,
+    new_category_name: null,
+    wallet_id: wallet,
+  });
+  if (!created.ok) throw new Error("Fixture insert failed");
+  const id = created.id;
+  expect(await getPosition(author, id)).toMatchObject({
+    sell_price: null,
+    sell_date: null,
+    buy_price: "50",
+    reason_text: "Keep",
+  });
+  for (const [input, constraint] of [
+    [{ sell_price: "60" }, "positions_sale_pair"],
+    [{ sell_date: "2026-01-02" }, "positions_sale_pair"],
+    [{ sell_price: "-1", sell_date: "2026-01-02" }, "positions_sell_price_nonnegative"],
+    [{ sell_price: "60", sell_date: "2025-12-31" }, "positions_sell_date_after_buy"],
+  ] as const) {
+    const result = await author.from("positions").update(input).eq("id", id);
+    expect(result.error?.code).toBe("23514");
+    expect(result.error?.message).toContain(constraint);
+  }
+  expect(await getPosition(author, id)).toMatchObject({
+    sell_price: null,
+    sell_date: null,
+    buy_price: "50",
+    reason_text: "Keep",
+  });
+  expect(await closePosition(foreign, id, { sell_price: "0", sell_date: "2026-01-01" })).toEqual({
+    ok: false,
+    error: "not_found",
+  });
+  expect(await closePosition(author, id, { sell_price: "0", sell_date: "2026-01-01" })).toEqual({ ok: true });
+  expect(await closePosition(author, id, { sell_price: "60", sell_date: "2026-01-02" })).toEqual({
+    ok: false,
+    error: "not_found",
+  });
+  expect(await updatePositionPrice(author, id, { current_price: "100", price_date: "2026-01-03" })).toEqual({
+    ok: false,
+    error: "not_found",
+  });
+  expect(await getPosition(author, id)).toMatchObject({
+    sell_price: "0",
+    sell_date: "2026-01-01",
+    current_price: null,
+    buy_price: "50",
+    reason_text: "Keep",
+  });
+});
+
+it.each([max, min, "0"])("transports sale %s through every position service without rounding", async (sellPrice) => {
+  const created = await createPosition(author, owner, {
+    instrument: `Sale ${sellPrice}`,
+    buy_date: "2026-01-01",
+    buy_price: "50",
+    quantity: null,
+    broker_label: null,
+    reason_text: null,
+    category_id: category,
+    new_category_name: null,
+    wallet_id: wallet,
+  });
+  if (!created.ok) throw new Error("Fixture insert failed");
+  const parsed = parseClosePositionForm(
+    { sell_price: sellPrice.replace(".", ","), sell_date: "2026-01-01", acknowledgement: "on" },
+    "2026-01-01",
+  );
+  if (!parsed.success) throw new Error("Invalid close fixture");
+  expect(await closePosition(author, created.id, parsed.data)).toEqual({ ok: true });
+  const expected = { sell_price: sellPrice, sell_date: "2026-01-01", current_price: null };
+  expect(await getPosition(author, created.id)).toMatchObject(expected);
+  expect((await listPositions(author)).find((row) => row.id === created.id)).toMatchObject(expected);
+  expect((await listPositions(author, wallet)).find((row) => row.id === created.id)).toMatchObject(expected);
+  expect((await listConfrontationPositions(author)).find((row) => row.id === created.id)).toMatchObject(expected);
+  expect(await listWalletPositions(author)).toEqual(
+    expect.arrayContaining([expect.objectContaining({ ...expected, wallet_id: wallet })]),
+  );
+  expect(await getPosition(foreign, created.id)).toBeNull();
 });

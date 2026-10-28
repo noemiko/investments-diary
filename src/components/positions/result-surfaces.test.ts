@@ -34,6 +34,8 @@ const wallets: Wallet[] = [
 const gain: PositionDetail = {
   id: "20000000-0000-4000-8000-000000000001",
   instrument: "Gain",
+  sell_price: null,
+  sell_date: null,
   buy_price: "50",
   current_price: "60",
   quantity: "10",

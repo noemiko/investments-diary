@@ -133,6 +133,8 @@ describe("groupByWallet", () => {
   it("groups by id while keeping input order", () => {
     const one: WalletPosition = {
       wallet_id: "w1",
+      sell_price: null,
+      sell_date: null,
       buy_price: "1",
       quantity: "1",
       current_price: null,

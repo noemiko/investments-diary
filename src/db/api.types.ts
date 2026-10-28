@@ -17,7 +17,7 @@ type Tables = Database["public"]["Tables"];
 export type ApiDatabase = Omit<Database, "public"> & {
   public: Omit<Database["public"], "Tables"> & {
     Tables: Omit<Tables, "positions" | "wallets"> & {
-      positions: DecimalWrites<Tables["positions"], "buy_price" | "quantity" | "current_price">;
+      positions: DecimalWrites<Tables["positions"], "buy_price" | "quantity" | "current_price" | "sell_price">;
       wallets: DecimalWrites<Tables["wallets"], "starting_value">;
     };
   };

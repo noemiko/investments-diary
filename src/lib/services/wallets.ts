@@ -57,7 +57,9 @@ export async function listWalletPositions(client: Client): Promise<WalletPositio
   const rows = await readAll("listWalletPositions", (from, to) =>
     client
       .from("positions")
-      .select("wallet_id, buy_price::text, quantity::text, current_price::text, price_date")
+      .select(
+        "wallet_id, buy_price::text, quantity::text, current_price::text, price_date, sell_price::text, sell_date",
+      )
       .is("deleted_at", null)
       .order("id", { ascending: true })
       .range(from, to)
