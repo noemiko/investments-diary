@@ -1,10 +1,10 @@
 ---
 change_id: close-position
 title: Close position
-status: impl_reviewed
+status: archived
 created: 2026-10-27
 updated: 2026-10-28
-archived_at: null
+archived_at: 2026-10-28T14:00:45Z
 ---
 
 ## Notes
