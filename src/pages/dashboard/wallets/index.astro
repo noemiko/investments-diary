@@ -4,10 +4,10 @@ import Layout from "@/layouts/Layout.astro";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatAmount, formatDate, formatPercent, formatSignedAmount } from "@/lib/format";
+import { formatAmount, formatPercent, formatSignedAmount } from "@/lib/format";
 import { createClient } from "@/lib/supabase";
 import { listWalletPositions, listWallets } from "@/lib/services/wallets";
-import { groupByWallet, walletValue } from "@/lib/wallet";
+import { describeWalletResults, groupByWallet, walletValue } from "@/lib/wallet";
 
 const supabase = createClient(Astro.request.headers, Astro.cookies);
 
@@ -88,10 +88,10 @@ try {
                   )}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  {row.result.asOf ? `as of ${formatDate(row.result.asOf)}` : "No priced positions"}
+                  {describeWalletResults(row.result)}
                   {row.result.notCounted > 0 && (
                     <span class="block text-xs" data-wallet-not-counted={row.result.notCounted}>
-                      {row.result.notCounted} not counted (no quantity or no price)
+                      {row.result.notCounted} not counted (no quantity or no current price for an open position)
                     </span>
                   )}
                 </TableCell>

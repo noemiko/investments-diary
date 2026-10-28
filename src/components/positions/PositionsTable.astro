@@ -55,6 +55,11 @@ const { positions, showWallet = true } = Astro.props;
           <a href={`/dashboard/positions/${position.id}`} class="underline underline-offset-4 hover:text-primary">
             {position.instrument}
           </a>
+          {position.sell_date !== null && (
+            <Badge variant="secondary" className="ml-2">
+              Closed
+            </Badge>
+          )}
         </TableCell>
         <TableCell className="text-muted-foreground">{formatDate(position.buy_date)}</TableCell>
         <TableCell className="text-right tabular-nums">{formatNumber(position.buy_price)}</TableCell>
@@ -64,6 +69,8 @@ const { positions, showWallet = true } = Astro.props;
             quantity={position.quantity}
             current_price={position.current_price}
             price_date={position.price_date}
+            sell_price={position.sell_price}
+            sell_date={position.sell_date}
           />
         </TableCell>
         <TableCell className="text-right text-muted-foreground tabular-nums">

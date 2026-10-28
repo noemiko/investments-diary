@@ -1,6 +1,6 @@
 ---
-import { formatAmount, formatDate, formatPercent, formatSignedAmount } from "@/lib/format";
-import type { WalletValueResult } from "@/lib/wallet";
+import { formatAmount, formatPercent, formatSignedAmount } from "@/lib/format";
+import { describeWalletResults, type WalletValueResult } from "@/lib/wallet";
 
 interface Props {
   startingValue: string;
@@ -27,12 +27,10 @@ const { startingValue, result } = Astro.props;
       </dd>
     </div>
   </dl>
-  <p class="text-sm text-muted-foreground">
-    {result.asOf ? `as of ${formatDate(result.asOf)}` : "No priced positions"}
-  </p>
+  <p class="text-sm text-muted-foreground">{describeWalletResults(result)}</p>
   {result.notCounted > 0 && (
     <p class="text-sm text-muted-foreground" data-wallet-not-counted={result.notCounted}>
-      {result.notCounted} not counted (no quantity or no price)
+      {result.notCounted} not counted (no quantity or no current price for an open position)
     </p>
   )}
 </div>

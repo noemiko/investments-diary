@@ -186,21 +186,21 @@ When saving this plan, advance the change to `planned` and S-04 to `planning`. T
 
 #### Automated
 
-- [x] 1.1 Local migration and database tests prove pair/date/nonnegative constraints, existing-row compatibility and unchanged ownership isolation.
-- [x] 1.2 Validation and service tests prove zero/precision/date boundaries, required acknowledgement, conditional writes and expected/unexpected error classification.
-- [x] 1.3 Exact decimal read/write tests pass for sale fields across list, detail, confrontation and wallet services, including `npm run test:decimal-db`.
+- [x] 1.1 Local migration and database tests prove pair/date/nonnegative constraints, existing-row compatibility and unchanged ownership isolation. — 2b6d95e
+- [x] 1.2 Validation and service tests prove zero/precision/date boundaries, required acknowledgement, conditional writes and expected/unexpected error classification. — 2b6d95e
+- [x] 1.3 Exact decimal read/write tests pass for sale fields across list, detail, confrontation and wallet services, including `npm run test:decimal-db`. — 2b6d95e
 
 ### Phase 2: Closing flow and final results
 
 #### Automated
 
-- [ ] 2.1 Unit and SSR tests prove sale precedence, zero-price total loss and identical final percentage/date wiring across detail, list, wallet members and confrontation.
-- [ ] 2.2 Wallet tests prove realised/open sums, missing-data counts and open-only freshness, including realised-only and empty cases.
-- [ ] 2.3 Route/render tests prove action dispatch, preserved errors, required acknowledgement and absence of write forms on closed detail.
+- [x] 2.1 Unit and SSR tests prove sale precedence, zero-price total loss and identical final percentage/date wiring across detail, list, wallet members and confrontation.
+- [x] 2.2 Wallet tests prove realised/open sums, missing-data counts and open-only freshness, including realised-only and empty cases.
+- [x] 2.3 Route/render tests prove action dispatch, preserved errors, required acknowledgement and absence of write forms on closed detail.
 
 #### Manual
 
-- [ ] 2.4 The closing form works with JavaScript disabled, errors remain readable, and the closed detail clearly shows the sale and final result at desktop and mobile widths.
+- [x] 2.4 The closing form works with JavaScript disabled, errors remain readable, and the closed detail clearly shows the sale and final result at desktop and mobile widths.
 
 ### Phase 3: Verification
 

@@ -20,6 +20,7 @@ vi.mock("@/lib/services/positions", () => ({
   listDeletedPositions: vi.fn(),
   getPosition: vi.fn(),
   updatePositionPrice: vi.fn(),
+  closePosition: vi.fn(),
   createPosition: vi.fn(),
 }));
 vi.mock("@/lib/services/wallets", () => ({

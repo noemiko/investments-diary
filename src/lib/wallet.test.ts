@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { groupByWallet, walletValue } from "@/lib/wallet";
+import { describeWalletResults, groupByWallet, walletValue } from "@/lib/wallet";
 import { formatAmount, formatPercent, formatSignedAmount } from "@/lib/format";
 import type { WalletPosition } from "@/types";
 
 const priced = (buy_price: string, current_price: string, quantity: string | null, price_date: string) => ({
+  sell_price: null,
+  sell_date: null,
   buy_price,
   current_price,
   quantity,
@@ -26,6 +28,8 @@ describe("walletValue", () => {
       change: "0.00",
       changePercent: "0.00%",
       counted: 0,
+      realisedCount: 0,
+      openCount: 0,
       notCounted: 0,
       asOf: null,
     });
@@ -36,6 +40,8 @@ describe("walletValue", () => {
       change: "+100.00",
       changePercent: "+10.00%",
       counted: 1,
+      realisedCount: 0,
+      openCount: 1,
       notCounted: 0,
       asOf: "2026-10-01",
     });
@@ -51,6 +57,8 @@ describe("walletValue", () => {
       change: "-20.00",
       changePercent: "-2.00%",
       counted: 2,
+      realisedCount: 0,
+      openCount: 2,
       notCounted: 0,
       asOf: "2026-09-15",
     });
@@ -76,7 +84,7 @@ describe("walletValue", () => {
     expect(
       displayed(
         walletValue({ starting_value: "500" }, [
-          { buy_price: "50", quantity: "10", current_price: null, price_date: null },
+          { sell_price: null, sell_date: null, buy_price: "50", quantity: "10", current_price: null, price_date: null },
         ]),
       ),
     ).toMatchObject({ value: "500.00", change: "0.00", counted: 0, notCounted: 1, asOf: null });
@@ -146,5 +154,62 @@ describe("groupByWallet", () => {
     expect(groups.get("w1")).toEqual([one, three]);
     expect(groups.get("w2")).toEqual([two]);
     expect(groups.get("w3")).toBeUndefined();
+  });
+});
+
+describe("realised wallet results", () => {
+  const sold = {
+    buy_price: "50",
+    quantity: "10",
+    current_price: "999",
+    price_date: "2026-10-20",
+    sell_price: "60",
+    sell_date: "2026-01-01",
+  };
+  it("adds realised 100 and open 40 while dating only the open quote", () => {
+    const result = walletValue({ starting_value: "1000" }, [sold, priced("10", "12", "20", "2026-10-01")]);
+    expect(displayed(result)).toEqual({
+      value: "1,140.00",
+      change: "+140.00",
+      changePercent: "+14.00%",
+      counted: 2,
+      realisedCount: 1,
+      openCount: 1,
+      notCounted: 0,
+      asOf: "2026-10-01",
+    });
+    expect(describeWalletResults(result)).toBe("Open prices as of Oct 1, 2026 · Includes realised gains/losses");
+    expect(displayed(walletValue({ starting_value: "1000" }, [priced("10", "12", "20", "2026-10-01")])).value).toBe(
+      "1,040.00",
+    );
+  });
+  it("counts closed positions without quotes and excludes missing quantities", () => {
+    const result = walletValue({ starting_value: "1000" }, [
+      { ...sold, current_price: null, price_date: null },
+      { ...sold, quantity: null },
+      priced("10", "12", null, "2025-01-01"),
+    ]);
+    expect(displayed(result)).toEqual({
+      value: "1,100.00",
+      change: "+100.00",
+      changePercent: "+10.00%",
+      counted: 1,
+      realisedCount: 1,
+      openCount: 0,
+      notCounted: 2,
+      asOf: null,
+    });
+    expect(describeWalletResults(result)).toBe("Realised results only");
+  });
+  it("includes total losses and does not invent empty freshness or a zero-start percentage", () => {
+    const result = walletValue({ starting_value: "0" }, [{ ...sold, sell_price: "0" }]);
+    expect(displayed(result)).toMatchObject({
+      value: "-500.00",
+      change: "-500.00",
+      changePercent: null,
+      counted: 1,
+      asOf: null,
+    });
+    expect(describeWalletResults(walletValue({ starting_value: "0" }, []))).toBe("No counted results");
   });
 });
