@@ -206,9 +206,9 @@ When saving this plan, advance the change to `planned` and S-04 to `planning`. T
 
 #### Automated
 
-- [x] 3.1 Local database and HTTP tests pass for competing closes, stale price updates, foreign/deleted/missing ids, reload persistence and delete/restore preservation.
-- [x] 3.2 The repository verification sequence passes in order: `npx astro sync`, `npm run lint`, `npx astro check`, `npm run build`; `npm test`, `npm run test:decimal-db` and the local HTTP smoke walk also pass.
+- [x] 3.1 Local database and HTTP tests pass for competing closes, stale price updates, foreign/deleted/missing ids, reload persistence and delete/restore preservation. — a4d594f
+- [x] 3.2 The repository verification sequence passes in order: `npx astro sync`, `npm run lint`, `npx astro check`, `npm run build`; `npm test`, `npm run test:decimal-db` and the local HTTP smoke walk also pass. — a4d594f
 
 #### Manual
 
-- [x] 3.3 A mixed open/closed wallet and the same-reason history show the agreed results and date labels; a mistaken repeat close never replaces the saved sale.
+- [x] 3.3 A mixed open/closed wallet and the same-reason history show the agreed results and date labels; a mistaken repeat close never replaces the saved sale. — a4d594f
