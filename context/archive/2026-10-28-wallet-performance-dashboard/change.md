@@ -1,10 +1,10 @@
 ---
 change_id: wallet-performance-dashboard
 title: Visualise wallet performance over time with seeded test data
-status: impl_reviewed
+status: archived
 created: 2026-10-28
 updated: 2026-10-29
-archived_at: null
+archived_at: 2026-10-29T11:36:44Z
 ---
 
 ## Notes
