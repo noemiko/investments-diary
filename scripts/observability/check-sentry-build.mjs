@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
-const staticRoot = resolve(import.meta.dirname, "../.vercel/output/static");
+const staticRoot = resolve(import.meta.dirname, "../../.vercel/output/static");
 const credential = process.env.SENTRY_AUTH_TOKEN;
 const sentinel = "SENTRY_AUTH_TOKEN_PRIVATE_BUILD_SENTINEL";
 let checked = 0;

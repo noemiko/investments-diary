@@ -169,14 +169,14 @@ Pushing to the connected GitHub repository deploys automatically — the command
 
 ## Smoke test
 
-`scripts/smoke.mjs` is a dependency-free Node script that walks the whole auth flow (sign-up, sign-in, protected page, sign-out) over HTTP. Run it against the dev server or the production preview after dependency upgrades:
+`scripts/testing/smoke.mjs` is a dependency-free Node script that walks the whole auth flow (sign-up, sign-in, protected page, sign-out) over HTTP. Run it against the local dev server after dependency upgrades:
 
 ```bash
 npm run dev
 BASE_URL=http://localhost:4321 npm run smoke
 ```
 
-It needs a reachable Supabase instance (local or cloud) with email confirmation disabled.
+It requires local Supabase with email confirmation disabled. It creates persistent test accounts and fixtures; never point it at production.
 
 > **Note:** this script exists primarily to guard the development of the starter itself — it is a fast sanity check that dependency upgrades did not break the build or the Supabase auth flow. It is **not** a substitute for a real test suite. Once you build your own product on top of this starter, add proper tests (unit, integration, end-to-end) suited to your application.
 
@@ -190,3 +190,47 @@ GitHub Actions runs two jobs on every push and PR to `master`:
 ## License
 
 MIT
+
+## Wallet history and manual-test demo
+
+Run these commands from the project directory with local Supabase running:
+
+```sh
+npx supabase start
+```
+
+Copy and paste this block into **zsh** (the default macOS shell). Type a password of at least 12 characters when prompted, then press Enter. Your password stays hidden and is not written into shell history.
+
+```zsh
+read -s "DEMO_USER_PASSWORD?Demo password (at least 12 characters): "
+print
+export DEMO_USER_PASSWORD
+npm run seed:demo
+```
+
+Start the app if it is not already running:
+
+```sh
+npm run dev
+```
+
+Open [local sign-in](http://localhost:4321/auth/signin) and use:
+
+- **Email:** `wallet-demo@example.test`
+- **Password:** the password you entered above
+
+The demo provides 100 investments across five wallets with synthetic daily history. Normal reruns preserve your edits and keep the original account password. In the same terminal, run `npm run seed:demo` again without re-entering the password. In a new terminal, repeat the password-prompt block using the original password.
+
+To restore the original demo fixtures explicitly:
+
+```sh
+npm run seed:demo -- --reset
+```
+
+Reset affects recognised demo fixtures only and refuses unrelated references. See [wallet observations](context/deployment/wallet-observations.md) for daily capture, scheduler verification and further setup details.
+
+Run `npm run test:snapshots-db` and `npm run test:demo-db` against local Supabase. The versioned scheduler migration activates daily capture when applied. Verify it locally with `npm run test:wallet-cron`; production migration deployment remains a separate authorised step.
+
+## Script guide
+
+See [Project scripts](scripts/README.md) for the categorized inventory, commands, prerequisites, automatic callers and data effects. Existing npm commands remain unchanged.

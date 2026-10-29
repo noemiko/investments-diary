@@ -66,11 +66,11 @@ Minor/patch updates available within the current ranges: astro 7.3.5, @supabase/
 
 ```
 Test runner: not detected
-Tests found: 0 unit/integration tests; 1 HTTP smoke script (scripts/smoke.mjs)
+Tests found: 0 unit/integration tests; 1 HTTP smoke script (scripts/testing/smoke.mjs)
 Test execution: not attempted (smoke script needs a running dev server + local Supabase)
 ```
 
-`scripts/smoke.mjs` is a real, useful end-to-end check. It covers the auth flow over HTTP (redirects, cookies, gating) and runs in CI. But it isn't a test runner: it needs a live server and database, it takes no per-file targeting, and it can't exercise pure logic in isolation.
+`scripts/testing/smoke.mjs` is a real, useful end-to-end check. It covers the auth flow over HTTP (redirects, cookies, gating) and runs in CI. But it isn't a test runner: it needs a live server and database, it takes no per-file targeting, and it can't exercise pure logic in isolation.
 
 ⚠ No test runner detected. The agent cannot verify its own changes.
 Recommended: Vitest, which is Vite-native and shares Astro's Vite config through `getViteConfig`. It matters most for the PRD's core business rule ("show every earlier position with the same reason, each with its outcome"). That rule is pure logic: outcome calculation, open vs closed, gain vs loss. It's exactly the kind of code an agent should unit-test before touching the UI.

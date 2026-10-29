@@ -10,7 +10,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { chromium } from "@playwright/test";
 
 // All injected code lives in a disposable copy; never load the developer's .env or a real database.
-const root = resolve(import.meta.dirname, "..");
+const root = resolve(import.meta.dirname, "../..");
 const work = await mkdtemp(join(tmpdir(), "diary-sentry-"));
 const app = join(work, "app");
 const secret = "PRIVATE_PROBE_SENTINEL";

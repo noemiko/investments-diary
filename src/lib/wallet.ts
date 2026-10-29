@@ -9,6 +9,8 @@ export interface WalletValueResult {
   value: ExactAmount;
   /** Σ `amount` of the counted positions, i.e. Σ (result_price − buy_price) × quantity. */
   change: ExactAmount;
+  realisedChange: ExactAmount;
+  openChange: ExactAmount;
   /** `change / starting_value × 100`, or `null` when the starting value is 0. */
   changePercent: ExactRatio | null;
   /** Positions whose result went into `change`. */
@@ -31,6 +33,8 @@ export function walletValue(
   positions: readonly PositionResultInput[],
 ): WalletValueResult {
   let change = 0n;
+  let realisedChange = 0n;
+  let openChange = 0n;
   let counted = 0;
   let realisedCount = 0;
   let openCount = 0;
@@ -48,9 +52,12 @@ export function walletValue(
     change += result.amount.units;
     counted++;
 
-    if (result.kind === "closed") realisedCount++;
-    else {
+    if (result.kind === "closed") {
+      realisedCount++;
+      realisedChange += result.amount.units;
+    } else {
       openCount++;
+      openChange += result.amount.units;
       if (asOf === null || result.priceDate < asOf) asOf = result.priceDate;
     }
   }
@@ -58,6 +65,8 @@ export function walletValue(
   return {
     value: exactAmount(starting + change),
     change: exactAmount(change),
+    realisedChange: exactAmount(realisedChange),
+    openChange: exactAmount(openChange),
     changePercent: starting === 0n ? null : { numerator: change * 100n, denominator: starting },
     counted,
     realisedCount,

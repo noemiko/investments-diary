@@ -7,6 +7,9 @@ import Layout from "@/layouts/Layout.astro";
 import PositionsTable from "@/components/positions/PositionsTable.astro";
 import { listPositions } from "@/lib/services/positions";
 import { walletValue } from "@/lib/wallet";
+import { WalletTimeline } from "@/components/wallets/WalletTimeline";
+import { listWalletSnapshots } from "@/lib/services/wallet-snapshots";
+import { todayUtc } from "@/lib/validation/position";
 import WalletValue from "@/components/wallets/WalletValue.astro";
 import WalletForm from "@/components/wallets/WalletForm.astro";
 import { buttonVariants } from "@/components/ui/button";
@@ -86,6 +89,15 @@ if (wallet) {
 }
 const result = wallet && positions !== null ? walletValue(wallet, positions) : null;
 
+let snapshots: Awaited<ReturnType<typeof listWalletSnapshots>> | null = null;
+if (wallet) {
+  try {
+    snapshots = await listWalletSnapshots(supabase, wallet.id);
+  } catch (error) {
+    reportUnexpected(error, { operation: "listWalletSnapshots" });
+  }
+}
+
 if (state === "not_found") {
   Astro.response.status = 404;
 }
@@ -117,6 +129,13 @@ if (state === "not_found") {
         <>
           <h1 class="text-gradient-heading min-w-0 text-3xl font-bold break-words">{wallet.name}</h1>
           {result && <WalletValue startingValue={wallet.starting_value} result={result} />}
+          {snapshots === null ? (
+            <p role="alert" class="text-destructive">
+              Daily wallet observations could not be loaded. Please try again.
+            </p>
+          ) : (
+            <WalletTimeline snapshots={snapshots} today={todayUtc()} client:load />
+          )}
           <section class="flex min-w-0 flex-col gap-4" aria-labelledby="members-heading">
             <h2 id="members-heading" class="text-lg font-semibold">
               Investments

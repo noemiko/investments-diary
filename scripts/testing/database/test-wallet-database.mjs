@@ -11,7 +11,7 @@ function docker(args, input) {
   if (result.status !== 0) throw new Error(result.stderr || result.error?.message || "Database command failed");
   return result.stdout;
 }
-const migration = (name) => readFileSync(new URL(`../supabase/migrations/${name}`, import.meta.url), "utf8");
+const migration = (name) => readFileSync(new URL(`../../../supabase/migrations/${name}`, import.meta.url), "utf8");
 const sql = `
 create schema auth;
 create table auth.users (id uuid primary key);

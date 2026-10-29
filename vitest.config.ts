@@ -5,6 +5,6 @@ import { getViteConfig } from "astro/config";
 // (test-plan §3 Phase 1). Unit tests sit next to the pure module they cover: `src/lib/*.test.ts`.
 export default getViteConfig({
   test: {
-    include: ["src/**/*.test.ts", "scripts/__tests__/*.test.ts"],
+    include: ["src/**/*.test.ts", "scripts/**/__tests__/*.test.ts"],
   },
 });

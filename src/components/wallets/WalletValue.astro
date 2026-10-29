@@ -27,6 +27,17 @@ const { startingValue, result } = Astro.props;
       </dd>
     </div>
   </dl>
+  <p class="text-sm text-muted-foreground">Live total from your latest recorded prices</p>
+  <dl class="grid grid-cols-2 gap-4">
+    <div>
+      <dt class="text-sm text-muted-foreground">Realised gain/loss</dt>
+      <dd class="tabular-nums">{formatSignedAmount(result.realisedChange)}</dd>
+    </div>
+    <div>
+      <dt class="text-sm text-muted-foreground">Open gain/loss</dt>
+      <dd class="tabular-nums">{formatSignedAmount(result.openChange)}</dd>
+    </div>
+  </dl>
   <p class="text-sm text-muted-foreground">{describeWalletResults(result)}</p>
   {result.notCounted > 0 && (
     <p class="text-sm text-muted-foreground" data-wallet-not-counted={result.notCounted}>

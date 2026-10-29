@@ -1,6 +1,6 @@
 name: CI
 
-# Docs-only changes (context/, docs/, *.md) skip CI. Keep in sync with scripts/vercel-ignore-build.sh.
+# Docs-only changes (context/, docs/, *.md) skip CI. Keep in sync with scripts/deployment/vercel-ignore-build.sh.
 
 on:
   push:
@@ -55,6 +55,8 @@ jobs:
         run: supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,realtime,storage-api,postgres-meta,supavisor > /dev/null 2>&1
       - name: Prove exact decimal transport and service round trips
         run: npm run test:decimal-db
+      - name: Verify versioned wallet cron infrastructure
+        run: npm run test:wallet-cron
       - name: Stop local Supabase
         if: always()
         run: supabase stop --no-backup

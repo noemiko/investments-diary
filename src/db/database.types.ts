@@ -130,6 +130,59 @@ export type Database = {
         }
         Relationships: []
       }
+      wallet_snapshots: {
+        Row: {
+          as_of: string | null
+          captured_at: string
+          not_counted: number
+          observation_day: string
+          open_change: number
+          open_count: number
+          realised_change: number
+          realised_count: number
+          starting_value: number
+          user_id: string
+          value: number
+          wallet_id: string
+        }
+        Insert: {
+          as_of?: string | null
+          captured_at?: string
+          not_counted: number
+          observation_day: string
+          open_change: number
+          open_count: number
+          realised_change: number
+          realised_count: number
+          starting_value: number
+          user_id: string
+          value: number
+          wallet_id: string
+        }
+        Update: {
+          as_of?: string | null
+          captured_at?: string
+          not_counted?: number
+          observation_day?: string
+          open_change?: number
+          open_count?: number
+          realised_change?: number
+          realised_count?: number
+          starting_value?: number
+          user_id?: string
+          value?: number
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_snapshots_wallet_id_user_id_fkey"
+            columns: ["wallet_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
       wallets: {
         Row: {
           created_at: string
@@ -162,7 +215,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      capture_wallet_snapshots: { Args: never; Returns: number }
     }
     Enums: {
       [_ in never]: never

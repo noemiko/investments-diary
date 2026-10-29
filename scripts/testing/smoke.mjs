@@ -2,7 +2,7 @@
 // that a deleted position can be restored, that the new-investment form confronts the author with their
 // same-category positions (server-rendered part only; the live reveal needs JS), that a wallet counts its
 // positions (FR-013), and that one account cannot see, borrow, delete or restore another account's diary data.
-// Zero dependencies on purpose. Run against a live server: BASE_URL=http://localhost:4321 node scripts/smoke.mjs
+// Zero dependencies on purpose. Run against a live server: BASE_URL=http://localhost:4321 node scripts/testing/smoke.mjs
 // Creates two accounts per run — never point it at production.
 
 import { randomBytes, randomUUID } from "node:crypto";

@@ -9,6 +9,7 @@ import Wallets from "@/pages/dashboard/wallets/index.astro";
 import Wallet from "@/pages/dashboard/wallets/[id].astro";
 import * as positions from "@/lib/services/positions";
 import * as wallets from "@/lib/services/wallets";
+import { listWalletSnapshots } from "@/lib/services/wallet-snapshots";
 import { reportUnexpected } from "@/lib/observability/reporter";
 
 vi.mock("@/lib/supabase", () => ({ createClient: vi.fn(() => ({})) }));
@@ -29,6 +30,7 @@ vi.mock("@/lib/services/wallets", () => ({
   getWallet: vi.fn(),
   updateWallet: vi.fn(),
 }));
+vi.mock("@/lib/services/wallet-snapshots", () => ({ listWalletSnapshots: vi.fn() }));
 const id = "10000000-0000-4000-8000-000000000001";
 const locals: App.Locals = {
   user: {
@@ -42,6 +44,7 @@ const locals: App.Locals = {
 };
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.mocked(listWalletSnapshots).mockResolvedValue([]);
   vi.mocked(positions.listPositions).mockResolvedValue([]);
   vi.mocked(positions.listCategories).mockResolvedValue([]);
   vi.mocked(positions.listConfrontationPositions).mockResolvedValue([]);
@@ -51,6 +54,13 @@ beforeEach(() => {
   vi.mocked(wallets.getWallet).mockResolvedValue({ id, name: "Wallet", starting_value: "0" });
 });
 const cases = [
+  {
+    page: Wallet,
+    fail: listWalletSnapshots,
+    operation: "listWalletSnapshots",
+    path: `/dashboard/wallets/${id}`,
+    fallback: "Daily wallet observations could not be loaded",
+  },
   {
     page: Dashboard,
     fail: positions.listPositions,

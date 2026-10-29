@@ -14,7 +14,7 @@ const priced = (buy_price: string, current_price: string, quantity: string | nul
 // Observe the public display contract; every expected string below is independently hand computed.
 function displayed(result: ReturnType<typeof walletValue>) {
   return {
-    ...result,
+    ...(({ realisedChange: _r, openChange: _o, ...rest }) => rest)(result),
     value: formatAmount(result.value),
     change: formatSignedAmount(result.change),
     changePercent: result.changePercent === null ? null : formatPercent(result.changePercent),
@@ -212,4 +212,13 @@ describe("realised wallet results", () => {
     });
     expect(describeWalletResults(walletValue({ starting_value: "0" }, []))).toBe("No counted results");
   });
+});
+
+it("keeps realised and open breakdown exact", () => {
+  const value = walletValue({ starting_value: "1000" }, [
+    { ...priced("50", "999", "10", "2026-10-01"), sell_price: "60", sell_date: "2026-02-01" },
+    priced("10", "12", "20", "2026-10-01"),
+  ]);
+  expect(value.realisedChange).toEqual({ units: 1000000000000000000n, scale: 16 });
+  expect(value.openChange).toEqual({ units: 400000000000000000n, scale: 16 });
 });
