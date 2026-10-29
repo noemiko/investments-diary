@@ -153,11 +153,8 @@ already own and why they bought it.
 
 ### Wallets
 
-- FR-013: User can keep several named wallets, each with a starting value, and every investment belongs to exactly one wallet. A wallet's value is its starting value plus the sum of (current price − buy price) × quantity over its non-deleted investments. Investments without a quantity or without a current price are left out of that sum and the wallet says how many were not counted; the value states the oldest price date it used. Wallets can be created and edited (name, starting value) but not deleted in the first version. Priority: should-have
-  > Socrates: Counter-argument considered: "a wallet total is the broker summary again, and
-  > the diary is about reasons, not holdings." Resolution: revised — the wallet adds no
-  > verdict and no new number per position; it only sums results the diary already shows,
-  > and an incomplete total is flagged rather than silently presented as whole.
+- FR-013: User can keep several named wallets, each with an editable starting value, and assign every investment to one wallet. Live value is starting value plus realised results from closed positions and unrealised results from open positions, excluding deleted records. Missing quantity or an open position's missing quote is explicitly counted as excluded. Freshness uses the oldest counted open quote only. Wallets can be created and edited but not deleted.
+  A wallet dashboard shows current realised/open results and immutable daily wallet-value observations captured at midnight UTC. Observations use recorded manual data, retain their coverage/freshness context and are not market-price or cash-balance history. Users can inspect30/90/365-day or all-time ranges and point details. Earlier unavailable values and missed days are not backfilled; later edits, sales and delete/restore do not rewrite saved observations. Priority: should-have
 
 ## Non-Functional Requirements
 
@@ -227,4 +224,4 @@ existing route protection does — to be confirmed when that work is planned.
 3. ~~**Sign-up behaviour and unauthenticated-visitor handling**~~ — **Resolved 2026-09-25:** open registration. A signed-out visitor on a gated view is assumed to be redirected to sign-in (to confirm when planned).
 4. **User stories for the remaining paths** — only the confrontation path has acceptance criteria. Back-filling an existing holding, updating a price and closing a position do not. Owner: user. Resolve before implementation.
 5. **Live price source as a later addition** — recorded as a secondary success criterion and an explicit non-goal for version one. Owner: user. No date.
-6. **Wallets and the remaining position paths** — FR-013 sums open, non-deleted investments only. Still open: how a closed position's realised result counts in its wallet (decide with FR-007), whether an investment can move between wallets (decide with FR-008), and whether a wallet can be deleted. Owner: user.
+6. **Wallets and the remaining position paths** — FR-013 includes realised and open results under the accepted close-position decision; daily observations preserve historical diary totals. Still open: whether an investment can move between wallets (decide with FR-008), and whether a wallet can be deleted. Owner: user.

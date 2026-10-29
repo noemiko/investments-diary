@@ -4,7 +4,7 @@ import process from "node:process";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 
-const projectRoot = resolve(import.meta.dirname, "../..");
+const projectRoot = resolve(import.meta.dirname, "../../..");
 const configUrl = pathToFileURL(resolve(projectRoot, "astro.config.mjs")).href;
 
 function configuredRelease(overrides: NodeJS.ProcessEnv = {}) {

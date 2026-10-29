@@ -114,7 +114,7 @@ remote run results are tracked in the change plan.
 | ------------------ | ----------------------------------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | unit + integration | Vitest (via Astro's `getViteConfig`, per `health-check.md`) | 5.0.5 (installed, checked: 2026-10-21)    | Unit contracts and Astro Container/React SSR now wired; broad integration remains Phase 2              |
 | database           | Supabase CLI local stack                                    | from `devDependencies` (`supabase` ^2.23) | Real Postgres + RLS for integration tests; never the hosted project                                    |
-| HTTP smoke         | `scripts/smoke.mjs` (zero-dependency)                       | n/a                                       | Existing; runs against a live dev server; creates two accounts per run — never point it at production  |
+| HTTP smoke         | `scripts/testing/smoke.mjs` (zero-dependency)               | n/a                                       | Existing; runs against a live dev server; creates two accounts per run — never point it at production  |
 | e2e (browser)      | not planned                                                 | n/a                                       | Server-rendered flows are covered more cheaply by HTTP smoke plus integration; revisit via `--refresh` |
 
 **Stack grounding tools (current session):**
@@ -199,7 +199,6 @@ the relevant rollout phase ships; before that, the sub-section reads
   regression checks, not completion of rollout Phase 2 or a full RLS audit.
 - Existing database values are read exactly as stored. Digits lost before an
   earlier save cannot be reconstructed; corrections require the source record.
-
 
 ## 7. What We Deliberately Don't Test
 

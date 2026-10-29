@@ -11,9 +11,10 @@ function docker(args, input) {
   if (result.status !== 0) throw new Error(result.stderr || result.error?.message || "Database command failed");
   return result.stdout;
 }
-const directory = new URL("../supabase/migrations/", import.meta.url);
+const directory = new URL("../../../supabase/migrations/", import.meta.url);
 const migrations = readdirSync(directory)
-  .filter((name) => name.endsWith(".sql"))
+  // pg_cron only installs in its configured database; test its migration separately with test:wallet-cron.
+  .filter((name) => name.endsWith(".sql") && name !== "20261028170000_register_daily_wallet_snapshot_job.sql")
   .sort();
 const saleMigration = "20261028120000_close_position.sql";
 if (!migrations.includes(saleMigration)) throw new Error("Sale migration not found");
@@ -30,7 +31,7 @@ insert into positions(id,user_id,instrument,buy_price,buy_date,quantity,category
  ('30000000-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000001','deleted',0.00000001,'2026-01-01',null,'10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001',null,null,null,null,'2026-10-01T12:00:00Z'),
  ('30000000-0000-4000-8000-000000000003','00000000-0000-4000-8000-000000000002','foreign',999999999999.99999999,'2026-01-01',null,'10000000-0000-4000-8000-000000000002','20000000-0000-4000-8000-000000000002',null,null,null,null,null);
 create temporary table positions_before as select id,to_jsonb(p) facts from positions p;
-create temporary table policies_before as select * from pg_policies where schemaname='public';
+create temporary table policies_before as select * from pg_policies where schemaname='public' and tablename in ('positions','reason_categories','wallets');
 `;
 const chain = migrations
   .map((name) => `${name === saleMigration ? fixture : ""}\n${readFileSync(new URL(name, directory), "utf8")}`)
@@ -50,8 +51,8 @@ do $$ begin
  then raise exception 'migration altered existing facts'; end if;
  if exists(select 1 from positions where sell_price is not null or sell_date is not null)
  then raise exception 'existing rows did not remain open'; end if;
- if exists((select * from pg_policies where schemaname='public' except select * from policies_before)
- union all (select * from policies_before except select * from pg_policies where schemaname='public'))
+ if exists((select * from pg_policies where schemaname='public' and tablename in ('positions','reason_categories','wallets') except select * from policies_before)
+ union all (select * from policies_before except select * from pg_policies where schemaname='public' and tablename in ('positions','reason_categories','wallets')))
  then raise exception 'migration altered ownership policies'; end if;
  if exists(select 1 from pg_class where oid='public.positions'::regclass and not relrowsecurity)
  then raise exception 'RLS disabled'; end if;

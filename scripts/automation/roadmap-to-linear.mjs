@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 // Push roadmap slices (context/foundation/roadmap.md → ## Slices / ## Foundations) to Linear.
 //
-//   LINEAR_API_KEY=lin_api_... LINEAR_TEAM_KEY=INV node scripts/roadmap-to-linear.mjs          # dry run
-//   LINEAR_API_KEY=lin_api_... LINEAR_TEAM_KEY=INV node scripts/roadmap-to-linear.mjs --apply  # create
+//   LINEAR_API_KEY=lin_api_... LINEAR_TEAM_KEY=INV node scripts/automation/roadmap-to-linear.mjs          # dry run
+//   LINEAR_API_KEY=lin_api_... LINEAR_TEAM_KEY=INV node scripts/automation/roadmap-to-linear.mjs --apply  # create
 //
 // Optional: LINEAR_PROJECT_NAME="Investments Diary" attaches every issue to that Linear project.
 // Idempotent: an issue whose title starts with "S-NN ·" in the team is reused, not duplicated.
 
 import { readFileSync } from "node:fs";
 
-const ROADMAP = new URL("../context/foundation/roadmap.md", import.meta.url);
+const ROADMAP = new URL("../../context/foundation/roadmap.md", import.meta.url);
 const APPLY = process.argv.includes("--apply");
 const { LINEAR_API_KEY, LINEAR_TEAM_KEY, LINEAR_PROJECT_NAME } = process.env;
 const LABEL_COLORS = { slice: "#4EA7FC", foundation: "#95A2B3", "north-star": "#F2C94C" };

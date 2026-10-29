@@ -134,3 +134,18 @@ export const CLOSE_POSITION_FORM_FIELDS = ["sell_price", "sell_date", "acknowled
 export type ClosePositionFormField = (typeof CLOSE_POSITION_FORM_FIELDS)[number];
 export type ClosePositionFormValues = Record<ClosePositionFormField, string>;
 export type ClosePositionFormErrors = Partial<Record<ClosePositionFormField | "form", string>>;
+
+/** Exact decimal-text daily observations (FR-013); financial values never cross JSON as numbers. */
+export interface WalletSnapshot {
+  wallet_id: string;
+  observation_day: string;
+  captured_at: string;
+  starting_value: string;
+  value: string;
+  realised_change: string;
+  open_change: string;
+  realised_count: number;
+  open_count: number;
+  not_counted: number;
+  as_of: string | null;
+}

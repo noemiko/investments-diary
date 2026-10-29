@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$(git rev-parse --show-toplevel)/scripts/agent-hooks.mjs\" stop",
+            "command": "node \"$(git rev-parse --show-toplevel)/scripts/automation/agent-hooks.mjs\" stop",
             "timeout": 120
           }
         ]
