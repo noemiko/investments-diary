@@ -63,6 +63,22 @@ The code is the `10x-astro-starter` scaffold, renamed and migrated from Cloudfla
   `npm run lint` — type-aware and slow. `package.json` carries a `lint-staged` config that nothing
   invokes, so a commit is blocked by an error anywhere in the repo, not only in staged files.
 
+## Research and library documentation
+
+- Inspect local code and installed dependency versions before external research.
+- Prefer Exa for source discovery; inspect primary sources before relying on technical claims.
+- Prefer Context7 for library adoption, setup, configuration and API usage. Resolve the library
+  identity before querying documentation unless its exact identity is already established.
+- Verify retrieved guidance against the installed or explicitly targeted version. A Context7
+  result alone does not prove compatibility. Preserve the documentation-authority rules above
+  and cite the sources supporting decisions.
+- If either service fails, is rate-limited, lacks the library or returns unsuitable guidance,
+  fall back to official documentation and briefly disclose the fallback.
+- Send focused technical queries; exclude private diary data, credentials and unnecessary
+  repository content. Reuse relevant findings within a task; call both services only when useful.
+
+Setup, troubleshooting and acceptance scenarios: @context/foundation/research-tools.md.
+
 ## Commands
 
 Scripts are in @package.json; only the non-obvious ones are listed here.
