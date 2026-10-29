@@ -41,6 +41,12 @@ npm install
 npm run dev
 ```
 
+## Agent research tools
+
+Repository-scoped MCP connections provide Exa for web discovery and Context7 for library
+documentation in Codex and Claude Code. See [Research tools](context/foundation/research-tools.md)
+for activation, connection checks, fallback behavior and acceptance scenarios.
+
 ## Available Scripts
 
 - `npm run dev` - Start development server
