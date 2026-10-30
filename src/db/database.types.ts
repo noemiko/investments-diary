@@ -34,6 +34,64 @@ export type Database = {
   }
   public: {
     Tables: {
+      market_listing_lookups: {
+        Row: {
+          cache_id: string | null
+          cooldown_until: string | null
+          id: string
+          lease_token: string | null
+          lease_until: string | null
+          position_id: string
+          symbol: string
+          user_id: string
+          valid_until: string | null
+        }
+        Insert: {
+          cache_id?: string | null
+          cooldown_until?: string | null
+          id?: string
+          lease_token?: string | null
+          lease_until?: string | null
+          position_id: string
+          symbol: string
+          user_id: string
+          valid_until?: string | null
+        }
+        Update: {
+          cache_id?: string | null
+          cooldown_until?: string | null
+          id?: string
+          lease_token?: string | null
+          lease_until?: string | null
+          position_id?: string
+          symbol?: string
+          user_id?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "market_listing_lookups_cache_id_user_id_fkey"
+            columns: ["cache_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "market_quote_cache"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "market_listing_lookups_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "position_effective_prices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "market_listing_lookups_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "positions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       market_quote_cache: {
         Row: {
           attempted_at: string | null
@@ -391,9 +449,24 @@ export type Database = {
     }
     Functions: {
       capture_wallet_snapshots: { Args: never; Returns: number }
+      claim_listing_lookup: { Args: { in_lookup_id: string }; Returns: string }
       claim_market_quote_refresh: {
         Args: { in_cache_id: string }
         Returns: string
+      }
+      confirm_listing_lookup: {
+        Args: { in_lookup_id: string; in_position_id: string }
+        Returns: boolean
+      }
+      finish_listing_lookup: {
+        Args: {
+          in_cache_id?: string
+          in_lookup_id: string
+          in_release?: boolean
+          in_retry_after?: string
+          in_token: string
+        }
+        Returns: boolean
       }
       finish_market_quote_refresh: {
         Args: {
@@ -410,6 +483,10 @@ export type Database = {
           in_source_name?: string
           in_token: string
         }
+        Returns: boolean
+      }
+      release_market_quote_refresh: {
+        Args: { in_cache_id: string; in_token: string }
         Returns: boolean
       }
     }

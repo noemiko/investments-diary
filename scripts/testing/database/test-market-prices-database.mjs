@@ -179,6 +179,15 @@ try {
   sql(
     `set role anon; ${assertSql("not has_table_privilege('anon','public.market_quote_cache','select')", "anonymous cache permission")}`,
   );
+  // Inspect the effective installed definition after the complete migration chain, not an obsolete source file.
+  const captureBody = sql("select pg_get_functiondef('public.capture_wallet_snapshots()'::regprocedure)");
+  assert.doesNotMatch(
+    captureBody,
+    /\b(?:http_get|http_post|http_request)\s*\(|\bnet\.(?:http_get|http_post)\s*\(/i,
+    "snapshot capture invokes HTTP",
+  );
+  sql(`${assertSql("(select relrowsecurity from pg_class where oid='public.market_listing_lookups'::regclass)", "lookup receipt RLS disabled")}
+    ${assertSql("(select count(*)=3 from pg_policies where tablename='market_listing_lookups' and roles=array['authenticated']::name[])", "lookup operation policies missing")}`);
   console.log(
     "PASS market-price migration: preserved legacy/history, currency confirmation/freeze, owner isolation, exact selection, manual boundaries, competing leases, cooldowns and older-quote rejection",
   );

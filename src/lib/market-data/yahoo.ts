@@ -40,7 +40,11 @@ interface AdapterOptions {
 class RequestFailure extends Error {
   readonly reason: MarketDataFailureReason;
 
-  constructor(reason: MarketDataFailureReason) {
+  constructor(
+    reason: MarketDataFailureReason,
+    readonly status?: number,
+    readonly retryAfter?: string,
+  ) {
     super("Market data request did not complete");
     this.reason = reason;
   }
@@ -66,7 +70,13 @@ function failure(reason: MarketDataFailureReason): MarketDataFailure {
 }
 
 function providerFailure(error: unknown): MarketDataFailure {
-  if (error instanceof RequestFailure) return failure(error.reason);
+  if (error instanceof RequestFailure)
+    return {
+      ok: false,
+      reason: error.reason,
+      ...(error.status ? { status: error.status } : {}),
+      ...(error.retryAfter ? { retryAfter: error.retryAfter } : {}),
+    };
   const status = record(error)?.code;
   return typeof status === "number" && Number.isInteger(status) && status >= 400 && status <= 599
     ? { ok: false, reason: "provider_unavailable", status }
@@ -74,6 +84,24 @@ function providerFailure(error: unknown): MarketDataFailure {
 }
 
 function createTransport(fetchOverride?: typeof fetch): YahooTransport {
+  // Intercept HTTP failures before the SDK can log a URL containing its crumb or body.
+  // Manual 3xx consent redirects must still reach the SDK's cookie/crumb flow.
+  const safeFetch: typeof fetch = async (input, init) => {
+    const response = await (fetchOverride ?? globalThis.fetch)(input, init);
+    if (response.status >= 400) {
+      const raw = response.headers.get("retry-after");
+      let retryAfter: string | undefined;
+      if (raw) {
+        const millis = /^\d+$/.test(raw.trim()) ? Date.now() + Number(raw.trim()) * 1000 : Date.parse(raw);
+        if (Number.isFinite(millis) && millis > Date.now() && millis <= 8_640_000_000_000_000) {
+          retryAfter = new Date(millis).toISOString();
+        }
+      }
+      await response.body?.cancel();
+      throw new RequestFailure("provider_unavailable", response.status, retryAfter);
+    }
+    return response;
+  };
   // SDK diagnostics can contain complete provider responses. Application services report the safe outcome instead.
   const discard = () => undefined;
   const client = new YahooFinance({
@@ -81,16 +109,17 @@ function createTransport(fetchOverride?: typeof fetch): YahooTransport {
     logger: { info: discard, warn: discard, error: discard, debug: discard, dir: discard },
     suppressNotices: ["yahooSurvey", "ripHistorical"],
     versionCheck: false,
-    ...(fetchOverride ? { fetch: fetchOverride } : {}),
+    fetch: safeFetch,
   });
   return {
     search: (query, signal) =>
       client.search(
         query,
         { quotesCount: 10, newsCount: 0, enableCb: false, enableNavLinks: false },
-        { fetchOptions: { signal } },
+        { fetch: safeFetch, fetchOptions: { signal } },
       ),
-    quote: (symbols, signal) => client.quote(symbols, { return: "object" }, { fetchOptions: { signal } }),
+    quote: (symbols, signal) =>
+      client.quote(symbols, { return: "object" }, { fetch: safeFetch, fetchOptions: { signal } }),
   };
 }
 

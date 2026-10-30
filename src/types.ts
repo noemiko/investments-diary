@@ -197,6 +197,8 @@ export interface MarketDataFailure {
   ok: false;
   reason: MarketDataFailureReason;
   status?: number;
+  /** Sanitized provider Retry-After instant, never a response header/body. */
+  retryAfter?: string;
 }
 
 export type MarketQuoteOutcome = { ok: true; quote: MarketQuote } | MarketDataFailure;
@@ -213,3 +215,27 @@ export interface EffectivePrice {
   wallet_currency: MarketCurrency | null;
   manual_price_saved_at: string | null;
 }
+
+/** Result of an explicit download; due work has not been sent to the provider. */
+export interface MarketPriceDownloadItem {
+  listingId: string;
+  symbol: string;
+  outcome: "success" | "older_quote" | "cooldown" | "refreshing" | "due" | MarketDataFailureReason;
+  retryAfter: string | null;
+}
+export type MarketPriceServiceFailure =
+  | {
+      ok: false;
+      reason:
+        | "not_found"
+        | "currency_required"
+        | "incompatible_currency"
+        | "lookup_expired"
+        | "cooldown"
+        | "refreshing"
+        | "invalid_request";
+      retryAfter?: string | null;
+    }
+  | MarketDataFailure;
+export type MarketListingLookupResult =
+  { ok: true; lookupId: string; listing: MarketListing; quote: MarketQuote } | MarketPriceServiceFailure;

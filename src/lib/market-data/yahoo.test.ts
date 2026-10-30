@@ -313,3 +313,71 @@ describe("Yahoo listing and quote boundary", () => {
     expect(aborted).toBe(true);
   });
 });
+
+it("intercepts actual SDK HTTP failures before URL logging and preserves safe Retry-After", async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(NOW);
+  const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+  try {
+    const api = createYahooMarketData({
+      fetch: () =>
+        Promise.resolve(new Response("PRIVATE_RESPONSE_BODY", { status: 429, headers: { "retry-after": "3600" } })),
+    });
+    const outcome = await api.searchListings("Apple");
+    expect(outcome).toEqual({
+      ok: false,
+      reason: "provider_unavailable",
+      status: 429,
+      retryAfter: "2026-10-30T13:00:00.000Z",
+    });
+    expect(JSON.stringify(outcome)).not.toContain("PRIVATE");
+    expect(logged).not.toHaveBeenCalled();
+  } finally {
+    logged.mockRestore();
+  }
+});
+
+it("preserves manual SDK consent redirects and sanitizes a later crumb-bearing quote failure", async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(NOW);
+  const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+  const urls: string[] = [];
+  try {
+    const api = createYahooMarketData({
+      fetch: (input) => {
+        const url = input instanceof Request ? input.url : String(input);
+        urls.push(url);
+        if (url.startsWith("https://finance.yahoo.com/quote/AAPL")) {
+          return Promise.resolve(
+            new Response("", {
+              status: 302,
+              headers: {
+                location: "https://finance.yahoo.com/quote/AAPL?consent=done",
+                "set-cookie": "A1=CONTROLLED_PRIVATE_COOKIE; Domain=.yahoo.com; Path=/; Secure",
+              },
+            }),
+          );
+        }
+        if (url.includes("/v1/test/getcrumb")) return Promise.resolve(new Response("CONTROLLED_PRIVATE_CRUMB"));
+        return Promise.resolve(
+          new Response("PRIVATE_RESPONSE_BODY", {
+            status: 503,
+            headers: { "retry-after": "Fri, 30 Oct 2026 14:00:00 GMT" },
+          }),
+        );
+      },
+    });
+    const outcome = await api.confirmListing("AAPL");
+    expect(outcome).toEqual({
+      ok: false,
+      reason: "provider_unavailable",
+      status: 503,
+      retryAfter: "2026-10-30T14:00:00.000Z",
+    });
+    expect(urls.some((url) => url.includes("CONTROLLED_PRIVATE_CRUMB"))).toBe(true);
+    expect(logged).not.toHaveBeenCalled();
+    expect(JSON.stringify(outcome)).not.toContain("PRIVATE");
+  } finally {
+    logged.mockRestore();
+  }
+});

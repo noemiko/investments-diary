@@ -133,4 +133,40 @@ message on 2026-10-30. Phase 2 is the next implementation phase.
 
 ### Manual handoff
 
-Progress 2.1–2.3 are verified. The owner confirmed manual check 2.3 passed on 2026-10-30: legacy wallet/position facts are unchanged and currency stays unconfirmed until explicitly assigned. Phase 2 is staged and awaits commit-message approval. No production migration or deployment occurred.
+Progress 2.1–2.3 are verified. The owner confirmed manual check 2.3 passed on 2026-10-30: legacy wallet/position facts are unchanged and currency stays unconfirmed until explicitly assigned. Phase 2 was committed as `b83a91d` after owner approval of the message. No production migration or deployment occurred.
+
+## Phase 3 preflight — 2026-10-30
+
+- Owner chose delegated implementation after Phase 2 commit `b83a91d`; parent retains gates, staging, Progress and commit.
+- Existing Node 24 Astro/Vitest/ESLint/build tools and running local Supabase are available. New endpoint/service tests will run with provider fixtures, not uncontrolled live Yahoo requests.
+- Phase 2 cache claim/finish RPCs already provide token leases, failed-attempt cooldown and last-valid quote retention. Phase 3 will add orchestration and cross-request server-validated listing lookup receipts.
+- Source inspection of pinned SDK `yahooFinanceFetch.js` found direct URL logging on unsuccessful HTTP responses; the adapter must intercept HTTP errors before SDK processing and retain only sanitized status/Retry-After metadata. Consent redirects must remain supported.
+- No UI download controls or valuation-read integration are enabled until Phase 4.
+
+## Phase 3 results — 2026-10-30
+
+### Implemented and adaptations
+
+- Added authenticated, same-origin JSON POST endpoints for metadata search, candidate download, saved-result confirmation and mapped-holding downloads. Strict request schemas reject browser-supplied exchange/currency/price metadata; GET/HEAD and other methods cannot invoke the actions.
+- Added request-scoped repository and orchestration: owner/open/non-deleted selection, identity deduplication, batches up to 50, separate batches for conflicting identities sharing a symbol, one five-second budget, fresh request signals, atomic leases and persisted cooldowns. Claimed but unattempted work is released and remains due.
+- Added local additive migration `20261030114323_listing_lookup_receipts.sql`, generated database types and nullable-claim API override. Owner/position-bound receipts expire after 30 minutes; confirmation reads persisted validated data without a provider request. Receipt expiry never triggers a download.
+- SDK HTTP errors are intercepted before its direct URL logging, retaining only safe status and Retry-After metadata. Manual consent redirects remain supported. Allowed observability operations/routes and privacy tests were updated.
+- Added [API walkthrough](download-api.md) for the Phase 3 manual check. Dashboard controls, listing island and valuation-read integration remain Phase 4 work.
+- Review corrected older-quote result reporting to include the actual persisted retry cooldown while retaining the valid cached price.
+
+### Automated evidence
+
+- Plan gates: orchestration 17 tests, endpoints 23 tests, trigger/adapter 43 tests all PASS (83 focused tests after the older-quote regression was added).
+- Deliberate break: removed the endpoint's Origin comparison only in the worktree. All four origin-protection tests failed (HTTP 200 instead of 403); the endpoint was unconditionally restored from its staged copy with `git checkout --`. Restored tests passed subsequently.
+- `npm run test:decimal-db`: PASS, 3 files / 12 tests, including real service-to-PostgREST lookup/confirmation, exact quote transport, receipt binding/expiry, concurrent lookup claims, expired-lease recovery, late-token rejection, longer retry delays, restricted writes and foreign-owner rejection.
+- `npm run test:market-prices-db`: PASS, full additive migration chain, preserved legacy/history, manual boundaries, quote claims/cooldowns and older-quote rejection. The latest installed snapshot capture definition is also checked for provider HTTP calls.
+- Actual local schema reports `market_listing_lookups|t` for RLS and separate `listing_lookups_insert_own|INSERT|{authenticated}`, `listing_lookups_select_own|SELECT|{authenticated}`, `listing_lookups_update_own|UPDATE|{authenticated}` policies. Direct authenticated receipt updates are denied by grants and covered by real REST tests.
+- Astro sync: PASS. Lint initially found 53 type/style findings, then 17 after the first fix; stateless function-property types and explicit mock/callback types resolved them. No rules or assertions were relaxed. Final lint PASS.
+- Astro check initially found 3 provider-mock literal-widening errors in the database fixture; explicit provider types corrected them. Final check PASS, 147 files and zero errors/warnings/hints.
+- `npm run build`: PASS, Vercel SSR output.
+- `npm test`: PASS, 29 files / 370 tests.
+- Local HTTP smoke: all steps PASS against `http://127.0.0.1:4321`. These regression checks do not claim a live Yahoo download or Phase 4 UI integration.
+
+### Manual handoff
+
+Progress 3.1–3.4 are verified. The owner confirmed manual check 3.3 passed on 2026-10-30 using the API walkthrough. Phase 3 is staged and awaits commit-message approval. No production migration or deployment occurred.

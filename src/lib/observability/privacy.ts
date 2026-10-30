@@ -1,6 +1,7 @@
 import type { ErrorEvent, Event, StackFrame } from "@sentry/astro";
 
 const OPERATIONS = new Set([
+  "marketPrices",
   "listPositions",
   "listCategories",
   "listWallets",
@@ -60,6 +61,11 @@ const ROUTES = new Set([
   "/",
   "/dashboard",
   "/dashboard/new",
+  "/dashboard/market-prices",
+  "/dashboard/market-prices/download",
+  "/dashboard/market-prices/listings/search",
+  "/dashboard/market-prices/listings/download",
+  "/dashboard/market-prices/listings/confirm",
   "/dashboard/deleted",
   "/dashboard/wallets",
   "/dashboard/wallets/new",

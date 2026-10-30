@@ -29,7 +29,11 @@ export type ApiDatabase = Omit<Database, "public"> & {
         "starting_value" | "value" | "realised_change" | "open_change"
       >;
     };
-    Functions: Omit<Functions, "finish_market_quote_refresh" | "claim_market_quote_refresh"> & {
+    Functions: Omit<
+      Functions,
+      "finish_market_quote_refresh" | "claim_market_quote_refresh" | "claim_listing_lookup"
+    > & {
+      claim_listing_lookup: Omit<Functions["claim_listing_lookup"], "Returns"> & { Returns: string | null };
       claim_market_quote_refresh: Omit<Functions["claim_market_quote_refresh"], "Returns"> & { Returns: string | null };
       finish_market_quote_refresh: Omit<Functions["finish_market_quote_refresh"], "Args"> & {
         Args: TextFields<

@@ -246,24 +246,24 @@ Use additive migrations. Do not guess currencies, listing identities, or histori
 
 #### Automated
 
-- [x] 2.1 Migration and database tests prove owner isolation, currency compatibility, and strict manual-override timing.
-- [x] 2.2 Cache tests prove exclusive refresh claims, expired-lease recovery, and rejection of older quote replacements.
+- [x] 2.1 Migration and database tests prove owner isolation, currency compatibility, and strict manual-override timing. — `b83a91d`
+- [x] 2.2 Cache tests prove exclusive refresh claims, expired-lease recovery, and rejection of older quote replacements. — `b83a91d`
 
 #### Manual
 
-- [x] 2.3 Legacy data remains unchanged and unconfirmed until the owner explicitly assigns currency.
+- [x] 2.3 Legacy data remains unchanged and unconfirmed until the owner explicitly assigns currency. — `b83a91d`
 
 ### Phase 3: Downloads, cache orchestration, and listing search
 
 #### Automated
 
-- [ ] 3.1 Service tests prove batching, deduplication, deadlines, cooldown, partial results, and retained-cache behavior.
-- [ ] 3.2 Endpoint tests reject unauthenticated, foreign-position, incompatible-currency, and malformed requests.
-- [ ] 3.4 Trigger tests prove quote downloads require the button POST and never run on page reads, reloads, listing confirmation, timers or snapshot capture.
+- [x] 3.1 Service tests prove batching, deduplication, deadlines, cooldown, partial results, and retained-cache behavior.
+- [x] 3.2 Endpoint tests reject unauthenticated, foreign-position, incompatible-currency, and malformed requests.
+- [x] 3.4 Trigger tests prove quote downloads require the button POST and never run on page reads, reloads, listing confirmation, timers or snapshot capture.
 
 #### Manual
 
-- [ ] 3.3 Listing search distinguishes exchange/currency choices and provides a recoverable unavailable state.
+- [x] 3.3 Listing search distinguishes exchange/currency choices and provides a recoverable unavailable state.
 
 ### Phase 4: Application integration and future observations
 

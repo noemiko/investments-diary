@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import type { ApiDatabase } from "@/db/api.types";
 import { createWallet } from "@/lib/services/wallets";
+import { createMarketPriceService, type MarketDataProvider } from "@/lib/services/market-prices";
+import type { MarketQuote } from "@/types";
 
 it("transports exact quote decimals through owner-authenticated RPCs and the effective-price view", async () => {
   const url = new URL(process.env.SUPABASE_TEST_URL ?? "http://invalid");
@@ -132,6 +134,173 @@ it("transports exact quote decimals through owner-authenticated RPCs and the eff
       refresh_outcome: "timeout",
       quote_state: "cooldown",
     });
+    // The real service/repository creates a position-bound receipt from an injected provider,
+    // then confirms it using saved server data without a second quote request.
+    expect(
+      (await admin.from("market_quote_cache").update({ cooldown_until: null }).eq("id", cache.data.id)).error,
+    ).toBeNull();
+    const providerQuote: MarketQuote = {
+      provider: "yahoo",
+      listing: {
+        symbol: "TEST.DE",
+        name: "Test",
+        exchange: "GER",
+        exchangeName: "Xetra",
+        currency: "EUR",
+        timezone: "Europe/Berlin",
+        instrumentType: "EQUITY",
+      },
+      price: "16.12345678",
+      marketAt: "2026-01-03T12:00:00Z",
+      marketDate: "2026-01-03",
+      fetchedAt: "2026-01-03T12:01:00Z",
+      marketState: "CLOSED",
+      delayMinutes: 15,
+      sourceIntervalMinutes: 15,
+      sourceName: null,
+    };
+    const provider: MarketDataProvider = {
+      searchListings: vi.fn<MarketDataProvider["searchListings"]>(() => Promise.resolve({ ok: true, listings: [] })),
+      confirmListing: vi.fn<MarketDataProvider["confirmListing"]>(() =>
+        Promise.resolve({ ok: true, quote: providerQuote }),
+      ),
+      fetchQuotes: vi.fn<MarketDataProvider["fetchQuotes"]>(() =>
+        Promise.resolve({ ok: true, quotes: { "TEST.DE": { ok: true, quote: providerQuote } } }),
+      ),
+    };
+    const service = createMarketPriceService(author, owner, { provider });
+    const downloaded = await service.lookup(position.data.id, "TEST.DE");
+    expect(downloaded).toMatchObject({
+      ok: true,
+      listing: { currency: "EUR", exchange: "GER", timezone: "Europe/Berlin" },
+      quote: { price: "16.12345678" },
+    });
+    if (!downloaded.ok) throw new Error("Lookup failed");
+    expect(await service.confirm(position.data.id, downloaded.lookupId)).toEqual({ ok: true });
+    expect(provider.fetchQuotes).toHaveBeenCalledOnce();
+    expect(provider.confirmListing).not.toHaveBeenCalled();
+    const lookupArgs = { in_lookup_id: downloaded.lookupId, in_position_id: position.data.id };
+    expect((await foreign.from("market_listing_lookups").select("id").eq("id", downloaded.lookupId)).data).toEqual([]);
+    expect((await foreign.rpc("claim_listing_lookup", { in_lookup_id: downloaded.lookupId })).data).toBeNull();
+    expect((await foreign.rpc("confirm_listing_lookup", lookupArgs)).data).toBe(false);
+    expect(
+      (
+        await foreign
+          .from("market_listing_lookups")
+          .insert({ user_id: users[1], position_id: position.data.id, symbol: "TEST.DE" })
+      ).error,
+    ).not.toBeNull();
+    expect(
+      (
+        await author
+          .from("market_listing_lookups")
+          .update({ valid_until: "2099-01-01T00:00:00Z" })
+          .eq("id", downloaded.lookupId)
+      ).error,
+    ).not.toBeNull();
+    const otherPosition = await author
+      .from("positions")
+      .insert({
+        user_id: owner,
+        wallet_id: wallet.id,
+        category_id: category.data.id,
+        instrument: "Other position",
+        buy_date: "2026-01-01",
+        buy_price: "1",
+      })
+      .select("id")
+      .single();
+    if (otherPosition.error) throw otherPosition.error;
+    expect(
+      (await author.rpc("confirm_listing_lookup", { ...lookupArgs, in_position_id: otherPosition.data.id })).data,
+    ).toBe(false);
+    // Concurrent REST calls must not both obtain a discovery lease.
+    const claims = await Promise.all([
+      author.rpc("claim_listing_lookup", { in_lookup_id: downloaded.lookupId }),
+      author.rpc("claim_listing_lookup", { in_lookup_id: downloaded.lookupId }),
+    ]);
+    for (const c of claims) expect(c.error).toBeNull();
+    const winning = claims.map((c) => c.data).filter((token): token is string => token !== null);
+    expect(winning).toHaveLength(1);
+    expect(
+      (
+        await admin
+          .from("market_listing_lookups")
+          .update({ lease_until: "2020-01-01T00:00:00Z" })
+          .eq("id", downloaded.lookupId)
+      ).error,
+    ).toBeNull();
+    const reclaimed = await author.rpc("claim_listing_lookup", { in_lookup_id: downloaded.lookupId });
+    expect(reclaimed.error).toBeNull();
+    expect(reclaimed.data).toBeTruthy();
+    expect(reclaimed.data).not.toBe(winning[0]);
+    expect(
+      (
+        await author.rpc("finish_listing_lookup", {
+          in_lookup_id: downloaded.lookupId,
+          in_token: winning[0],
+          in_cache_id: cache.data.id,
+        })
+      ).data,
+    ).toBe(false);
+    if (!reclaimed.data) throw new Error("Missing recovered lookup lease");
+    const released = await author.rpc("finish_listing_lookup", {
+      in_lookup_id: downloaded.lookupId,
+      in_token: reclaimed.data,
+      in_release: true,
+    });
+    expect(released.error).toBeNull();
+    expect(released.data).toBe(true);
+    // Failed discovery keeps existing cache and respects longer provider Retry-After.
+    const again = await author.rpc("claim_listing_lookup", { in_lookup_id: downloaded.lookupId });
+    if (!again.data) throw new Error("Missing lookup lease");
+    const retryAfter = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    expect(
+      (
+        await author.rpc("finish_listing_lookup", {
+          in_lookup_id: downloaded.lookupId,
+          in_token: again.data,
+          in_retry_after: retryAfter,
+        })
+      ).error,
+    ).toBeNull();
+    expect((await author.rpc("claim_listing_lookup", { in_lookup_id: downloaded.lookupId })).data).toBeNull();
+    const receipt = await author
+      .from("market_listing_lookups")
+      .select("cache_id,cooldown_until")
+      .eq("id", downloaded.lookupId)
+      .single();
+    expect(receipt.error).toBeNull();
+    expect(receipt.data?.cache_id).toBe(cache.data.id);
+    expect(Date.parse(receipt.data?.cooldown_until ?? "")).toBeGreaterThanOrEqual(Date.parse(retryAfter));
+    expect(
+      (
+        await admin
+          .from("market_listing_lookups")
+          .update({ valid_until: "2020-01-01T00:00:00Z" })
+          .eq("id", downloaded.lookupId)
+      ).error,
+    ).toBeNull();
+    expect((await author.rpc("confirm_listing_lookup", lookupArgs)).data).toBe(false);
+    expect(await service.confirm(position.data.id, downloaded.lookupId)).toEqual({
+      ok: false,
+      reason: "lookup_expired",
+    });
+    // Releasing unattempted quote work clears the lease without a failed-attempt cooldown.
+    const refresh = await author.rpc("claim_market_quote_refresh", { in_cache_id: cache.data.id });
+    if (!refresh.data) throw new Error("Missing quote release lease");
+    expect(
+      (await foreign.rpc("release_market_quote_refresh", { in_cache_id: cache.data.id, in_token: refresh.data })).data,
+    ).toBe(false);
+    expect(
+      (await author.rpc("release_market_quote_refresh", { in_cache_id: cache.data.id, in_token: refresh.data })).data,
+    ).toBe(true);
+    const due = await author.rpc("claim_market_quote_refresh", { in_cache_id: cache.data.id });
+    expect(due.data).toBeTruthy();
+    if (due.data)
+      expect(
+        (await author.rpc("release_market_quote_refresh", { in_cache_id: cache.data.id, in_token: due.data })).data,
+      ).toBe(true);
   } finally {
     for (const id of users) expect((await admin.auth.admin.deleteUser(id)).error).toBeNull();
   }
