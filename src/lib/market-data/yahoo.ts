@@ -180,7 +180,7 @@ function normalize(
   if (
     !price ||
     !timezone ||
-    (currency !== "USD" && currency !== "PLN") ||
+    (currency !== "USD" && currency !== "PLN" && currency !== "EUR") ||
     !(marketAt instanceof Date) ||
     !Number.isFinite(marketAt.getTime()) ||
     marketAt.getTime() <= 0 ||

@@ -34,6 +34,87 @@ export type Database = {
   }
   public: {
     Tables: {
+      market_quote_cache: {
+        Row: {
+          attempted_at: string | null
+          cooldown_until: string | null
+          created_at: string
+          currency: string
+          delay_minutes: number | null
+          exchange: string
+          exchange_name: string
+          fetched_at: string | null
+          id: string
+          instrument_type: string
+          lease_token: string | null
+          lease_until: string | null
+          listing_name: string
+          market_at: string | null
+          market_date: string | null
+          market_state: string | null
+          price: number | null
+          provider: string
+          refresh_outcome: string
+          source_interval_minutes: number | null
+          source_name: string | null
+          symbol: string
+          timezone: string
+          user_id: string
+        }
+        Insert: {
+          attempted_at?: string | null
+          cooldown_until?: string | null
+          created_at?: string
+          currency: string
+          delay_minutes?: number | null
+          exchange: string
+          exchange_name: string
+          fetched_at?: string | null
+          id?: string
+          instrument_type: string
+          lease_token?: string | null
+          lease_until?: string | null
+          listing_name: string
+          market_at?: string | null
+          market_date?: string | null
+          market_state?: string | null
+          price?: number | null
+          provider: string
+          refresh_outcome?: string
+          source_interval_minutes?: number | null
+          source_name?: string | null
+          symbol: string
+          timezone: string
+          user_id: string
+        }
+        Update: {
+          attempted_at?: string | null
+          cooldown_until?: string | null
+          created_at?: string
+          currency?: string
+          delay_minutes?: number | null
+          exchange?: string
+          exchange_name?: string
+          fetched_at?: string | null
+          id?: string
+          instrument_type?: string
+          lease_token?: string | null
+          lease_until?: string | null
+          listing_name?: string
+          market_at?: string | null
+          market_date?: string | null
+          market_state?: string | null
+          price?: number | null
+          provider?: string
+          refresh_outcome?: string
+          source_interval_minutes?: number | null
+          source_name?: string | null
+          symbol?: string
+          timezone?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       positions: {
         Row: {
           broker_label: string | null
@@ -45,6 +126,9 @@ export type Database = {
           deleted_at: string | null
           id: string
           instrument: string
+          listing_confirmed_at: string | null
+          manual_price_saved_at: string | null
+          market_listing_id: string | null
           price_date: string | null
           quantity: number | null
           reason_text: string | null
@@ -63,6 +147,9 @@ export type Database = {
           deleted_at?: string | null
           id?: string
           instrument: string
+          listing_confirmed_at?: string | null
+          manual_price_saved_at?: string | null
+          market_listing_id?: string | null
           price_date?: string | null
           quantity?: number | null
           reason_text?: string | null
@@ -81,6 +168,9 @@ export type Database = {
           deleted_at?: string | null
           id?: string
           instrument?: string
+          listing_confirmed_at?: string | null
+          manual_price_saved_at?: string | null
+          market_listing_id?: string | null
           price_date?: string | null
           quantity?: number | null
           reason_text?: string | null
@@ -95,6 +185,13 @@ export type Database = {
             columns: ["category_id", "user_id"]
             isOneToOne: false
             referencedRelation: "reason_categories"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "positions_listing_owner_fkey"
+            columns: ["market_listing_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "market_quote_cache"
             referencedColumns: ["id", "user_id"]
           },
           {
@@ -186,6 +283,9 @@ export type Database = {
       wallets: {
         Row: {
           created_at: string
+          currency: string | null
+          currency_attested: boolean
+          currency_confirmed_at: string | null
           deleted_at: string | null
           id: string
           name: string
@@ -194,6 +294,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          currency?: string | null
+          currency_attested?: boolean
+          currency_confirmed_at?: string | null
           deleted_at?: string | null
           id?: string
           name: string
@@ -202,6 +305,9 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          currency?: string | null
+          currency_attested?: boolean
+          currency_confirmed_at?: string | null
           deleted_at?: string | null
           id?: string
           name?: string
@@ -212,10 +318,100 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      position_effective_prices: {
+        Row: {
+          broker_label: string | null
+          buy_date: string | null
+          buy_price: number | null
+          category_id: string | null
+          cooldown_until: string | null
+          created_at: string | null
+          current_price: number | null
+          delay_minutes: number | null
+          deleted_at: string | null
+          exchange_name: string | null
+          id: string | null
+          instrument: string | null
+          instrument_type: string | null
+          lease_until: string | null
+          listing_confirmed_at: string | null
+          listing_name: string | null
+          manual_price_saved_at: string | null
+          market_listing_id: string | null
+          market_state: string | null
+          price_date: string | null
+          quantity: number | null
+          quote_currency: string | null
+          quote_exchange: string | null
+          quote_fetched_at: string | null
+          quote_market_at: string | null
+          quote_market_date: string | null
+          quote_provider: string | null
+          quote_state: string | null
+          quote_symbol: string | null
+          quote_timezone: string | null
+          reason_text: string | null
+          refresh_outcome: string | null
+          selected_at: string | null
+          selected_date: string | null
+          selected_price: number | null
+          selected_source: string | null
+          sell_date: string | null
+          sell_price: number | null
+          source_interval_minutes: number | null
+          source_name: string | null
+          user_id: string | null
+          wallet_currency: string | null
+          wallet_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "positions_category_id_user_id_fkey"
+            columns: ["category_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "reason_categories"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "positions_listing_owner_fkey"
+            columns: ["market_listing_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "market_quote_cache"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "positions_wallet_fkey"
+            columns: ["wallet_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
     }
     Functions: {
       capture_wallet_snapshots: { Args: never; Returns: number }
+      claim_market_quote_refresh: {
+        Args: { in_cache_id: string }
+        Returns: string
+      }
+      finish_market_quote_refresh: {
+        Args: {
+          in_cache_id: string
+          in_delay_minutes?: number
+          in_fetched_at?: string
+          in_market_at?: string
+          in_market_date?: string
+          in_market_state?: string
+          in_outcome: string
+          in_price?: number
+          in_retry_after?: string
+          in_source_interval_minutes?: number
+          in_source_name?: string
+          in_token: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

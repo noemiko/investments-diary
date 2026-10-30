@@ -108,6 +108,16 @@ describe("Yahoo listing and quote boundary", () => {
     }
   });
 
+  it("accepts an explicitly confirmed EUR listing without converting its price", async () => {
+    const { api } = adapter({ AAPL: quote("AAPL", { currency: "EUR" }) });
+    const result = await api.confirmListing("AAPL");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.quote.listing.currency).toBe("EUR");
+      expect(result.quote.price).toBe("123.45678913");
+    }
+  });
+
   it.each([
     { regularMarketPrice: undefined },
     { regularMarketPrice: "50" },
@@ -118,7 +128,7 @@ describe("Yahoo listing and quote boundary", () => {
     { regularMarketPrice: 1_000_000_000_000 },
     { regularMarketPrice: 0.0000000049 },
     { currency: undefined },
-    { currency: "EUR" },
+    { currency: "GBP" },
     { exchange: undefined },
     { exchangeTimezoneName: "not/a-timezone" },
     { regularMarketTime: undefined },

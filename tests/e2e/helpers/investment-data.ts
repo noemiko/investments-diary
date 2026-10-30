@@ -52,7 +52,9 @@ export async function investmentData() {
   };
 
   try {
-    const wallet = await author.from("wallets").insert({ user_id: owner, name: token, starting_value: "1000" });
+    const wallet = await author
+      .from("wallets")
+      .insert({ currency: "USD", currency_attested: true, user_id: owner, name: token, starting_value: "1000" });
     expect(wallet.error).toBeNull();
     const category = await author.from("reason_categories").insert({ user_id: owner, name: token });
     expect(category.error).toBeNull();

@@ -51,7 +51,13 @@ beforeEach(() => {
   vi.mocked(positions.listDeletedPositions).mockResolvedValue([]);
   vi.mocked(wallets.listWallets).mockResolvedValue([]);
   vi.mocked(wallets.listWalletPositions).mockResolvedValue([]);
-  vi.mocked(wallets.getWallet).mockResolvedValue({ id, name: "Wallet", starting_value: "0" });
+  vi.mocked(wallets.getWallet).mockResolvedValue({
+    id,
+    name: "Wallet",
+    starting_value: "0",
+    currency: null,
+    currency_confirmed_at: null,
+  });
 });
 const cases = [
   {

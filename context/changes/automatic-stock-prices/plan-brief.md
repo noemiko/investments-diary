@@ -20,7 +20,7 @@ The user searches for a listing, explicitly downloads its quote and confirms the
 | Price use         | Position results, wallet totals, and future observations                                         | User            |
 | Refresh           | Explicit **Download prices** click only; no successful-download age restriction                  | User (revised)  |
 | Listing identity  | Search, inspect exchange/currency, confirm                                                       | User            |
-| Currency          | One currency per wallet; USD or PLN; no conversion                                               | User            |
+| Currency          | One currency per wallet; USD, PLN or EUR; no conversion                                          | User            |
 | Manual correction | Temporary override until a quote’s market time is strictly later than the correction’s save time | User            |
 | Provider failure  | Retain valid automatic quote; manual fallback if none exists                                     | User            |
 | Existing holdings | Allow reassignment between owned wallets; preserve past observations                             | User            |

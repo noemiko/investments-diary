@@ -188,7 +188,7 @@ already own and why they bought it.
   conditional on successful local and deployed US/GPW access and cancellation checks.
   Failure of that gate stops integration rather than silently changing provider.
   Priority: should-have
-- FR-015: New wallets require USD or PLN, with no FX conversion or mixed-currency
+- FR-015: New wallets require USD, PLN or EUR, with no FX conversion or mixed-currency
   aggregation. Existing wallets retain unknown currency until their owner explicitly
   confirms the denomination of the starting value and recorded prices. Confirmed wallet
   currency is frozen. A linked position's quote currency must match its wallet currency;
@@ -259,7 +259,7 @@ existing route protection does — to be confirmed when that work is planned.
   remain outside this change.
 - **No brokers as managed records.** A broker is a text label on an investment. There is no
   screen for managing brokers, fees or account numbers. Wallets (FR-013) are the author's
-  own named groupings of investments, not broker accounts. Their USD/PLN denomination
+  own named groupings of investments, not broker accounts. Their USD/PLN/EUR denomination
   exists to prevent invalid mixed-currency totals (FR-015), not to model broker accounts.
 - **No sharing with anyone else.** No read-only links, no advisor access, no export for
   another person to read. The diary is single-tenant and private by construction, which is

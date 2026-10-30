@@ -70,13 +70,14 @@ Create one valuation contract without overwriting manual inputs.
 
 ### Changes Required
 
-**Files:** new database migrations, generated database types, shared DTOs and decimal transport overrides.
+**Files:** new database migrations, generated database types, shared DTOs and decimal transport overrides; minimal wallet currency form, validation, service writes and affected fixtures.
 
 **Intent:** Persist listing identity, quote state, currency, and override timing safely.
 
 **Contract:**
 
 - Add nullable legacy wallet currency; new wallets require USD, PLN, EUR. Confirmation explicitly covers starting value and recorded prices. Freeze confirmed currency.
+- Bring the minimal wallet currency input, validation and service write forward from Phase 4 so strict new-wallet requirements work immediately; preserve submitted form values on validation failure. This sequencing adjustment was approved on 2026-10-30.
 - Add confirmed listing metadata to positions, retaining the original diary label. Linking requires quote currency to match wallet currency.
 - Add an owner-scoped quote cache keyed by provider and confirmed listing identity. Store decimal price, market timestamp/date, fetch time, refresh outcome, cooldown, and refresh lease.
 - Enable operation-specific RLS. Ordinary requests continue using the owner’s authenticated client.
@@ -234,23 +235,23 @@ Use additive migrations. Do not guess currencies, listing identities, or histori
 
 #### Automated
 
-- [x] 1.1 Adapter contract tests pass with valid, missing, malformed, and partial provider fixtures.
-- [x] 1.2 Type checking confirms the pinned SDK integrates with the Node application.
+- [x] 1.1 Adapter contract tests pass with valid, missing, malformed, and partial provider fixtures. — `827fbc0`
+- [x] 1.2 Type checking confirms the pinned SDK integrates with the Node application. — `827fbc0`
 
 #### Manual
 
-- [x] 1.3 Local and deployed probes demonstrate US/GPW search, confirmation, quotes, and bounded cancellation.
+- [x] 1.3 Local and deployed probes demonstrate US/GPW search, confirmation, quotes, and bounded cancellation. — `827fbc0`
 
 ### Phase 2: Persistence and shared price selection
 
 #### Automated
 
-- [ ] 2.1 Migration and database tests prove owner isolation, currency compatibility, and strict manual-override timing.
-- [ ] 2.2 Cache tests prove exclusive refresh claims, expired-lease recovery, and rejection of older quote replacements.
+- [x] 2.1 Migration and database tests prove owner isolation, currency compatibility, and strict manual-override timing.
+- [x] 2.2 Cache tests prove exclusive refresh claims, expired-lease recovery, and rejection of older quote replacements.
 
 #### Manual
 
-- [ ] 2.3 Legacy data remains unchanged and unconfirmed until the owner explicitly assigns currency.
+- [x] 2.3 Legacy data remains unchanged and unconfirmed until the owner explicitly assigns currency.
 
 ### Phase 3: Downloads, cache orchestration, and listing search
 

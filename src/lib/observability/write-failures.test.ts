@@ -51,11 +51,13 @@ const writes = [
   { operation: "restorePosition", run: (c: ReturnType<typeof client>) => restorePosition(c, "id") },
   {
     operation: "createWallet",
-    run: (c: ReturnType<typeof client>) => createWallet(c, "user", { name: "private", starting_value: "0" }),
+    run: (c: ReturnType<typeof client>) =>
+      createWallet(c, "user", { name: "private", starting_value: "0", currency: "USD", currency_attested: true }),
   },
   {
     operation: "updateWallet",
-    run: (c: ReturnType<typeof client>) => updateWallet(c, "id", { name: "private", starting_value: "0" }),
+    run: (c: ReturnType<typeof client>) =>
+      updateWallet(c, "id", { name: "private", starting_value: "0", currency: "USD", currency_attested: true }),
   },
   {
     operation: "closePosition",

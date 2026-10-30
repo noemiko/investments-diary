@@ -80,3 +80,14 @@ For the password prompt and sign-in walkthrough, see the [project README](../REA
 - Resolve repository resources relative to the script when appropriate; update imports and automatic callers when moving files. Run npm commands from the repository root.
 - Keep tests with their script category in `__tests__/`; TypeScript tests are discovered by Vitest, while the demo Node tests run through `test:demo-db`.
 - Use local disposable fixtures for verification. Do not run integrations with external write flags merely to check path wiring.
+
+### Market-price persistence verification
+
+`npm run test:market-prices-db` runs `testing/database/test-market-prices-database.mjs`.
+It needs the running local Supabase PostgreSQL container and creates/drops a disposable
+database. The complete migration chain is exercised with legacy fixtures inserted before
+the new migration. Checks cover preserved facts/history, explicit currency confirmation,
+owner isolation, the shared price-selection view, identical manual resaves, equal/later
+market timestamps, competing claims, lease recovery, retained quotes and cooldowns.
+No provider requests or diary reset occur. Exact quote RPC/PostgREST transport is also
+covered by `tests/database/market-prices.test.ts` through `npm run test:decimal-db`.

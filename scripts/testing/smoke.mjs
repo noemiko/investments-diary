@@ -189,7 +189,11 @@ const steps = [
     [`anonymous wallet GET ${path}`, () => request(anonymous, path), { status: 302, location: "/auth/signin" }],
     [
       `anonymous wallet POST ${path}`,
-      () => request(anonymous, path, { method: "POST", form: { name: "Forbidden", starting_value: "0" } }),
+      () =>
+        request(anonymous, path, {
+          method: "POST",
+          form: { currency: "USD", currency_attested: "on", name: "Forbidden", starting_value: "0" },
+        }),
       { status: 302, location: "/auth/signin" },
     ],
   ]),
@@ -219,7 +223,7 @@ const steps = [
     () =>
       request(a, "/dashboard/wallets/new", {
         method: "POST",
-        form: { name: walletName, starting_value: "1 000,50" },
+        form: { currency: "USD", currency_attested: "on", name: walletName, starting_value: "1 000,50" },
       }),
     { status: 302, location: "/dashboard/wallets", exactLocation: true },
   ],
@@ -475,7 +479,10 @@ const steps = [
   [
     "B: cannot rename A's wallet",
     () =>
-      request(b, `/dashboard/wallets/${ids.wallet}`, { method: "POST", form: { name: "Taken", starting_value: "0" } }),
+      request(b, `/dashboard/wallets/${ids.wallet}`, {
+        method: "POST",
+        form: { currency: "USD", currency_attested: "on", name: "Taken", starting_value: "0" },
+      }),
     { status: 404, includes: ["Wallet not found"], requiresIds: ["wallet"] },
   ],
   [
@@ -483,7 +490,7 @@ const steps = [
     async () => {
       const result = await request(b, "/dashboard/wallets/new", {
         method: "POST",
-        form: { name: `B ${walletName}`, starting_value: "0" },
+        form: { currency: "USD", currency_attested: "on", name: `B ${walletName}`, starting_value: "0" },
       });
       ids.bWallet = walletIdFor((await request(b, "/dashboard/wallets")).body, `B ${walletName}`);
       return result;
@@ -641,7 +648,7 @@ const steps = [
     () =>
       request(a, "/dashboard/wallets/new", {
         method: "POST",
-        form: { name: walletName.toUpperCase(), starting_value: "25" },
+        form: { currency: "USD", currency_attested: "on", name: walletName.toUpperCase(), starting_value: "25" },
       }),
     { status: 200, includes: ["You already have a wallet with this name", walletName.toUpperCase(), 'value="25"'] },
   ],
@@ -650,7 +657,7 @@ const steps = [
     async () => {
       const result = await request(a, "/dashboard/wallets/new", {
         method: "POST",
-        form: { name: `Second ${walletName}`, starting_value: "1000" },
+        form: { currency: "USD", currency_attested: "on", name: `Second ${walletName}`, starting_value: "1000" },
       });
       ids.secondWallet = walletIdFor((await request(a, "/dashboard/wallets")).body, `Second ${walletName}`);
       return result;
@@ -720,7 +727,7 @@ const steps = [
     () =>
       request(a, `/dashboard/wallets/${ids.secondWallet}`, {
         method: "POST",
-        form: { name: "Pending rename", starting_value: "-1" },
+        form: { currency: "USD", currency_attested: "on", name: "Pending rename", starting_value: "-1" },
       }),
     {
       status: 200,
@@ -732,7 +739,7 @@ const steps = [
     () =>
       request(a, `/dashboard/wallets/${ids.secondWallet}`, {
         method: "POST",
-        form: { name: `Renamed ${walletName}`, starting_value: "2000" },
+        form: { currency: "USD", currency_attested: "on", name: `Renamed ${walletName}`, starting_value: "2000" },
       }),
     { status: 302, location: "/dashboard/wallets", exactLocation: true },
   ],

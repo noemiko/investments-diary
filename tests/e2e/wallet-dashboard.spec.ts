@@ -31,7 +31,13 @@ test("daily wallet dashboard: ranges, exact details, reload, keyboard, mobile an
   try {
     const w = await admin
       .from("wallets")
-      .insert({ user_id: owner, name: "Daily chart fixture", starting_value: "1000" })
+      .insert({
+        currency: "USD",
+        currency_attested: true,
+        user_id: owner,
+        name: "Daily chart fixture",
+        starting_value: "1000",
+      })
       .select("id")
       .single();
     if (w.error) throw w.error;

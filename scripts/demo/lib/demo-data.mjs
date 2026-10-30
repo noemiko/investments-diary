@@ -20,6 +20,8 @@ export function demoFixtures(owner, today) {
     user_id: owner,
     name: `Demo · ${label}`,
     starting_value: "10000",
+    currency: "USD",
+    currency_attested: true,
   }));
   const categories = ["Long-term growth", "Income", "Value", "Speculative"].map((name, i) => ({
     id: fixtureId(owner, "category", i),

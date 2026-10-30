@@ -30,9 +30,27 @@ vi.mock("@/lib/services/wallets", () => ({
 }));
 
 const wallets: Wallet[] = [
-  { id: "10000000-0000-4000-8000-000000000001", name: "Long term", starting_value: "1000" },
-  { id: "10000000-0000-4000-8000-000000000002", name: "Other", starting_value: "100" },
-  { id: "10000000-0000-4000-8000-000000000003", name: "Empty", starting_value: "0" },
+  {
+    id: "10000000-0000-4000-8000-000000000001",
+    name: "Long term",
+    starting_value: "1000",
+    currency: null,
+    currency_confirmed_at: null,
+  },
+  {
+    id: "10000000-0000-4000-8000-000000000002",
+    name: "Other",
+    starting_value: "100",
+    currency: null,
+    currency_confirmed_at: null,
+  },
+  {
+    id: "10000000-0000-4000-8000-000000000003",
+    name: "Empty",
+    starting_value: "0",
+    currency: null,
+    currency_confirmed_at: null,
+  },
 ];
 const gain: PositionDetail = {
   id: "20000000-0000-4000-8000-000000000001",

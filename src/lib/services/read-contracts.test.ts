@@ -76,8 +76,14 @@ const positionColumns = [
 ];
 const joined = { ...position, wallets: { name: "Long term" }, reason_categories: { name: "Growth" } };
 const mapped = { ...position, wallet_name: "Long term", category_name: "Growth" };
-const wallet = { id: "wallet-a", name: "Long term", starting_value: "0.00000000" };
-const walletColumns = ["id", "name", "starting_value::text"];
+const wallet = {
+  id: "wallet-a",
+  name: "Long term",
+  starting_value: "0.00000000",
+  currency: null,
+  currency_confirmed_at: null,
+};
+const walletColumns = ["id", "name", "starting_value::text", "currency", "currency_confirmed_at"];
 
 describe("financial read contracts", () => {
   it.each([undefined, "wallet-a"])("returns complete active list records for wallet %s", async (walletId) => {

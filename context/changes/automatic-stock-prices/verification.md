@@ -97,3 +97,40 @@ not proof of the quote's actual age or a freshness guarantee.
 Progress items 1.1–1.3 are checked, including the owner’s manual confirmation of
 the recorded local/deployed probe evidence. The owner approved the Phase 1 commit
 message on 2026-10-30. Phase 2 is the next implementation phase.
+
+## Phase 2 preflight and approved sequencing — 2026-10-30
+
+- Phase 1 committed as `827fbc0` after owner confirmation and message approval.
+- Local Supabase Docker containers are running; baseline `npm run test:decimal-db` passed (2 files, 11 tests) before Phase 2 changes.
+- Owner approved bringing the minimal wallet currency field, validation, service write and affected fixtures forward from Phase 4. This permits strict new-wallet currency enforcement without breaking the intermediate application.
+- USD, PLN and EUR follow the owner’s saved Phase 2 contract; no FX conversion is introduced.
+- Phase 2 is delegated; the parent retains gates, staging, manual confirmation, Progress and commit.
+
+## Phase 2 results — 2026-10-30
+
+### Implemented
+
+- Applied additive local migration `20261030110418_market_price_persistence.sql`; generated database types from the resulting schema. CLI emitted a benign MaxListeners warning during generation.
+- Nullable legacy wallet currency, explicit attestation, database-stamped confirmation and frozen confirmed denomination; new wallets require USD/PLN/EUR. Native wallet POST form preserves entered values and supports ordinary unconfirmed legacy edits.
+- Owner-scoped immutable listing identities and quote cache, restricted claim/finish RPCs, 30-second token leases, failed-attempt cooldown, last-valid quote retention and older-quote rejection.
+- Database-stamped manual-save time, including identical resubmissions; historical save times remain null.
+- Security-invoker effective-price view with sale/manual override/automatic/manual fallback/missing selection. Existing application valuation reads and snapshot capture are integrated in Phase 4.
+- EUR adapter acceptance and affected smoke, demo, database and renderer fixtures updated. No quote-download trigger is enabled here.
+
+### Automated evidence
+
+- `npm run test:market-prices-db`: PASS, including preserved legacy facts/history, ordinary owner roles, incompatible currency, database timestamp protection, equal versus strictly later market time, identical manual resaves, competing connections, expired lease recovery, late-token refusal, cooldown and retained cached value. Passed again after deliberate-break restoration.
+- `npm run test:decimal-db`: PASS, 3 files / 12 tests. Actual PostgREST quote RPC/view round trips preserve `999999999999.99999999` and `0.00000001`, owner isolation and failure retention.
+- Deliberate break: temporarily changed cached-market `<=` manual-save comparisons to `<` in the staged migration's worktree copy. Disposable database test failed specifically with `equal market timestamp replaced manual correction`. Unconditionally restored with `git checkout --`; no changed schema was applied to the diary database.
+- Actual applied local schema reports `market_quote_cache|t` for RLS, and separate `market_quotes_insert_own|INSERT|{authenticated}`, `market_quotes_select_own|SELECT|{authenticated}`, `market_quotes_update_own|UPDATE|{authenticated}` policies. Authenticated arbitrary quote PATCH remains denied by column grants; owner-checked RPCs perform cache mutations.
+- `npm run test:snapshots-db`: PASS, immutable history, exact arithmetic, concurrent idempotency and write restrictions.
+- `npm run test:close-db`: PASS, fresh migration chain, unchanged facts, sale constraints and isolation.
+- `npm run test:demo-db`: PASS, 2 tests; initial sandbox CLI filesystem denial resolved by the permitted rerun.
+- Astro sync and lint: PASS. Astro check initially found 3 missing-field errors in observability fixtures; corrected the fixtures and reran successfully: 136 files, zero errors/warnings/hints.
+- Final static sequence after the renderer-fixture fix: Astro sync → lint → Astro check → build all PASS.
+- `npm test`: PASS, 26 files / 326 tests. Initial new wallet page tests lacked the React test renderer; registered the renderer and reran the full suite successfully.
+- Local HTTP smoke: all steps PASS, including new-wallet creation, retained invalid form values, wallet edits, ownership and position regressions. Dev server remains available at `http://127.0.0.1:4321` for owner verification.
+
+### Manual handoff
+
+Progress 2.1–2.3 are verified. The owner confirmed manual check 2.3 passed on 2026-10-30: legacy wallet/position facts are unchanged and currency stays unconfirmed until explicitly assigned. Phase 2 is staged and awaits commit-message approval. No production migration or deployment occurred.

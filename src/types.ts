@@ -103,7 +103,9 @@ export type PriceFormValues = Record<PriceFormField, string>;
 export type PriceFormErrors = Partial<Record<PriceFormField | "form", string>>;
 
 /** A wallet the author files positions under (FR-013). */
-export type Wallet = Pick<WalletRow, "id" | "name" | "starting_value">;
+export type Wallet = Pick<WalletRow, "id" | "name" | "starting_value" | "currency_confirmed_at"> & {
+  currency: MarketCurrency | null;
+};
 
 /** The fields of a position a wallet's value is computed from, grouped by `wallet_id`. */
 export type WalletPosition = Pick<
@@ -112,9 +114,12 @@ export type WalletPosition = Pick<
 >;
 
 /** The wallet form after parsing: a name and a starting value of 0 or more. */
-export type WalletInput = Pick<WalletRow, "name" | "starting_value">;
+export type WalletInput = Pick<WalletRow, "name" | "starting_value"> & {
+  currency: MarketCurrency | null;
+  currency_attested: boolean;
+};
 
-export const WALLET_FORM_FIELDS = ["name", "starting_value"] as const;
+export const WALLET_FORM_FIELDS = ["name", "starting_value", "currency", "currency_attested"] as const;
 
 export type WalletFormField = (typeof WALLET_FORM_FIELDS)[number];
 
@@ -150,8 +155,9 @@ export interface WalletSnapshot {
   as_of: string | null;
 }
 
-/** Confirmed quote denomination; automatic tracking initially supports USD and PLN without FX. */
-export type MarketCurrency = "USD" | "PLN";
+/** Confirmed quote denomination; automatic tracking supports USD, PLN and EUR without FX. */
+export const MARKET_CURRENCIES = ["USD", "PLN", "EUR"] as const;
+export type MarketCurrency = (typeof MARKET_CURRENCIES)[number];
 
 export interface MarketListingCandidate {
   symbol: string;
@@ -196,3 +202,14 @@ export interface MarketDataFailure {
 export type MarketQuoteOutcome = { ok: true; quote: MarketQuote } | MarketDataFailure;
 export type MarketSearchResult = { ok: true; listings: MarketListingCandidate[] } | MarketDataFailure;
 export type MarketQuoteBatchResult = { ok: true; quotes: Record<string, MarketQuoteOutcome> } | MarketDataFailure;
+
+/** Explicit shared valuation projection. Numeric fields must be selected as ::text. */
+export interface EffectivePrice {
+  selected_price: string | null;
+  selected_date: string | null;
+  selected_at: string | null;
+  selected_source: "sale" | "manual_override" | "automatic" | "manual" | "missing";
+  quote_state: string;
+  wallet_currency: MarketCurrency | null;
+  manual_price_saved_at: string | null;
+}

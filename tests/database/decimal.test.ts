@@ -57,7 +57,7 @@ beforeAll(async () => {
   owner = users[0];
   const w = await author
     .from("wallets")
-    .insert({ user_id: owner, name: "Decimal proof", starting_value: max })
+    .insert({ currency: "USD", currency_attested: true, user_id: owner, name: "Decimal proof", starting_value: max })
     .select("id")
     .single();
   if (w.error) throw w.error;
@@ -182,7 +182,12 @@ it("does not expose or update another account's exact decimals", async () => {
 });
 
 it("preserves form digits through every production service and exact arithmetic", async () => {
-  const parsedWallet = parseWalletForm({ name: "Service proof", starting_value: "999 999 999 999,99999999" });
+  const parsedWallet = parseWalletForm({
+    currency: "USD",
+    currency_attested: "on",
+    name: "Service proof",
+    starting_value: "999 999 999 999,99999999",
+  });
   if (!parsedWallet.success) throw new Error("Invalid wallet fixture");
   const savedWallet = await createWallet(author, owner, parsedWallet.data);
   expect(savedWallet.ok).toBe(true);
@@ -238,7 +243,14 @@ it("preserves form digits through every production service and exact arithmetic"
   expect(positionResult(detail)?.amount).toEqual({ units: 1n, scale: 16 });
   expect(describeResult(detail)).toEqual({ percent: "0.00%", asOf: "as of Oct 1, 2026" });
 
-  expect(await updateWallet(author, walletId, { name: "Service proof", starting_value: "0" })).toEqual({ ok: true });
+  expect(
+    await updateWallet(author, walletId, {
+      currency: "USD",
+      currency_attested: true,
+      name: "Service proof",
+      starting_value: "0",
+    }),
+  ).toEqual({ ok: true });
   expect(await getWallet(author, walletId)).toMatchObject({ starting_value: "0" });
   const result = walletValue({ starting_value: "0" }, await listPositions(author, walletId));
   expect(result.change).toEqual({ units: 1n, scale: 16 });
@@ -255,7 +267,14 @@ it("preserves form digits through every production service and exact arithmetic"
     ok: false,
     error: "not_found",
   });
-  expect(await updateWallet(foreign, walletId, { name: "Forbidden", starting_value: max })).toEqual({
+  expect(
+    await updateWallet(foreign, walletId, {
+      currency: "USD",
+      currency_attested: true,
+      name: "Forbidden",
+      starting_value: max,
+    }),
+  ).toEqual({
     ok: false,
     error: "not_found",
   });
@@ -448,7 +467,12 @@ it("keeps missing, deleted and foreign ids indistinguishable for reads and guard
 });
 
 it("restores every sale fact and the realised wallet contribution after deletion", async () => {
-  const savedWallet = await createWallet(author, owner, { name: "Realised restoration", starting_value: "1000" });
+  const savedWallet = await createWallet(author, owner, {
+    currency: "USD",
+    currency_attested: true,
+    name: "Realised restoration",
+    starting_value: "1000",
+  });
   if (!savedWallet.ok) throw new Error("Fixture wallet failed");
   const walletId = savedWallet.id;
   const create = (instrument: string, buy_price: string, quantity: string) =>

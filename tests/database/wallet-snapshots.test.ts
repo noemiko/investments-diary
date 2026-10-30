@@ -24,7 +24,13 @@ it("reads exact signed aggregates through real PostgREST with pagination and own
     }
     const w = await author
       .from("wallets")
-      .insert({ user_id: owners[0], name: "Snapshot proof", starting_value: "0" })
+      .insert({
+        currency: "USD",
+        currency_attested: true,
+        user_id: owners[0],
+        name: "Snapshot proof",
+        starting_value: "0",
+      })
       .select("id")
       .single();
     if (w.error) throw w.error;
