@@ -24,6 +24,21 @@ Database commands require Docker and the project's local Supabase stack (`npx su
 | [`testing/database/test-snapshots-database.mjs`](testing/database/test-snapshots-database.mjs) | `npm run test:snapshots-db`: verifies exact totals, concurrent daily idempotency, RLS, restricted writes and immutable history.                                              | Local database container; reads migration chain without cron infrastructure.                                                                                                                    | PASS/failure output. Creates and drops a disposable database; scheduler tested separately.                                                                     |
 | [`testing/database/test-wallet-cron.mjs`](testing/database/test-wallet-cron.mjs)               | `npm run test:wallet-cron`: applies job registration twice and checks midnight UTC scheduling, singleton job and capture permissions. CI decimal-transport job calls it.     | Local database container with snapshot storage/function already installed.                                                                                                                      | PASS/failure output. Uses a transaction in the local `postgres` database and rolls back scheduler changes. Does not execute capture or wait for midnight.      |
 
+### Public market-data provider probe
+
+`npm run probe:market-data -- --live` runs `testing/market-data-probe.mjs` on Node.js 24.
+It imports the actual TypeScript server adapter using Node's built-in type stripping;
+the adapter has no runtime path aliases. The explicit `--live` flag permits public Yahoo
+requests for fixed symbols `AAPL` and `PKO.WA`. It does not load `.env`, access Supabase,
+read diary holdings, write cached quotes or expose a diagnostic HTTP route.
+
+The probe checks listing search, confirmed quote metadata, batch retrieval and SDK abort
+propagation through a controlled stalled fetch. Output contains pass/fail and safe public
+symbol metadata, not prices, raw provider errors, response payloads, cookies or credentials.
+Live availability is deliberately separate from deterministic CI fixtures. Local success
+does not establish deployed access; follow the [provider-validation recipe](../context/changes/automatic-stock-prices/provider-validation.md)
+before proceeding beyond the provider gate.
+
 ## Local demo
 
 | File                                                                     | Command / caller and purpose                                                                                                                     | Inputs and prerequisites                                                                                                                                                                  | Output, data effects and cleanup                                                                                                                                                                                                    |

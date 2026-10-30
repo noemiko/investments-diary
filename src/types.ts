@@ -149,3 +149,50 @@ export interface WalletSnapshot {
   not_counted: number;
   as_of: string | null;
 }
+
+/** Confirmed quote denomination; automatic tracking initially supports USD and PLN without FX. */
+export type MarketCurrency = "USD" | "PLN";
+
+export interface MarketListingCandidate {
+  symbol: string;
+  name: string;
+  exchange: string;
+  exchangeName: string;
+  instrumentType: "EQUITY" | "ETF";
+}
+
+/** Search does not establish currency: obtain this identity from a validated quote before linking. */
+export interface MarketListing extends MarketListingCandidate {
+  currency: MarketCurrency;
+  timezone: string;
+}
+
+export type MarketSession = "REGULAR" | "CLOSED" | "PRE" | "PREPRE" | "POST" | "POSTPOST";
+
+/** Regular-session quote normalized at the provider boundary, independently of recorded manual prices. */
+export interface MarketQuote {
+  provider: "yahoo";
+  listing: MarketListing;
+  price: string;
+  marketAt: string;
+  marketDate: string;
+  fetchedAt: string;
+  marketState: MarketSession;
+  sourceIntervalMinutes: number | null;
+  delayMinutes: number | null;
+  sourceName: string | null;
+}
+
+export type MarketDataFailureReason =
+  "invalid_request" | "not_found" | "invalid_quote" | "provider_unavailable" | "timeout" | "cancelled";
+
+/** Deliberately excludes provider messages, response bodies, cookies and URLs. */
+export interface MarketDataFailure {
+  ok: false;
+  reason: MarketDataFailureReason;
+  status?: number;
+}
+
+export type MarketQuoteOutcome = { ok: true; quote: MarketQuote } | MarketDataFailure;
+export type MarketSearchResult = { ok: true; listings: MarketListingCandidate[] } | MarketDataFailure;
+export type MarketQuoteBatchResult = { ok: true; quotes: Record<string, MarketQuoteOutcome> } | MarketDataFailure;
