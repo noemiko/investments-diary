@@ -411,4 +411,4 @@ No schema or data migration. Rollback means reverting the commits, which restore
 
 #### Manual
 
-- [x] 3.8 The PR's CI run shows `decimal-transport` green with the renamed contract step and the recovery step, and no close/snapshots/market-prices steps
+- [x] 3.8 The PR's CI run shows `decimal-transport` green with the renamed contract step and the recovery step, and no close/snapshots/market-prices steps — 458d17d
