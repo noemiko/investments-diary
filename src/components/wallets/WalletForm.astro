@@ -1,16 +1,17 @@
 ---
 import { buttonVariants } from "@/components/ui/button";
-import type { WalletFormErrors, WalletFormValues } from "@/types";
+import { MARKET_CURRENCIES, type MarketCurrency, type WalletFormErrors, type WalletFormValues } from "@/types";
 
-// Plain form POST, no island: two fields need no client-side behaviour, and it works without JS.
+// Plain form POST works without JavaScript and preserves submitted values on errors.
 
 interface Props {
   values: WalletFormValues;
   errors: WalletFormErrors;
   submitLabel: string;
+  fixedCurrency?: MarketCurrency;
 }
 
-const { values, errors, submitLabel } = Astro.props;
+const { values, errors, submitLabel, fixedCurrency } = Astro.props;
 
 const inputClass =
   "h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive md:text-sm";
@@ -61,6 +62,43 @@ const inputClass =
       )}
     </div>
   </div>
+  {fixedCurrency ? (
+    <div>
+      <p class="text-sm text-muted-foreground">Currency: {fixedCurrency}. Currency cannot be changed.</p>
+      {errors.currency && (
+        <p id="currency-error" class="text-xs text-destructive">
+          {errors.currency}
+        </p>
+      )}
+    </div>
+  ) : (
+    <div class="flex flex-col gap-1">
+      <label for="currency" class="text-sm text-muted-foreground">
+        Currency
+      </label>
+      <select
+        id="currency"
+        name="currency"
+        class:list={inputClass}
+        aria-invalid={errors.currency ? "true" : undefined}
+        aria-describedby={errors.currency ? "currency-error" : undefined}
+      >
+        <option value="" selected={values.currency === ""} class="bg-popover text-popover-foreground">
+          Choose a currency
+        </option>
+        {MARKET_CURRENCIES.map((currency) => (
+          <option value={currency} selected={values.currency === currency} class="bg-popover text-popover-foreground">
+            {currency}
+          </option>
+        ))}
+      </select>
+      {errors.currency && (
+        <p id="currency-error" class="text-xs text-destructive">
+          {errors.currency}
+        </p>
+      )}
+    </div>
+  )}
   {errors.form && (
     <p role="alert" class="text-sm text-destructive">
       {errors.form}

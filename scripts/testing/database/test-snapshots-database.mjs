@@ -26,14 +26,21 @@ try {
  create function auth.uid() returns uuid language sql stable as 'select nullif(current_setting(''request.jwt.claim.sub'',true),'''')::uuid';
  grant usage on schema auth,public to authenticated,anon; ${chain}
  insert into auth.users values ('00000000-0000-4000-8000-000000000001'),('00000000-0000-4000-8000-000000000002');
- insert into wallets(id,user_id,name,starting_value) values
- ('10000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000001','Mixed',1000),
- ('10000000-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000002','Empty',0);
+ insert into wallets(id,user_id,name,starting_value,currency) values
+ ('10000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000001','Mixed',1000,'USD'),
+ ('10000000-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000002','Empty',0,'USD');
  insert into reason_categories(id,user_id,name) values('20000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000001','Reason');
- insert into positions(user_id,wallet_id,category_id,instrument,buy_date,buy_price,quantity,current_price,price_date,sell_price,sell_date) values
- ('00000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','Closed','2026-01-01',50,10,999,'2026-10-01',60,'2026-02-01'),
- ('00000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','Open','2026-01-01',10,20,12,'2026-10-01',null,null),
- ('00000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','Unknown','2026-01-01',10,null,12,'2026-01-02',null,null);
+ -- Every holding needs a stock selection; the receipt path labels each one with its target symbol.
+ insert into market_listing_targets(id,user_id,provider,symbol,exchange,listing_name,exchange_name,instrument_type) values
+ ('30000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000001','yahoo','CLOSED','NMS','Closed','Nasdaq','EQUITY'),
+ ('30000000-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000001','yahoo','OPEN','NMS','Open','Nasdaq','EQUITY'),
+ ('30000000-0000-4000-8000-000000000003','00000000-0000-4000-8000-000000000001','yahoo','UNKNOWN','NMS','Unknown','Nasdaq','EQUITY');
+ insert into market_selection_receipts(id,user_id,wallet_id,target_id)
+ select replace(t.id::text,'30000000','40000000')::uuid,t.user_id,'10000000-0000-4000-8000-000000000001',t.id from market_listing_targets t;
+ insert into positions(user_id,wallet_id,category_id,instrument,market_selection_receipt_id,buy_date,buy_price,quantity,current_price,price_date,sell_price,sell_date) values
+ ('00000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','CLOSED','40000000-0000-4000-8000-000000000001','2026-01-01',50,10,999,'2026-10-01',60,'2026-02-01'),
+ ('00000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','OPEN','40000000-0000-4000-8000-000000000002','2026-01-01',10,20,12,'2026-10-01',null,null),
+ ('00000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','UNKNOWN','40000000-0000-4000-8000-000000000003','2026-01-01',10,null,12,'2026-01-02',null,null);
  `);
   // Two actual connections compete for the same unique daily observation.
   const capture = () =>
@@ -77,10 +84,10 @@ try {
  set role anon; do $$ begin begin perform * from wallet_snapshots; if found then raise exception 'anon read';end if;exception when insufficient_privilege then null;end;end $$;reset role;
  -- Simulate earlier real observations only in this disposable database.
  update wallet_snapshots set captured_at=captured_at-interval '2 days', observation_day=observation_day-2;
- update positions set deleted_at=now() where instrument='Closed';
+ update positions set deleted_at=now() where instrument='CLOSED';
  select capture_wallet_snapshots();
  do $$ begin if not exists(select 1 from wallet_snapshots where observation_day=(now() at time zone 'UTC')::date and value=1040) or not exists(select 1 from wallet_snapshots where value=1140) then raise exception 'historical deletion changed old point';end if;end $$;
- update positions set deleted_at=null where instrument='Closed'; select capture_wallet_snapshots();
+ update positions set deleted_at=null where instrument='CLOSED'; select capture_wallet_snapshots();
  do $$ begin if (select count(*) from wallet_snapshots)<>4 or not exists(select 1 from wallet_snapshots where value=1040) then raise exception 'retry overwrote point';end if;end $$;
  -- Simulate successive days to prove restores, baseline edits and closing affect only later points.
  update wallet_snapshots set captured_at=captured_at-interval '1 day', observation_day=observation_day-1;
@@ -88,14 +95,14 @@ try {
  do $$ begin if not exists(select 1 from wallet_snapshots where observation_day=(now() at time zone 'UTC')::date and value=1140) or not exists(select 1 from wallet_snapshots where value=1040) then raise exception 'restore observation mismatch';end if;end $$;
  update wallet_snapshots set captured_at=captured_at-interval '1 day', observation_day=observation_day-1;
  update wallets set starting_value=2000 where name='Mixed';
- update positions set sell_price=13,sell_date='2026-10-01' where instrument='Open';
+ update positions set sell_price=13,sell_date='2026-10-01' where instrument='OPEN';
  select capture_wallet_snapshots();
  do $$ begin if not exists(select 1 from wallet_snapshots where observation_day=(now() at time zone 'UTC')::date and value=2160 and realised_change=160 and open_count=0 and as_of is null) then raise exception 'close/baseline observation mismatch';end if;end $$;
- update positions set sell_price=null,sell_date=null where instrument='Open';
+ update positions set sell_price=null,sell_date=null where instrument='OPEN';
  -- Negative and >numeric(20,8) totals survive capture exactly.
  update wallets set starting_value=0 where name='Mixed';
- update positions set sell_price=0 where instrument='Closed';
- update positions set quantity=999999999999.99999999,buy_price=999999999999.99999998,current_price=999999999999.99999999 where instrument='Open';
+ update positions set sell_price=0 where instrument='CLOSED';
+ update positions set quantity=999999999999.99999999,buy_price=999999999999.99999998,current_price=999999999999.99999999 where instrument='OPEN';
  update wallet_snapshots set captured_at=captured_at-interval '10 days', observation_day=observation_day-10;
  select capture_wallet_snapshots();
  do $$ begin if not exists(select 1 from wallet_snapshots where observation_day=(now() at time zone 'UTC')::date and value=9499.9999999999999999) then raise exception 'aggregate exactness lost';end if;end $$;

@@ -2,41 +2,90 @@ import { test, expect } from "@playwright/test";
 import { investmentData } from "./helpers/investment-data";
 import { waitForHydration } from "./helpers/hydration";
 
-// risk: investment-persists — user-selected standalone flow, 2026-10-23.
-// seed: tests/e2e/seed.spec.ts; real auth, routing, form submission, DB and SSR.
-test.describe("investment-persists", () => {
-  test("investment saved through the form remains on the list after reload", async ({ page }) => {
-    const data = await investmentData();
-    test.info().annotations.push({ type: "test-data", description: data.token });
-    try {
-      // Open the form with an isolated wallet/category and the saved user session.
-      await page.goto("/dashboard/new");
-      await waitForHydration(page);
-      await page.getByRole("textbox", { name: "Instrument", exact: true }).fill(data.token);
-      await page.getByRole("textbox", { name: "Buy price (per share)", exact: true }).fill("50.25");
-      await page.getByLabel("Buy date", { exact: true }).fill("2026-01-15");
-      await page.getByRole("combobox", { name: "Wallet", exact: true }).selectOption({ label: data.token });
-      await page.getByRole("combobox", { name: "Reason category", exact: true }).selectOption({ label: data.token });
-      await page.getByRole("textbox", { name: "Quantity (optional)", exact: true }).fill("2");
-
-      // Submit exactly once: repeating this action could create duplicate positions.
-      await page.getByRole("button", { name: "Save investment", exact: true }).click();
-      await expect(page).toHaveURL(/\/dashboard$/);
-      const row = page.getByRole("row").filter({ hasText: data.token });
-      await expect(row).toHaveCount(1);
-      await expect(row.getByRole("cell", { name: "50.25", exact: true })).toBeVisible();
-      await expect(row.getByRole("cell", { name: "2", exact: true })).toBeVisible();
-
-      // A fresh SSR read must still show this investment with the submitted values.
-      await page.reload();
-      await expect(page).toHaveURL(/\/dashboard$/);
-      await expect(row).toHaveCount(1);
-      await expect(row.getByRole("cell", { name: "50.25", exact: true })).toBeVisible();
-      await expect(row.getByRole("cell", { name: "2", exact: true })).toBeVisible();
-      await expect(row.getByRole("cell", { name: "Jan 15, 2026", exact: true })).toBeVisible();
-    } finally {
-      // Also runs on assertion failure; deletes only this token and verifies all three tables.
-      await data.cleanup();
-    }
+// Metadata search is a seeded, owner/wallet-bound receipt fixture. Native selection,
+// save, authentication, routing, exact decimal writes, database reads and SSR are real.
+for (const javaScriptEnabled of [true, false]) {
+  test.describe(`investment-persists (${javaScriptEnabled ? "hydrated" : "no JavaScript"})`, () => {
+    test.use({ javaScriptEnabled });
+    test("selected investment persists without downloading a quote", async ({ page }, info) => {
+      const data = await investmentData();
+      info.annotations.push({ type: "test-data", description: data.token });
+      const downloads: string[] = [];
+      page.on("request", (request) => {
+        if (request.method() === "POST" && /market-prices\/.*download/.test(request.url()))
+          downloads.push(request.url());
+      });
+      try {
+        // Render the real native Select response with a persisted metadata fixture;
+        // browser tests do not depend on Yahoo search availability or manufacture quotes.
+        const selected = await page.request.post("/dashboard/new", {
+          headers: { Origin: String(info.project.use.baseURL) },
+          form: {
+            select_listing: data.receiptId,
+            wallet_id: data.walletId,
+            listing_query: data.symbol,
+            buy_price: "unfinished",
+            buy_date: "2026-01-15",
+            category_id: data.categoryId,
+            reason_text: "Keep this investment reasoning",
+            quantity: "2",
+            broker_label: "Fixture broker",
+          },
+        });
+        expect(selected.status()).toBe(200);
+        const html = await selected.text();
+        await page.route(
+          "**/dashboard/new",
+          async (route) => {
+            await route.fulfill({ status: 200, contentType: "text/html", body: html });
+          },
+          { times: 1 },
+        );
+        await page.goto("/dashboard/new");
+        if (javaScriptEnabled) await waitForHydration(page);
+        await expect(page.getByRole("status")).toContainText(`Selected: ${data.token} · ${data.symbol}`);
+        await expect(page.getByRole("textbox", { name: "Buy price (per share)", exact: true })).toHaveValue(
+          "unfinished",
+        );
+        await expect(page.getByRole("textbox", { name: "Reason", exact: false })).toHaveValue(
+          "Keep this investment reasoning",
+        );
+        await expect(page.getByRole("textbox", { name: "Broker (optional)", exact: true })).toHaveValue(
+          "Fixture broker",
+        );
+        await page.getByRole("textbox", { name: "Buy price (per share)", exact: true }).fill("50.25");
+        await page.screenshot({
+          path: info.outputPath("selected-stock-form.png"),
+          fullPage: true,
+          style: "astro-dev-toolbar { display: none !important; }",
+        });
+        await page.getByRole("button", { name: "Save investment", exact: true }).click();
+        await expect(page).toHaveURL(/\/dashboard$/);
+        const row = page.getByRole("row").filter({ hasText: data.symbol });
+        await expect(row).toHaveCount(1);
+        await expect(row.getByRole("cell", { name: "50.25", exact: true })).toBeVisible();
+        await expect(row.getByRole("cell", { name: "2", exact: true })).toBeVisible();
+        await expect(row).toContainText("Trading currency is not checked yet");
+        await expect(row.getByRole("link", { name: /Link stock listing/ })).toHaveCount(0);
+        await expect(page.getByRole("button", { name: "Download prices", exact: true })).toBeEnabled();
+        await page.reload();
+        await expect(row).toHaveCount(1);
+        await expect(row.getByRole("cell", { name: "Jan 15, 2026", exact: true })).toBeVisible();
+        await page.screenshot({
+          path: info.outputPath("saved-stock-selection.png"),
+          fullPage: true,
+          style: "astro-dev-toolbar { display: none !important; }",
+        });
+        expect(await data.selectedPosition()).toMatchObject({
+          instrument: data.symbol,
+          market_target_id: data.targetId,
+          market_listing_id: null,
+          current_price: null,
+        });
+        expect(downloads).toEqual([]);
+      } finally {
+        await data.cleanup();
+      }
+    });
   });
-});
+}

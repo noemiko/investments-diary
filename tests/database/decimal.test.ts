@@ -40,9 +40,21 @@ const users: string[] = [];
 let owner = "";
 let wallet = "";
 let category = "";
+let targetId = "";
 let position = "";
 const max = "999999999999.99999999";
 const min = "0.00000001";
+
+// Deterministic provider metadata is a fixture; these transport checks never call Yahoo.
+async function selectionFor(walletId: string): Promise<string> {
+  const receipt = await author
+    .from("market_selection_receipts")
+    .insert({ user_id: owner, wallet_id: walletId, target_id: targetId })
+    .select("id")
+    .single();
+  if (receipt.error) throw receipt.error;
+  return receipt.data.id;
+}
 
 beforeAll(async () => {
   for (const client of [author, foreign]) {
@@ -57,7 +69,7 @@ beforeAll(async () => {
   owner = users[0];
   const w = await author
     .from("wallets")
-    .insert({ user_id: owner, name: "Decimal proof", starting_value: max })
+    .insert({ currency: "USD", user_id: owner, name: "Decimal proof", starting_value: max })
     .select("id")
     .single();
   if (w.error) throw w.error;
@@ -69,6 +81,21 @@ beforeAll(async () => {
     .single();
   if (c.error) throw c.error;
   category = c.data.id;
+  const target = await author
+    .from("market_listing_targets")
+    .insert({
+      user_id: owner,
+      provider: "yahoo",
+      symbol: "DECIMAL",
+      exchange: "NMS",
+      listing_name: "Decimal transport fixture",
+      exchange_name: "Nasdaq",
+      instrument_type: "EQUITY",
+    })
+    .select("id")
+    .single();
+  if (target.error) throw target.error;
+  targetId = target.data.id;
 });
 
 afterAll(async () => {
@@ -87,6 +114,7 @@ it("round-trips the full numeric range, nullable values, joins and pagination wi
     .insert({
       user_id: owner,
       instrument: "Exact",
+      market_selection_receipt_id: await selectionFor(wallet),
       buy_date: "2026-01-01",
       buy_price: "999999999999.99999998",
       quantity: max,
@@ -124,6 +152,7 @@ it("round-trips the full numeric range, nullable values, joins and pagination wi
   const low = await author.from("positions").insert({
     user_id: owner,
     instrument: "Minimum",
+    market_selection_receipt_id: await selectionFor(wallet),
     buy_date: "2026-01-01",
     buy_price: min,
     quantity: null,
@@ -135,13 +164,15 @@ it("round-trips the full numeric range, nullable values, joins and pagination wi
     .from("positions")
     .select(projection)
     .eq("wallet_id", wallet)
-    .order("instrument")
+    // Both rows carry the selection's symbol as their label, so order by price instead.
+    .order("buy_price", { ascending: false })
     .range(0, 0);
   const second = await author
     .from("positions")
     .select(projection)
     .eq("wallet_id", wallet)
-    .order("instrument")
+    // Both rows carry the selection's symbol as their label, so order by price instead.
+    .order("buy_price", { ascending: false })
     .range(1, 1);
   expect(first.error).toBeNull();
   expect(second.error).toBeNull();
@@ -182,7 +213,11 @@ it("does not expose or update another account's exact decimals", async () => {
 });
 
 it("preserves form digits through every production service and exact arithmetic", async () => {
-  const parsedWallet = parseWalletForm({ name: "Service proof", starting_value: "999 999 999 999,99999999" });
+  const parsedWallet = parseWalletForm({
+    currency: "USD",
+    name: "Service proof",
+    starting_value: "999 999 999 999,99999999",
+  });
   if (!parsedWallet.success) throw new Error("Invalid wallet fixture");
   const savedWallet = await createWallet(author, owner, parsedWallet.data);
   expect(savedWallet.ok).toBe(true);
@@ -192,6 +227,8 @@ it("preserves form digits through every production service and exact arithmetic"
   expect((await listWallets(author)).find((w) => w.id === walletId)?.starting_value).toBe(max);
 
   const parsedPosition = parsePositionForm({
+    listing_receipt_id: await selectionFor(walletId),
+    listing_query: "DECIMAL",
     instrument: "Service proof",
     buy_date: "2026-01-01",
     buy_price: "999999999999,99999998",
@@ -238,7 +275,13 @@ it("preserves form digits through every production service and exact arithmetic"
   expect(positionResult(detail)?.amount).toEqual({ units: 1n, scale: 16 });
   expect(describeResult(detail)).toEqual({ percent: "0.00%", asOf: "as of Oct 1, 2026" });
 
-  expect(await updateWallet(author, walletId, { name: "Service proof", starting_value: "0" })).toEqual({ ok: true });
+  expect(
+    await updateWallet(author, walletId, {
+      currency: "USD",
+      name: "Service proof",
+      starting_value: "0",
+    }),
+  ).toEqual({ ok: true });
   expect(await getWallet(author, walletId)).toMatchObject({ starting_value: "0" });
   const result = walletValue({ starting_value: "0" }, await listPositions(author, walletId));
   expect(result.change).toEqual({ units: 1n, scale: 16 });
@@ -255,7 +298,13 @@ it("preserves form digits through every production service and exact arithmetic"
     ok: false,
     error: "not_found",
   });
-  expect(await updateWallet(foreign, walletId, { name: "Forbidden", starting_value: max })).toEqual({
+  expect(
+    await updateWallet(foreign, walletId, {
+      currency: "USD",
+      name: "Forbidden",
+      starting_value: max,
+    }),
+  ).toEqual({
     ok: false,
     error: "not_found",
   });
@@ -265,6 +314,7 @@ it("preserves form digits through every production service and exact arithmetic"
 
 it("enforces sale pair, nonnegative and buy-date constraints without changing an open record", async () => {
   const created = await createPosition(author, owner, {
+    listing_receipt_id: await selectionFor(wallet),
     instrument: "Sale constraints",
     buy_date: "2026-01-01",
     buy_price: "50",
@@ -323,6 +373,7 @@ it("enforces sale pair, nonnegative and buy-date constraints without changing an
 
 it.each([max, min, "0"])("transports sale %s through every position service without rounding", async (sellPrice) => {
   const created = await createPosition(author, owner, {
+    listing_receipt_id: await selectionFor(wallet),
     instrument: `Sale ${sellPrice}`,
     buy_date: "2026-01-01",
     buy_price: "50",
@@ -353,6 +404,7 @@ it.each([max, min, "0"])("transports sale %s through every position service with
 
 it("allows exactly one competing complete sale and preserves the winning facts", async () => {
   const created = await createPosition(author, owner, {
+    listing_receipt_id: await selectionFor(wallet),
     instrument: "Competing sale",
     buy_date: "2026-01-01",
     buy_price: "50",
@@ -406,6 +458,7 @@ it("allows exactly one competing complete sale and preserves the winning facts",
 
 it("keeps missing, deleted and foreign ids indistinguishable for reads and guarded writes", async () => {
   const created = await createPosition(author, owner, {
+    listing_receipt_id: await selectionFor(wallet),
     instrument: "Unavailable sale",
     buy_date: "2026-01-01",
     buy_price: "50",
@@ -448,11 +501,16 @@ it("keeps missing, deleted and foreign ids indistinguishable for reads and guard
 });
 
 it("restores every sale fact and the realised wallet contribution after deletion", async () => {
-  const savedWallet = await createWallet(author, owner, { name: "Realised restoration", starting_value: "1000" });
+  const savedWallet = await createWallet(author, owner, {
+    currency: "USD",
+    name: "Realised restoration",
+    starting_value: "1000",
+  });
   if (!savedWallet.ok) throw new Error("Fixture wallet failed");
   const walletId = savedWallet.id;
-  const create = (instrument: string, buy_price: string, quantity: string) =>
+  const create = async (instrument: string, buy_price: string, quantity: string) =>
     createPosition(author, owner, {
+      listing_receipt_id: await selectionFor(walletId),
       instrument,
       buy_price,
       quantity,

@@ -16,6 +16,8 @@ supposed to happen. Every step names its **owner**: `agent` (runs from the sessi
 CLI or git), `human` (panel or decision, never delegated), or `agent → human`
 (the agent prepares the step and a human approves it).
 
+For the current stock-price schema, use the [stock-price release and recovery section](#stock-price-release-and-recovery). Its maintenance transition and schema-compatible recovery supersede the historical no-migration/down-migration assumptions below. Hosted schema changes and production promotion remain human-controlled; local verification is not hosted release evidence.
+
 ## 1. State at planning time (checked 2026-09-24)
 
 Most of the Getting Started section in `infrastructure.md` is already done. Plan against
@@ -171,10 +173,9 @@ On branch `chore/deploy-hardening`, in one PR:
 - **Trigger:** E1–E4 fail, or a 5xx shows up in logs after promotion.
 - **Action (human):** `npx vercel@latest rollback <deployment-id-from-A2>`. It's a pointer
   flip and takes seconds. No rebuild.
-- **Data:** this deploy has **no** migrations (the `supabase/migrations/` directory
-  doesn't exist), so a code rollback is complete. From the first migration onward, follow
-  the rule in `infrastructure.md`: down-migration first, and never a migration together
-  with a feature in the same deploy.
+- **Data:** the original starter deploy had no migrations; that assumption is historical.
+  The current stock-price release removes obsolete metadata/API contracts, so arbitrary
+  old deployments are not safe rollback targets. Follow the feature's [compatible recovery](#compatible-recovery-and-rollback): retain schema/data and observations, use reviewed additive selection recovery and compatible application builds. Do not apply a destructive down migration.
 - **Supabase setting changes (B2, B3)** are independent of code rollback. Undo them by
   hand in the panel if needed.
 
@@ -203,3 +204,185 @@ Fill in during execution.
 | A4 git integration / production branch          |            |                                                                                                                                                                                                                                                                                                                                                  |
 | D3 promoted deployment                          |            |                                                                                                                                                                                                                                                                                                                                                  |
 | E1–E7                                           |            |                                                                                                                                                                                                                                                                                                                                                  |
+
+## Stock-price release and recovery
+
+This section covers FR-003, FR-006 and FR-013–FR-016 at the schema-compatible application baseline `0a954cb`. It consolidates the stock-price runbook and wallet operations by owner request. It is preparation, not evidence of a hosted migration, deployment or new live-provider check. Record actual release IDs and results in the change's [verification record](../changes/automatic-stock-prices/verification.md).
+
+### Release boundaries
+
+- Node is 24.x; the pinned provider is `yahoo-finance2@4.0.5`. The access posture above keeps hosted schema changes, environment/protection settings, production promotion and rollback under human control. Agents may prepare and review artifacts and record owner-supplied results; they do not run or request any Vercel cloud command, including read-only inventory, deployments or removals (see `context/foundation/lessons.md`). For this release, the human runs every Vercel and hosted-Supabase command.
+- The recorded environment inventory on 2026-11-02 found `SUPABASE_URL`/`SUPABASE_KEY` in Production only. A full-app Preview needs an explicitly chosen database and Preview configuration from the human; do not assume either exists or silently provision a new project. Never pull hosted values into local `.env`/`.env.local`.
+- Pre-migration production reference: `dpl_FVc6GVQQMXRWeV69KuVAcfajfwaD`, unique URL `investments-diary-oi2k5w6fn-wakarimasen8-8554.vercel.app`. This is an inventory reference, **not an approved post-migration rollback target**. Its source SHA was not established by the inventory.
+- Feature pushes alone do not run CI. A PR against `master` runs deterministic CI checks; the HTTP smoke job runs after a master push. Confirm actual deployment/auto-promotion settings before merging. An automatic application release must not race ahead of the hosted schema.
+
+### Schema-first rollout
+
+Have a recoverable backup, a reviewed release build and a schema-compatible recovery plan before the maintenance window. List the hosted migration ledger and inspect the dry run in the human's authenticated terminal (`npx supabase migration list --linked`, `npx supabase db push --dry-run`). Confirm the intended project privately. A human applies the reviewed hosted migration chain; never use `db reset` or repair the ledger merely to bypass an error.
+
+Do not assume the seven predecessors are already hosted: diary core, manual price, wallets, wallet deletion protection, closing, snapshot storage/function and cron registration must precede these eleven feature migrations, in filename order:
+
+| Migration                                                        | Required result                                                                                                                         |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `20261030110418_market_price_persistence.sql`                    | Cache, owner RPCs, manual-save timestamps and shared selection view                                                                     |
+| `20261030114323_listing_lookup_receipts.sql`                     | Existing-position lookup receipts and explicit confirmation (RPCs retired by the last migration below)                                  |
+| `20261030122155_effective_snapshots_and_wallet_moves.sql`        | Effective-price capture, source coverage and restricted wallet moves                                                                    |
+| `20261030123038_order_wallet_move_locks.sql`                     | Deterministic wallet lock ordering                                                                                                      |
+| `20261030140619_set_wallet_denominations.sql`                    | Unset wallets become USD; snapshot labels inherit wallet currency; obsolete attestation columns/three-argument move API removed         |
+| `20261030162000_pending_stock_selections.sql`                    | Durable search targets and expiring owner/wallet-bound creation choices                                                                 |
+| `20261030162500_pending_listing_currency_context.sql`            | Persisted mismatch context from a verified cache identity                                                                               |
+| `20261102080240_validate_selection_without_update_privilege.sql` | Creation validation without granting UPDATE access to receipts                                                                          |
+| `20261102120000_require_position_stock_selection.sql`            | Every position gets a stock selection (Apple for drafts by owner decision, matching target for confirmed listings); NOT NULL            |
+| `20261102130000_retire_listing_lookup_rpcs.sql`                  | `claim_/finish_/confirm_listing_lookup` no longer executable by `public`/`anon`/`authenticated`; functions and receipts kept            |
+| `20261102140000_revoke_listing_column_updates.sql`               | Signed-in users can no longer UPDATE `positions.market_listing_id`/`listing_confirmed_at`; listings attach only through Download prices |
+
+The denomination migration breaks applications that still select removed wallet fields or call the old move API. A schema-first release therefore needs a maintenance transition, not ordinary traffic on the previous application between migration files.
+
+1. Record the served deployment, source revision when available, hosted ledger, cron state and private backups. For existing tables record row counts and digests of recorded position/snapshot amounts and dates. Currency labels are the authorised metadata exception; money, dates and historical source coverage must not be recalculated.
+2. A human places the diary behind a reviewed static maintenance deployment that does not access Supabase, or an equivalent controlled maintenance boundary that stops old application traffic/writes. Do not change Deployment Protection or production aliases automatically. Keep this artifact available through the schema transition.
+3. Use a window away from **00:00 UTC**. Record and pause the existing named snapshot job if present. If cron registration is still pending, that migration activates the job: check/pause it after migration rather than assuming its previous state survived registration. Missed days remain gaps.
+4. The human applies the **entire pending hosted chain**, including the receipt-guard fix, the required-selection migration and the lookup-RPC retirement, and stops on any error. Do not run a mixed intermediate schema/application combination or edit an already-applied migration. Inspect the ledger and final schema before allowing app traffic.
+5. Verify unset wallet currencies are gone, snapshot currency labels are present, every position has `market_target_id` (`select count(*) from public.positions where market_target_id is null` returns 0) and the `positions_guard_selection` trigger is enabled, `has_function_privilege('authenticated','public.confirm_listing_lookup(uuid,uuid)','execute')` (and the same for `claim_listing_lookup(uuid)` and `finish_listing_lookup(uuid,uuid,uuid,timestamptz,boolean)`) returns false, recorded facts/digests match, RLS/grants remain restricted and the current capture signature still exists. The approved conversion is labels only: unset wallets become USD and previously unlabelled observations inherit their owning wallet denomination. Existing non-null wallet currencies remain frozen; missing historical manual-save times/source coverage stay unknown.
+6. Stage/inspect the compatible application with the selected database/environment. Only after the schema checkpoint may that application consume it. A human promotes it, or performs the explicitly agreed production switch. Test sign-in/read paths before the [US/GPW walkthrough](../changes/automatic-stock-prices/ui-verification.md); record deployed URL/source revision and actual results.
+7. Restore the recorded intended cron state after compatibility checks. Verify its command is `select public.capture_wallet_snapshots();` and schedule `0 0 * * *` in UTC/GMT. Do not run an immediate production capture to fill a missed day. Keep maintenance/recovery artifacts until the rollout has been accepted.
+
+Use [wallet observations and cron](#wallet-observations-and-cron) for exact job queries and the named-job pause operation. Ordinary authenticated/anonymous roles must not execute capture or write snapshots. `public.capture_wallet_snapshots()` returns `bigint`, is restricted to `service_role`, and performs no provider request.
+
+### Application acceptance
+
+New investment: choose the intended USD/PLN/EUR wallet, explicitly search Yahoo metadata, select the company/exchange, enter buy facts/reason and Save. A typed name alone is insufficient. Search, Select and Save preserve other draft input and do not download a quote. Form choices expire after 30 minutes; saved targets do not expire with their form receipts.
+
+The later dashboard **Download prices** validates actual currency/timezone before applying a quote. Search cannot establish those fields. Matching wallets can be priced while another holding of the same selected stock remains incompatible; no conversion occurs. Existing diary labels/manual holdings remain usable. Investments saved before selections existed carry Apple (`AAPL`/`NMS`) by owner decision on 2026-11-02, so their first **Download prices** prices USD-wallet holdings with Apple and reports `incompatible_currency` for PLN/EUR ones; their manual values stay until a later quote wins. Existing-position listing search/download/confirmation is retired (HTTP 409 `selection_already_set`, and its database RPCs are not executable by signed-in users); a holding with the wrong stock is deleted and recreated.
+
+For the deployed walkthrough, use `AAPL` in USD and `PKO.WA` in PLN with the human's authorised test holdings. Inspect source, actual market timestamp, exchange, currency, market state and delay separately from fetch time. Reload/focus/wait must not cause a quote request. A closed market may return the same prior-session quote; fetching it again does not make its market timestamp newer. Use the [API walkthrough](../changes/automatic-stock-prices/download-api.md) only in that owner's same-origin session.
+
+The explicit public-symbol probe is `npm run probe:market-data -- --live` on Node 24. It reads no diary data or `.env` and tests fixed public symbols plus controlled SDK cancellation. It is separate from app triggers and deterministic CI. Local success is not deployed proof; follow the isolated protected [Vercel probe recipe](../changes/automatic-stock-prices/provider-validation.md) when a fresh runtime/provider check is needed. Never install an unprotected diagnostic route in the diary.
+
+### Provider failures and manual fallback
+
+| State                                       | Response                                                                                                                                                                                                                                               |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `refreshing`                                | Another request holds a 30-second lease. Wait for completion/expiry, then explicitly click again. Do not clear lease tokens manually.                                                                                                                  |
+| `cooldown`, timeout or provider unavailable | Retain the last valid cache; otherwise use a manual price or show missing coverage. Wait at least 15 minutes, or the longer reported retry instant, before clicking again. Waiting does not retry.                                                     |
+| `due`                                       | Work was not sent within the shared five-second provider budget. A later click attempts it; no background job is scheduled.                                                                                                                            |
+| `older_quote`                               | Older market data was ignored; the last valid quote remains. Respect the shown retry instant. A new fetch time does not justify replacing a newer market time.                                                                                         |
+| `invalid_quote`                             | Keep stored values. Inspect symbol/exchange/type, currency/timezone and timestamps; do not relax validation or edit immutable cache identity fields.                                                                                                   |
+| `incompatible_currency`                     | Leave the incompatible holding's selection/manual values intact. Selections cannot be edited: delete and recreate the holding with the right stock, or keep it on manual prices; never reinterpret amounts or move across denominations automatically. |
+| Expired creation choice                     | An unsaved creation choice needs a new explicit Search/Select. Expiry performs no provider work.                                                                                                                                                       |
+
+An explicit manual-price save on an open holding stamps its database save time, even if the same number/date is resubmitted. That correction wins until a market timestamp is **strictly later** than its save time. Equal/older timestamps do not replace it. Without a usable automatic quote, the saved manual pair remains the fallback. Closed positions use their sale price/date, including a valid zero sale. Missing quantity or open price is excluded and reported; it is not a zero gain.
+
+Do not empty the cache, reset cooldowns, edit save times or remove receipt references to troubleshoot an outage. Sanitized application errors provide bounded reasons/status/retry information; raw provider bodies, URLs, cookies, crumbs and credentials do not belong in logs or support messages. Search availability is still required to select a new stock; an outage is not permission to silently restore free-text creation.
+
+### Owner-scoped inspection
+
+Prefer the author's authenticated, RLS-scoped application reads. For privileged operator inspection, bind **one verified owner UUID** in each query, use only needed fields and keep output private. The following SQL is read-only; replace `OWNER_UUID` in the operator's trusted database session. Do not log keys, lease tokens or raw provider payloads.
+
+```sql
+select id,symbol,exchange,currency,timezone,price is not null as has_quote,
+  market_at,fetched_at,refresh_outcome,cooldown_until,lease_until
+from public.market_quote_cache where user_id='OWNER_UUID'::uuid order by symbol,id;
+
+select id,symbol,exchange,cache_id,refresh_outcome,cooldown_until,lease_until
+from public.market_listing_targets where user_id='OWNER_UUID'::uuid order by symbol,id;
+
+select id,wallet_id,selected_source,selected_at,manual_price_saved_at,
+  quote_market_at,quote_currency,wallet_currency,pending_symbol,pending_currency
+from public.position_effective_prices
+where user_id='OWNER_UUID'::uuid and deleted_at is null order by id;
+
+select wallet_id,observation_day,currency,realised_count,open_count,not_counted,
+  automatic_count,manual_count,oldest_market_at
+from public.wallet_snapshots where user_id='OWNER_UUID'::uuid
+order by observation_day desc,wallet_id limit 50;
+```
+
+Unknown historical source counts stay null. Saved positions can still reference expired creation receipts; do not blindly purge them. Page reads, snapshot inspection and cache-age expiry must not call Yahoo. Successful quotes have no age-based refresh restriction, but the next request still needs the button and must respect leases/failure cooldowns.
+
+### Compatible recovery and rollback
+
+Provider unavailability alone normally needs no rollback: retained quotes and manual corrections are the intended degradation path. For a pricing-selection defect, keep the compatible application/schema and recover selection through a new reviewed additive migration. Do **not** promote an arbitrary pre-feature deployment, drop tables/columns, clear caches/targets/receipts, restore removed attestation fields or delete/recalculate observations. The old pre-Phase4 creation and wallet contracts are incompatible with the final schema.
+
+The reviewable [manual-selection operator template](automatic-stock-prices-manual-selection.sql) is **outside** `supabase/migrations`; it is not executed by normal rollout. It replaces only the four selected-value outputs of the current view with raw manual/sale values. It preserves every view column/type/order, security-invoker mode, grants and view identity. The unchanged capture function consumes that same view, so application reads and future observations switch together. Quote-cache data and already captured observations remain untouched. Automatic-only holdings temporarily become missing coverage until a manual price is saved.
+
+Human recovery sequence:
+
+1. Record the incident, current schema/deployment and intended cron state. Pause the named job during the controlled transition if needed. Keep the compatible `0a954cb`-line app; mandatory Yahoo selection at creation remains in force.
+2. Scaffold a **new** timestamped migration and copy the reviewed template into it. Rehearse the migration chain on local fixtures, including `npm run test:market-prices-db` and the exact decimal/snapshot checks below. Never modify or reapply an old migration.
+3. Save the reviewed normal `pg_get_viewdef('public.position_effective_prices'::regclass,true)` definition privately before recovery, together with its column/type/order, grants and security-invoker settings. This is the restoration source, not a data backup or deployment secret.
+4. The human applies the approved recovery migration to the intended hosted project. Verify manual/sale/missing selection and unchanged cache/target/receipt/position/old-snapshot facts before restoring traffic/cron. A manual correction is entered through the existing UI, not by spoofing its timestamp.
+5. If an application defect also requires a code change, promote only a tested schema-compatible build. This section does not provide a nonexistent feature-flag command, and rolling back selection does not disable explicit downloads or bypass required metadata selection.
+
+The required-selection migration has an additive rollback too: if ever needed, a new reviewed migration runs `alter table public.positions alter column market_target_id drop not null`. Selections stay as data; do not clear them.
+
+Re-enable automatic selection through another reviewed additive migration restoring the recorded **normal** view definition, all current columns/order/types and `security_invoker=true`; use `CREATE OR REPLACE` so grants and dependencies survive. Rehearse normal → manual → normal parity first. Inspect which saved quotes would now win under the strict manual-save rule. The same capture function then resumes normal shared selection; observations captured during manual recovery stay as recorded and are never rewritten.
+
+If a future defect requires replacing the capture body itself, preserve its no-argument `bigint` signature, definer/search-path settings, restricted grants, midnight job and idempotent insert. Prepare a new additive migration from the **current** definition, retaining required currency and source-coverage fields. A manual body must count raw manual/sale contributions, use zero automatic coverage/null oldest automatic time and match the shared manual view. Do not copy the obsolete pre-currency function body or install a down migration. This alternative is preparation guidance; the supplied tested recovery uses the unchanged capture body.
+
+### Wallet observations and cron
+
+Snapshots record diary values using the shared selection of saved manual prices and explicitly downloaded quotes, not market closes or cash balances. Capture runs at midnight UTC (01:00/02:00 Warsaw) and never downloads prices. Missed days stay gaps. Existing wallets wait for the first capture; no backfill occurs. Changes later in a day affect the next capture; old amounts/dates remain unchanged.
+
+The stock-price migration assigns USD to previously unspecified wallets and gives unlabelled observations their wallet denomination by owner decision; it does not convert amounts or invent missing historical source coverage. New captures retain selected manual/automatic coverage and quote-time context. Compatible recovery above preserves the capture function's signature, privileges and job while keeping application/capture parity.
+
+Scheduling is infrastructure as code. The normal Supabase chain includes:
+
+- `20261028160000_wallet_snapshots.sql`: snapshot storage and the restricted capture function.
+- `20261028170000_register_daily_wallet_snapshot_job.sql`: installs/enables `pg_cron`, validates UTC/GMT and registers the daily job. **Applying it activates the schedule**, including production through the authorised process.
+
+For local development, apply pending migrations with `npx supabase migration up --local`. No Vercel cron, HTTP endpoint or additional secret is required. Named registration updates an existing manually configured job instead of adding a duplicate. Cron infrastructure runs in its configured database (`postgres` on Supabase); registration fails clearly if its timezone is not UTC/GMT.
+
+`npm run configure:wallet-cron` is a local repair helper using the same migration SQL. `npm run test:wallet-cron` checks the actual migration twice inside a rolled-back local transaction. Disposable domain databases exclude cron infrastructure because pg_cron cannot install in a second database; the separate cron test verifies its configured database. Authenticated and anonymous roles cannot execute capture or write snapshots. Local verification does not establish production activation or automated alerting.
+
+Inspect configuration, last run and missing observations in the trusted operator session:
+
+```sql
+select jobid, jobname, schedule, command, active
+from cron.job where jobname='wallet-daily-observations';
+
+select d.status, d.start_time, d.end_time, d.return_message
+from cron.job_run_details d join cron.job j using(jobid)
+where j.jobname='wallet-daily-observations'
+order by d.start_time desc limit 10;
+
+select w.id, max(s.observation_day) as last_day
+from public.wallets w left join public.wallet_snapshots s on s.wallet_id=w.id
+where w.user_id='OWNER_UUID'::uuid and w.deleted_at is null group by w.id
+having max(s.observation_day) is null
+  or max(s.observation_day)<(now() at time zone 'UTC')::date;
+```
+
+The UI reports actual last capture time and missing observation today when appropriate. A missing day must not be recreated from today's values. Inspect job history and fix forward on failure. To pause, the human disables only the named job; never uninstall pg_cron and affect other jobs:
+
+```sql
+select cron.alter_job(jobid, active := false)
+from cron.job where jobname='wallet-daily-observations';
+```
+
+Restore `active := true` only when the recorded intended state was active and compatibility checks pass. Preserve all existing snapshot rows on recovery.
+
+#### Local wallet demo
+
+Export `DEMO_USER_PASSWORD` (at least 12 characters), then run `npm run seed:demo` locally. Sign in with `wallet-demo@example.test` and that password. Passwords/keys are never printed. Existing accounts must carry this seed's app-metadata marker; unmarked collisions are refused. Reruns preserve the existing password and manual edits.
+
+The five `Demo · …` wallets are Rising, Falling, Mixed, Flat and Empty; 100 synthetic investments occupy the first four and synthetic history spans roughly a year with gaps. The first seed anchors dates, so reruns repair missing fixtures without fabricating new days. The open AAPL fixture is already linked using metadata only; its first real price still requires Download prices, unless a real quote already exists in the canonical owner cache.
+
+`npm run seed:demo -- --reset` restores recognised fixtures only and refuses unrelated position/lookup references to their wallets, categories or fixture cache. Never use `supabase db reset` for demo setup. `npm run test:snapshots-db` uses a disposable database; `npm run test:demo-db` creates and cleans a marked disposable account. All demo/test work is local.
+
+### Deterministic release checks
+
+Run the repository static sequence in order: `npx astro sync`, `npm run lint`, `npx astro check`, `npm run build`, then `npm test`. Use Node 24 and local Supabase only for all fixture/account-creating commands.
+
+| Risk                                                                                  | Existing regression boundary                                                                                                                                                                                         |
+| ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Provider normalization, missing/partial results, cancellation, safe failures          | `src/lib/market-data/yahoo.test.ts`, `endpoint.test.ts`, `trigger-boundaries.test.ts`                                                                                                                                |
+| Batches, cache identity, leases/cooldowns, manual boundaries                          | `src/lib/services/market-prices.test.ts`; `npm run test:market-prices-db`                                                                                                                                            |
+| Exact transport, ownership, receipt lifetime, mixed currency, reassignment, zero sale | `npm run test:decimal-db` (`tests/database/`)                                                                                                                                                                        |
+| Snapshot values, idempotency, immutable observations                                  | `npm run test:snapshots-db`; `tests/database/effective-valuations.test.ts`                                                                                                                                           |
+| Manual recovery and re-enable                                                         | `test-market-price-recovery.mjs`, included in `npm run test:market-prices-db`: unchanged stored facts/view contract, owner isolation and exact manual/sale app/capture parity                                        |
+| Required stock selection                                                              | `test-required-selection-migration.mjs`, included in `npm run test:market-prices-db`: Apple/matching selections across accounts and states, unchanged facts, guard re-enabled, NOT NULL, first download per currency |
+| Actual midnight registration and capture privilege                                    | `npm run test:wallet-cron` (rolled-back local metadata transaction)                                                                                                                                                  |
+| Native/hydrated creation, retained inputs, explicit controls, moves/history           | `tests/e2e/investment-persists.spec.ts`, `market-price-controls.spec.ts`, `wallet-dashboard.spec.ts`                                                                                                                 |
+| Auth/financial integrity and demo repair/reset                                        | Local `npm run smoke`, `npm run test:demo-db`, `npm run test:close-db`, `npm run test:wallet-db`                                                                                                                     |
+
+The recovery runner creates/drops its own local database and skips cron installation there; it checks capture definition/permissions unchanged, while `test:wallet-cron` verifies real scheduling separately. CI includes market migration, recovery and required-selection checks in the local decimal-transport job. Operator SQL counts as code for CI/build filtering; Markdown-only changes remain skipped. Browser/search fixtures do not establish live provider availability. No automated test/demo/smoke command belongs against production.

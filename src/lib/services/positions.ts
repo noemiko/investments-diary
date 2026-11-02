@@ -1,13 +1,19 @@
 import { reportUnexpected, serviceError } from "@/lib/observability/reporter";
-import { decodePosition } from "@/lib/services/decimal";
+import {
+  composeEffectivePrice,
+  EFFECTIVE_PRICE_COLUMNS,
+  type EffectivePriceTransport,
+} from "@/lib/services/effective-price";
 import type { PostgrestError } from "@supabase/supabase-js";
 import type { createClient } from "@/lib/supabase";
 import { readAll } from "@/lib/services/read-all";
+import { readMarketSelection } from "@/lib/services/market-selections";
 import type {
   ClosePositionInput,
   ConfrontationPosition,
   DeletedPositionItem,
   NewPositionInput,
+  MovePositionInput,
   PositionDetail,
   PositionListItem,
   PriceUpdateInput,
@@ -16,13 +22,15 @@ import type {
 
 // Always the request-scoped client, so RLS scopes every query to the signed-in author.
 type Client = ReturnType<typeof createClient>;
-type PositionListTransport = Omit<PositionListItem, "category_name" | "wallet_name"> & {
-  wallets: { name: string };
-  reason_categories: { name: string };
-};
+type PositionListTransport = Omit<PositionListItem, "category_name" | "wallet_name" | "valuation"> &
+  EffectivePriceTransport & {
+    wallets: { name: string };
+    reason_categories: { name: string };
+  };
 type PositionDetailTransport = PositionListTransport & Pick<PositionDetail, "reason_text">;
 
-export type CreatePositionError = "validation" | "category_not_found" | "wallet_not_found" | "unexpected";
+export type CreatePositionError =
+  "validation" | "category_not_found" | "wallet_not_found" | "selection_invalid" | "unexpected";
 
 export type CreatePositionResult = { ok: true; id: string } | { ok: false; error: CreatePositionError };
 
@@ -66,9 +74,9 @@ export async function listCategories(client: Client): Promise<ReasonCategory[]> 
 export async function listPositions(client: Client, walletId?: string): Promise<PositionListItem[]> {
   const data = await readAll("listPositions", (from, to) => {
     let query = client
-      .from("positions")
+      .from("position_effective_prices")
       .select(
-        "id, instrument, buy_date, buy_price::text, quantity::text, broker_label, current_price::text, price_date, sell_price::text, sell_date, wallet_id, wallets!positions_wallet_fkey(name), reason_categories(name)",
+        `id, instrument, buy_date, buy_price::text, quantity::text, broker_label, current_price::text, price_date, sell_price::text, sell_date, wallet_id, wallets!positions_wallet_fkey(name), reason_categories(name),${EFFECTIVE_PRICE_COLUMNS}`,
       )
       .is("deleted_at", null)
       .order("buy_date", { ascending: false })
@@ -78,7 +86,7 @@ export async function listPositions(client: Client, walletId?: string): Promise<
     return query.range(from, to).overrideTypes<PositionListTransport[], { merge: false }>();
   });
   return data.map(({ reason_categories, wallets, ...position }) => ({
-    ...decodePosition(position),
+    ...composeEffectivePrice(position),
     category_name: reason_categories.name,
     wallet_name: wallets.name,
   }));
@@ -89,17 +97,20 @@ export async function listPositions(client: Client, walletId?: string): Promise<
  * categories, so the new-investment form can switch category without another round trip.
  */
 export async function listConfrontationPositions(client: Client): Promise<ConfrontationPosition[]> {
-  const { data, error } = await client
-    .from("positions")
-    .select(
-      "id, category_id, instrument, buy_date, buy_price::text, quantity::text, current_price::text, price_date, sell_price::text, sell_date, reason_text",
-    )
-    .is("deleted_at", null)
-    .order("buy_date", { ascending: false })
-    .order("created_at", { ascending: false })
-    .overrideTypes<ConfrontationPosition[], { merge: false }>();
-  if (error) throw serviceError("listConfrontationPositions", error);
-  return data.map(decodePosition);
+  const rows = await readAll("listConfrontationPositions", (from, to) =>
+    client
+      .from("position_effective_prices")
+      .select(
+        `id, category_id, instrument, buy_date, buy_price::text, quantity::text, current_price::text, price_date, sell_price::text, sell_date, reason_text,${EFFECTIVE_PRICE_COLUMNS}`,
+      )
+      .is("deleted_at", null)
+      .order("buy_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(from, to)
+      .overrideTypes<(ConfrontationPosition & EffectivePriceTransport)[], { merge: false }>(),
+  );
+  return rows.map(composeEffectivePrice);
 }
 
 /**
@@ -109,9 +120,9 @@ export async function listConfrontationPositions(client: Client): Promise<Confro
  */
 export async function getPosition(client: Client, id: string): Promise<PositionDetail | null> {
   const { data, error } = await client
-    .from("positions")
+    .from("position_effective_prices")
     .select(
-      "id, instrument, buy_date, buy_price::text, quantity::text, broker_label, current_price::text, price_date, sell_price::text, sell_date, reason_text, wallet_id, wallets!positions_wallet_fkey(name), reason_categories(name)",
+      `id, instrument, buy_date, buy_price::text, quantity::text, broker_label, current_price::text, price_date, sell_price::text, sell_date, reason_text, wallet_id, wallets!positions_wallet_fkey(name), reason_categories(name),${EFFECTIVE_PRICE_COLUMNS}`,
     )
     .eq("id", id)
     .is("deleted_at", null)
@@ -120,7 +131,7 @@ export async function getPosition(client: Client, id: string): Promise<PositionD
   if (error) throw serviceError("getPosition", error);
   if (!data) return null;
   const { reason_categories, wallets, ...position } = data;
-  return { ...decodePosition(position), category_name: reason_categories.name, wallet_name: wallets.name };
+  return { ...composeEffectivePrice(position), category_name: reason_categories.name, wallet_name: wallets.name };
 }
 
 /** Replaces a non-deleted position's current price and its date (FR-006); no other column changes. */
@@ -238,6 +249,14 @@ export async function createPosition(
   userId: string,
   input: NewPositionInput,
 ): Promise<CreatePositionResult> {
+  let selection;
+  try {
+    selection = await readMarketSelection(client, userId, input.wallet_id, input.listing_receipt_id);
+  } catch (error) {
+    logUnexpected("createPosition", error);
+    return { ok: false, error: "unexpected" };
+  }
+  if (!selection) return { ok: false, error: "selection_invalid" };
   let categoryId: string;
   if (input.category_id === null) {
     let category: Awaited<ReturnType<typeof findOrCreateCategory>>;
@@ -261,7 +280,8 @@ export async function createPosition(
     .from("positions")
     .insert({
       user_id: userId,
-      instrument: input.instrument,
+      instrument: selection.symbol,
+      market_selection_receipt_id: selection.receiptId,
       buy_date: input.buy_date,
       buy_price: input.buy_price,
       quantity: input.quantity,
@@ -304,4 +324,26 @@ export async function closePosition(
     logUnexpected("closePosition", error);
     return { ok: false, error: "unexpected" };
   }
+}
+
+export type MovePositionResult =
+  | { ok: true }
+  | {
+      ok: false;
+      reason: "not_found" | "incompatible_currency" | "unexpected";
+    };
+/** Atomic owner/denomination checks live in SQL, including direct-write protection. */
+export async function movePosition(client: Client, id: string, input: MovePositionInput): Promise<MovePositionResult> {
+  const { data, error } = await client.rpc("move_position_to_wallet", {
+    in_position_id: id,
+    in_wallet_id: input.wallet_id,
+  });
+  if (error) {
+    logUnexpected("movePosition", error);
+    return { ok: false, reason: "unexpected" };
+  }
+  if (data === "success") return { ok: true };
+  if (data === "not_found" || data === "incompatible_currency") return { ok: false, reason: data };
+  logUnexpected("movePosition", new Error("Unknown move result"));
+  return { ok: false, reason: "unexpected" };
 }

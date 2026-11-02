@@ -69,7 +69,8 @@ const buyDate = z
 
 const positionFormSchema = z
   .object({
-    instrument: z.string().trim().min(1, "Enter the instrument").max(100, "Use at most 100 characters"),
+    instrument: z.string().trim().min(1, "Search and select a stock listing").max(100, "Use at most 100 characters"),
+    listing_receipt_id: z.string().trim().refine(isUuid, "Search and select a stock listing"),
     buy_price: requiredDecimal("Enter the buy price"),
     buy_date: buyDate,
     wallet_id: z.string().trim().min(1, "Choose a wallet").refine(isUuid, "Choose a wallet from your list"),

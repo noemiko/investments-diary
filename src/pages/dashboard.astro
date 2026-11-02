@@ -4,6 +4,7 @@ import Layout from "@/layouts/Layout.astro";
 import PositionsEmptyState from "@/components/positions/PositionsEmptyState.astro";
 import PositionsErrorState from "@/components/positions/PositionsErrorState.astro";
 import PositionsTable from "@/components/positions/PositionsTable.astro";
+import { DownloadPrices } from "@/components/market-prices/DownloadPrices";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase";
@@ -85,13 +86,25 @@ try {
         </p>
       )}
 
-      {positions === null ? (
-        <PositionsErrorState />
-      ) : positions.length === 0 ? (
-        <PositionsEmptyState />
-      ) : (
-        <PositionsTable positions={positions} />
+      {positions && positions.length > 0 && (
+        <DownloadPrices
+          enabled={positions.some(
+            (position) =>
+              position.sell_date === null &&
+              Boolean(position.valuation?.listing ?? position.valuation?.pendingSelection),
+          )}
+          client:load
+        />
       )}
+      <div data-price-refresh="dashboard-positions">
+        {positions === null ? (
+          <PositionsErrorState />
+        ) : positions.length === 0 ? (
+          <PositionsEmptyState />
+        ) : (
+          <PositionsTable positions={positions} />
+        )}
+      </div>
     </Card>
   </div>
 </Layout>

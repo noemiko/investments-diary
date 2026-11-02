@@ -131,3 +131,22 @@ it("retains the close operation while removing all financial submission data", (
   expect(result.request).toBeUndefined();
   expect(result.extra).toBeUndefined();
 });
+
+it("retains market-price operations and safe route patterns while excluding quote/provider payloads", () => {
+  const event = scrubEvent({
+    tags: {
+      operation: "marketPrices",
+      route: "/dashboard/market-prices/listings/download",
+      status: 429,
+      symbol: "PRIVATE_SYMBOL",
+    },
+    message: "PRIVATE_QUOTE_AND_CRUMB",
+    extra: { price: "PRIVATE_QUOTE_AND_CRUMB" },
+  });
+  expect(event.tags).toEqual({
+    operation: "marketPrices",
+    route: "/dashboard/market-prices/listings/download",
+    status: "429",
+  });
+  expect(JSON.stringify(event)).not.toContain("PRIVATE");
+});

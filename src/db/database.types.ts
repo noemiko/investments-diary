@@ -34,6 +34,240 @@ export type Database = {
   }
   public: {
     Tables: {
+      market_listing_lookups: {
+        Row: {
+          cache_id: string | null
+          cooldown_until: string | null
+          id: string
+          lease_token: string | null
+          lease_until: string | null
+          position_id: string
+          symbol: string
+          user_id: string
+          valid_until: string | null
+        }
+        Insert: {
+          cache_id?: string | null
+          cooldown_until?: string | null
+          id?: string
+          lease_token?: string | null
+          lease_until?: string | null
+          position_id: string
+          symbol: string
+          user_id: string
+          valid_until?: string | null
+        }
+        Update: {
+          cache_id?: string | null
+          cooldown_until?: string | null
+          id?: string
+          lease_token?: string | null
+          lease_until?: string | null
+          position_id?: string
+          symbol?: string
+          user_id?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "market_listing_lookups_cache_id_user_id_fkey"
+            columns: ["cache_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "market_quote_cache"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "market_listing_lookups_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "position_effective_prices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "market_listing_lookups_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "positions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      market_listing_targets: {
+        Row: {
+          cache_id: string | null
+          cooldown_until: string | null
+          exchange: string
+          exchange_name: string
+          id: string
+          instrument_type: string
+          lease_token: string | null
+          lease_until: string | null
+          listing_name: string
+          provider: string
+          refresh_outcome: string
+          symbol: string
+          user_id: string
+        }
+        Insert: {
+          cache_id?: string | null
+          cooldown_until?: string | null
+          exchange: string
+          exchange_name: string
+          id?: string
+          instrument_type: string
+          lease_token?: string | null
+          lease_until?: string | null
+          listing_name: string
+          provider: string
+          refresh_outcome?: string
+          symbol: string
+          user_id: string
+        }
+        Update: {
+          cache_id?: string | null
+          cooldown_until?: string | null
+          exchange?: string
+          exchange_name?: string
+          id?: string
+          instrument_type?: string
+          lease_token?: string | null
+          lease_until?: string | null
+          listing_name?: string
+          provider?: string
+          refresh_outcome?: string
+          symbol?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "market_listing_targets_cache_id_user_id_fkey"
+            columns: ["cache_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "market_quote_cache"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
+      market_quote_cache: {
+        Row: {
+          attempted_at: string | null
+          cooldown_until: string | null
+          created_at: string
+          currency: string
+          delay_minutes: number | null
+          exchange: string
+          exchange_name: string
+          fetched_at: string | null
+          id: string
+          instrument_type: string
+          lease_token: string | null
+          lease_until: string | null
+          listing_name: string
+          market_at: string | null
+          market_date: string | null
+          market_state: string | null
+          price: number | null
+          provider: string
+          refresh_outcome: string
+          source_interval_minutes: number | null
+          source_name: string | null
+          symbol: string
+          timezone: string
+          user_id: string
+        }
+        Insert: {
+          attempted_at?: string | null
+          cooldown_until?: string | null
+          created_at?: string
+          currency: string
+          delay_minutes?: number | null
+          exchange: string
+          exchange_name: string
+          fetched_at?: string | null
+          id?: string
+          instrument_type: string
+          lease_token?: string | null
+          lease_until?: string | null
+          listing_name: string
+          market_at?: string | null
+          market_date?: string | null
+          market_state?: string | null
+          price?: number | null
+          provider: string
+          refresh_outcome?: string
+          source_interval_minutes?: number | null
+          source_name?: string | null
+          symbol: string
+          timezone: string
+          user_id: string
+        }
+        Update: {
+          attempted_at?: string | null
+          cooldown_until?: string | null
+          created_at?: string
+          currency?: string
+          delay_minutes?: number | null
+          exchange?: string
+          exchange_name?: string
+          fetched_at?: string | null
+          id?: string
+          instrument_type?: string
+          lease_token?: string | null
+          lease_until?: string | null
+          listing_name?: string
+          market_at?: string | null
+          market_date?: string | null
+          market_state?: string | null
+          price?: number | null
+          provider?: string
+          refresh_outcome?: string
+          source_interval_minutes?: number | null
+          source_name?: string | null
+          symbol?: string
+          timezone?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      market_selection_receipts: {
+        Row: {
+          id: string
+          target_id: string
+          user_id: string
+          valid_until: string
+          wallet_id: string
+        }
+        Insert: {
+          id?: string
+          target_id: string
+          user_id: string
+          valid_until?: string
+          wallet_id: string
+        }
+        Update: {
+          id?: string
+          target_id?: string
+          user_id?: string
+          valid_until?: string
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "market_selection_receipts_target_id_user_id_fkey"
+            columns: ["target_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "market_listing_targets"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "market_selection_receipts_wallet_id_user_id_fkey"
+            columns: ["wallet_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
       positions: {
         Row: {
           broker_label: string | null
@@ -45,6 +279,11 @@ export type Database = {
           deleted_at: string | null
           id: string
           instrument: string
+          listing_confirmed_at: string | null
+          manual_price_saved_at: string | null
+          market_listing_id: string | null
+          market_selection_receipt_id: string | null
+          market_target_id: string
           price_date: string | null
           quantity: number | null
           reason_text: string | null
@@ -63,6 +302,11 @@ export type Database = {
           deleted_at?: string | null
           id?: string
           instrument: string
+          listing_confirmed_at?: string | null
+          manual_price_saved_at?: string | null
+          market_listing_id?: string | null
+          market_selection_receipt_id?: string | null
+          market_target_id: string
           price_date?: string | null
           quantity?: number | null
           reason_text?: string | null
@@ -81,6 +325,11 @@ export type Database = {
           deleted_at?: string | null
           id?: string
           instrument?: string
+          listing_confirmed_at?: string | null
+          manual_price_saved_at?: string | null
+          market_listing_id?: string | null
+          market_selection_receipt_id?: string | null
+          market_target_id?: string
           price_date?: string | null
           quantity?: number | null
           reason_text?: string | null
@@ -95,6 +344,27 @@ export type Database = {
             columns: ["category_id", "user_id"]
             isOneToOne: false
             referencedRelation: "reason_categories"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "positions_listing_owner_fkey"
+            columns: ["market_listing_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "market_quote_cache"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "positions_selection_owner_fkey"
+            columns: ["market_selection_receipt_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "market_selection_receipts"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "positions_target_owner_fkey"
+            columns: ["market_target_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "market_listing_targets"
             referencedColumns: ["id", "user_id"]
           },
           {
@@ -133,9 +403,13 @@ export type Database = {
       wallet_snapshots: {
         Row: {
           as_of: string | null
+          automatic_count: number | null
           captured_at: string
+          currency: string
+          manual_count: number | null
           not_counted: number
           observation_day: string
+          oldest_market_at: string | null
           open_change: number
           open_count: number
           realised_change: number
@@ -147,9 +421,13 @@ export type Database = {
         }
         Insert: {
           as_of?: string | null
+          automatic_count?: number | null
           captured_at?: string
+          currency: string
+          manual_count?: number | null
           not_counted: number
           observation_day: string
+          oldest_market_at?: string | null
           open_change: number
           open_count: number
           realised_change: number
@@ -161,9 +439,13 @@ export type Database = {
         }
         Update: {
           as_of?: string | null
+          automatic_count?: number | null
           captured_at?: string
+          currency?: string
+          manual_count?: number | null
           not_counted?: number
           observation_day?: string
+          oldest_market_at?: string | null
           open_change?: number
           open_count?: number
           realised_change?: number
@@ -186,6 +468,7 @@ export type Database = {
       wallets: {
         Row: {
           created_at: string
+          currency: string
           deleted_at: string | null
           id: string
           name: string
@@ -194,6 +477,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          currency?: string
           deleted_at?: string | null
           id?: string
           name: string
@@ -202,6 +486,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          currency?: string
           deleted_at?: string | null
           id?: string
           name?: string
@@ -212,10 +497,152 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      position_effective_prices: {
+        Row: {
+          broker_label: string | null
+          buy_date: string | null
+          buy_price: number | null
+          category_id: string | null
+          cooldown_until: string | null
+          created_at: string | null
+          current_price: number | null
+          delay_minutes: number | null
+          deleted_at: string | null
+          exchange_name: string | null
+          id: string | null
+          instrument: string | null
+          instrument_type: string | null
+          lease_until: string | null
+          listing_confirmed_at: string | null
+          listing_name: string | null
+          manual_price_saved_at: string | null
+          market_listing_id: string | null
+          market_state: string | null
+          market_target_id: string | null
+          pending_cooldown_until: string | null
+          pending_currency: string | null
+          pending_exchange: string | null
+          pending_exchange_name: string | null
+          pending_instrument_type: string | null
+          pending_lease_until: string | null
+          pending_name: string | null
+          pending_outcome: string | null
+          pending_symbol: string | null
+          price_date: string | null
+          quantity: number | null
+          quote_currency: string | null
+          quote_exchange: string | null
+          quote_fetched_at: string | null
+          quote_market_at: string | null
+          quote_market_date: string | null
+          quote_provider: string | null
+          quote_state: string | null
+          quote_symbol: string | null
+          quote_timezone: string | null
+          reason_text: string | null
+          refresh_outcome: string | null
+          selected_at: string | null
+          selected_date: string | null
+          selected_price: number | null
+          selected_source: string | null
+          sell_date: string | null
+          sell_price: number | null
+          source_interval_minutes: number | null
+          source_name: string | null
+          user_id: string | null
+          wallet_currency: string | null
+          wallet_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "positions_category_id_user_id_fkey"
+            columns: ["category_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "reason_categories"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "positions_listing_owner_fkey"
+            columns: ["market_listing_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "market_quote_cache"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "positions_target_owner_fkey"
+            columns: ["market_target_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "market_listing_targets"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "positions_wallet_fkey"
+            columns: ["wallet_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
     }
     Functions: {
       capture_wallet_snapshots: { Args: never; Returns: number }
+      claim_listing_lookup: { Args: { in_lookup_id: string }; Returns: string }
+      claim_market_quote_refresh: {
+        Args: { in_cache_id: string }
+        Returns: string
+      }
+      claim_market_target: { Args: { in_target_id: string }; Returns: string }
+      confirm_listing_lookup: {
+        Args: { in_lookup_id: string; in_position_id: string }
+        Returns: boolean
+      }
+      finish_listing_lookup: {
+        Args: {
+          in_cache_id?: string
+          in_lookup_id: string
+          in_release?: boolean
+          in_retry_after?: string
+          in_token: string
+        }
+        Returns: boolean
+      }
+      finish_market_quote_refresh: {
+        Args: {
+          in_cache_id: string
+          in_delay_minutes?: number
+          in_fetched_at?: string
+          in_market_at?: string
+          in_market_date?: string
+          in_market_state?: string
+          in_outcome: string
+          in_price?: number
+          in_retry_after?: string
+          in_source_interval_minutes?: number
+          in_source_name?: string
+          in_token: string
+        }
+        Returns: boolean
+      }
+      finish_market_target: {
+        Args: {
+          in_cache_id?: string
+          in_outcome: string
+          in_release?: boolean
+          in_retry_after?: string
+          in_target_id: string
+          in_token: string
+        }
+        Returns: number
+      }
+      move_position_to_wallet: {
+        Args: { in_position_id: string; in_wallet_id: string }
+        Returns: string
+      }
+      release_market_quote_refresh: {
+        Args: { in_cache_id: string; in_token: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

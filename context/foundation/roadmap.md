@@ -3,7 +3,7 @@ project: "Investments Diary"
 version: 1
 status: draft # draft | active | locked
 created: 2026-09-25
-updated: 2026-10-28
+updated: 2026-11-02
 prd_version: 1
 main_goal: learn
 top_blocker: decisions
@@ -46,17 +46,18 @@ with your own past reasoning at the moment of deciding improves how you invest.
 
 ## At a glance
 
-| ID   | Change ID                 | Outcome (user can …)                                                                 | Prerequisites | PRD refs                       | Status      |
-| ---- | ------------------------- | ------------------------------------------------------------------------------------ | ------------- | ------------------------------ | ----------- |
-| S-01 | record-first-investment   | record an investment with a reason category and optional reason, and see it listed   | —             | FR-003, FR-004, FR-005, FR-010 | done        |
-| S-02 | position-detail-and-price | open a position, read its full reason, update its price and see its dated result     | S-01          | FR-006, FR-011                 | done        |
-| S-03 | reason-confrontation      | see earlier same-reason positions with their results before saving a new investment  | S-01, S-02    | US-01, FR-012                  | done |
-| S-04 | close-position            | close a position with sell price and date and see its final result                   | S-02          | FR-007                         | done |
-| S-05 | recoverable-delete        | delete a position and restore it later                                               | S-01          | FR-009                         | done        |
-| S-06 | private-diary-access      | register and reach only their own diary, with every diary page gated behind sign-in  | —             | FR-001, FR-002                 | ready       |
-| S-07 | reason-lock-editing       | correct an investment's facts and add a missing reason, after which the reason locks | S-01          | FR-008, FR-004                 | proposed    |
-| S-08 | evolve-reason-categories  | rename a reason category everywhere, or remove it while past positions keep it       | S-01          | FR-005                         | proposed    |
-| S-09 | named-wallets             | group investments into named wallets and see totals with missing-data and price-date context | S-01, S-02, S-05 | FR-013 (should-have)       | done |
+| ID   | Change ID                 | Outcome (user can …)                                                                                         | Prerequisites    | PRD refs                       | Status   |
+| ---- | ------------------------- | ------------------------------------------------------------------------------------------------------------ | ---------------- | ------------------------------ | -------- |
+| S-01 | record-first-investment   | record an investment with a reason category and optional reason, and see it listed                           | —                | FR-003, FR-004, FR-005, FR-010 | done     |
+| S-02 | position-detail-and-price | open a position, read its full reason, update its price and see its dated result                             | S-01             | FR-006, FR-011                 | done     |
+| S-03 | reason-confrontation      | see earlier same-reason positions with their results before saving a new investment                          | S-01, S-02       | US-01, FR-012                  | done     |
+| S-04 | close-position            | close a position with sell price and date and see its final result                                           | S-02             | FR-007                         | done     |
+| S-05 | recoverable-delete        | delete a position and restore it later                                                                       | S-01             | FR-009                         | done     |
+| S-06 | private-diary-access      | register and reach only their own diary, with every diary page gated behind sign-in                          | —                | FR-001, FR-002                 | ready    |
+| S-07 | reason-lock-editing       | correct an investment's facts and add a missing reason, after which the reason locks                         | S-01             | FR-008, FR-004                 | proposed |
+| S-08 | evolve-reason-categories  | rename a reason category everywhere, or remove it while past positions keep it                               | S-01             | FR-005                         | proposed |
+| S-09 | named-wallets             | group investments into named wallets and see totals with missing-data and price-date context                 | S-01, S-02, S-05 | FR-013 (should-have)           | done     |
+| S-10 | close-public-signup       | have accounts created only by the owner's script/CLI; nobody can sign up from the app or the public Auth API | —                | FR-001 (amended 2026-11-02)    | proposed |
 
 ## Baseline
 
@@ -147,14 +148,14 @@ which is exactly what this roadmap avoids.
 
 ### S-06: Private access to the diary
 
-- **Outcome:** user can register an account (registration stays open), reach every diary page only when signed in, sign out from anywhere, and see only their own diary — no other account and no signed-out visitor can read any part of it.
+- **Outcome:** user can reach every diary page only when signed in, sign out from anywhere, and see only their own diary — no other account and no signed-out visitor can read any part of it.
 - **Change ID:** private-diary-access
 - **PRD refs:** FR-001, FR-002; NFR no other account and no unauthenticated visitor can read any part of a position
 - **Prerequisites:** —
 - **Parallel with:** S-01, S-02, S-03, S-04, S-05, S-07, S-08
 - **Blockers:** —
 - **Unknowns:**
-  - Sign-up mode — resolved 2026-09-25: open registration (PRD Open Question 3).
+  - Sign-up mode — resolved 2026-09-25: open registration (PRD Open Question 3); superseded 2026-11-02 by owner-created accounts, see S-10.
   - What does a signed-out visitor see on a gated page? Assumed: redirect to sign-in, as the current route protection does for `/dashboard` — confirm during `/10x-plan`. Owner: user. Block: no.
 - **Risk:** Sign-in already works (Baseline). With open registration, privacy rests entirely on every diary page being gated and every position being readable only by its owner, so this slice extends route protection beyond `/dashboard` to all diary pages. It must land before real positions go into production.
 - **Status:** ready
@@ -202,25 +203,47 @@ which is exactly what this roadmap avoids.
 - **Risk:** An incomplete or stale total can look authoritative. Show excluded counts and the oldest included price date; keep wallets as the author's own groupings without currencies, fees, broker account numbers, or investment verdicts. Sequence after the core diary flow because FR-013 is should-have.
 - **Status:** done
 
+### S-10: Close public sign-up; owner-created accounts only
+
+- **Outcome:** nobody can create an account from the app or by calling the public Auth sign-up API; the owner creates accounts with their own script/CLI, and existing accounts keep signing in and out as before.
+- **Change ID:** close-public-signup
+- **PRD refs:** FR-001 (to be amended), Access Control (sign-up), PRD Open Question 3
+- **Prerequisites:** —
+- **Parallel with:** S-06, S-07, S-08
+- **Blockers:** —
+- **Decision:** owner decision 2026-11-02 — replace open registration with owner-created accounts. This supersedes the 2026-09-25 open-registration resolution and the earlier "sign-up from the page does not work" report, whose cause no longer needs investigating.
+- **Scope notes (from the codebase, 2026-11-02):**
+  - Amend the PRD first: FR-001, Access Control and Open Question 3 still say open registration.
+  - Remove the sign-up page, form and endpoint (`src/pages/api/auth/signup.ts`, `src/components/auth/SignUpForm.tsx`) and the sign-up links in `Welcome.astro`, `Topbar.astro` and `signin.astro`; keep sign-in, sign-out, email callback and route protection.
+  - Disable sign-up at the Auth layer, not only in the UI: `[auth] enable_signup = false` in `supabase/config.toml`, and the hosted project's "Allow new users to sign up" switched off by the owner in the Supabase dashboard (human-owned; no agent access to hosted settings).
+  - Provide the owner's account-creation path. Only the local demo loader creates users with admin rights today; there is no script for real accounts.
+  - Rework `npm run smoke`, which signs up two accounts per run over HTTP, to create its local accounts with the admin API, and add a check that public sign-up is refused.
+- **Unknowns:**
+  - What is "the script and CLI"? A repo script using the Auth admin API needs the service-role key, which must never be pulled into local `.env`; the alternative is the Supabase dashboard's "Add user" or a one-off run in the owner's own terminal with the key supplied at run time. — Owner: user. Block: no (settle during `/10x-plan`).
+  - Should the owner's script set a password, or send an invite/magic-link email? — Owner: user. Block: no (settle during `/10x-plan`).
+- **Risk:** Removing the page while the hosted Auth setting stays on leaves registration open to anyone with the public anon key, so the dashboard switch is part of done, verified by a refused sign-up request. Locking out is the opposite risk: confirm an owner account can still be created before disabling sign-up in production.
+- **Status:** proposed
+
 ## Backlog Handoff
 
-| Roadmap ID | Change ID                 | Suggested issue title                                   | Ready for `/10x-plan` | Notes                                   |
-| ---------- | ------------------------- | ------------------------------------------------------- | --------------------- | --------------------------------------- |
-| S-01       | record-first-investment   | Record an investment with reason and list positions     | yes                   | Run `/10x-plan record-first-investment` |
-| S-02       | position-detail-and-price | Position detail view with manual price and dated result | no                    | Waits on S-01                           |
-| S-03       | reason-confrontation      | Show same-reason history before saving a new investment | no                    | North star; waits on S-01, S-02         |
-| S-04       | close-position            | Close a position and show final result                  | no                    | Waits on S-02                           |
-| S-05       | recoverable-delete        | Delete and restore a position                           | no                    | Waits on S-01                           |
-| S-06       | private-diary-access      | Gate every diary page and keep each diary owner-only    | yes                   | Run `/10x-plan private-diary-access`    |
-| S-07       | reason-lock-editing       | Edit investment facts with a locked reason              | no                    | Waits on S-01                           |
-| S-08       | evolve-reason-categories  | Rename and soft-remove reason categories                | no                    | Waits on S-01                           |
-| S-09       | named-wallets             | Group investments into named wallets with transparent totals | yes              | Prerequisites S-01, S-02, S-05 are done; resolve assignment and total rules during planning |
+| Roadmap ID | Change ID                 | Suggested issue title                                        | Ready for `/10x-plan` | Notes                                                                                       |
+| ---------- | ------------------------- | ------------------------------------------------------------ | --------------------- | ------------------------------------------------------------------------------------------- |
+| S-01       | record-first-investment   | Record an investment with reason and list positions          | yes                   | Run `/10x-plan record-first-investment`                                                     |
+| S-02       | position-detail-and-price | Position detail view with manual price and dated result      | no                    | Waits on S-01                                                                               |
+| S-03       | reason-confrontation      | Show same-reason history before saving a new investment      | no                    | North star; waits on S-01, S-02                                                             |
+| S-04       | close-position            | Close a position and show final result                       | no                    | Waits on S-02                                                                               |
+| S-05       | recoverable-delete        | Delete and restore a position                                | no                    | Waits on S-01                                                                               |
+| S-06       | private-diary-access      | Gate every diary page and keep each diary owner-only         | yes                   | Run `/10x-plan private-diary-access`                                                        |
+| S-07       | reason-lock-editing       | Edit investment facts with a locked reason                   | no                    | Waits on S-01                                                                               |
+| S-08       | evolve-reason-categories  | Rename and soft-remove reason categories                     | no                    | Waits on S-01                                                                               |
+| S-09       | named-wallets             | Group investments into named wallets with transparent totals | yes                   | Prerequisites S-01, S-02, S-05 are done; resolve assignment and total rules during planning |
+| S-10       | close-public-signup       | Close public sign-up; owner-created accounts only            | yes                   | Amend PRD FR-001 first; run `/10x-plan close-public-signup`                                 |
 
 ## Open Roadmap Questions
 
 1. ~~**How does the reason lock interact with the reason being optional?**~~ — Resolved 2026-09-25: an entry saved without a reason can have one added later; the lock starts when the reason is first written. See S-07.
 2. ~~**What happens to past entries when a reason category is renamed or removed?**~~ — Resolved 2026-09-25: rename updates the name everywhere; removal is a soft delete and past positions show the name marked as removed. See S-08.
-3. ~~**Sign-up behaviour and unauthenticated-visitor handling**~~ — Resolved 2026-09-25: open registration. Signed-out visitors on a gated page are assumed to be redirected to sign-in (confirm in S-06).
+3. ~~**Sign-up behaviour and unauthenticated-visitor handling**~~ — Resolved 2026-09-25: open registration; superseded 2026-11-02 — accounts are created only by the owner's script/CLI (S-10). Signed-out visitors on a gated page are assumed to be redirected to sign-in (confirm in S-06).
 4. **User stories for the remaining paths** — only the confrontation path has acceptance criteria. Back-filling an existing holding, updating a price and closing a position do not. Owner: user. Block: none (resolved per slice during `/10x-plan` for S-01, S-02, S-04).
 5. **Live price source as a later addition** — recorded as a secondary success criterion and an explicit non-goal for version one. Owner: user. Block: none.
 6. **Wallet rules for remaining position paths** — FR-013 defines totals over non-deleted investments, but PRD Open Question 6 narrows this to open investments. Resolve closed-position results with S-04 and wallet reassignment with S-07; settle assignment of existing investments during S-09 planning. Wallet deletion remains excluded from the first version; any later deletion policy stays open. Owner: user. Block: none for the open-position wallet slice.

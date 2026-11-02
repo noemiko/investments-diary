@@ -29,6 +29,7 @@ export type PositionListItem = Pick<
 > & {
   category_name: string;
   wallet_name: string;
+  valuation?: PositionValuation;
 };
 
 /** One position on its detail page (FR-011): the list row plus the full reason. */
@@ -48,7 +49,7 @@ export type ConfrontationPosition = Pick<
   | "sell_price"
   | "sell_date"
   | "reason_text"
->;
+> & { valuation?: PositionValuation };
 
 /** One row of the Deleted positions page (FR-009): only rows that have a `deleted_at`. */
 export type DeletedPositionItem = Pick<PositionRow, "id" | "instrument" | "buy_date" | "deleted_at"> & {
@@ -60,11 +61,14 @@ export type DeletedPositionItem = Pick<PositionRow, "id" | "instrument" | "buy_d
 export type NewPositionInput = Pick<
   PositionRow,
   "instrument" | "buy_date" | "buy_price" | "quantity" | "broker_label" | "reason_text" | "wallet_id"
-> &
-  ({ category_id: string; new_category_name: null } | { category_id: null; new_category_name: string });
+> & { listing_receipt_id: string } & (
+    { category_id: string; new_category_name: null } | { category_id: null; new_category_name: string }
+  );
 
 export const POSITION_FORM_FIELDS = [
   "instrument",
+  "listing_receipt_id",
+  "listing_query",
   "buy_price",
   "buy_date",
   "wallet_id",
@@ -103,7 +107,9 @@ export type PriceFormValues = Record<PriceFormField, string>;
 export type PriceFormErrors = Partial<Record<PriceFormField | "form", string>>;
 
 /** A wallet the author files positions under (FR-013). */
-export type Wallet = Pick<WalletRow, "id" | "name" | "starting_value">;
+export type Wallet = Pick<WalletRow, "id" | "name" | "starting_value"> & {
+  currency: MarketCurrency;
+};
 
 /** The fields of a position a wallet's value is computed from, grouped by `wallet_id`. */
 export type WalletPosition = Pick<
@@ -112,9 +118,11 @@ export type WalletPosition = Pick<
 >;
 
 /** The wallet form after parsing: a name and a starting value of 0 or more. */
-export type WalletInput = Pick<WalletRow, "name" | "starting_value">;
+export type WalletInput = Pick<WalletRow, "name" | "starting_value"> & {
+  currency: MarketCurrency;
+};
 
-export const WALLET_FORM_FIELDS = ["name", "starting_value"] as const;
+export const WALLET_FORM_FIELDS = ["name", "starting_value", "currency"] as const;
 
 export type WalletFormField = (typeof WALLET_FORM_FIELDS)[number];
 
@@ -148,4 +156,115 @@ export interface WalletSnapshot {
   open_count: number;
   not_counted: number;
   as_of: string | null;
+  currency: MarketCurrency;
+  automatic_count?: number | null;
+  manual_count?: number | null;
+  oldest_market_at?: string | null;
+}
+
+/** Confirmed quote denomination; automatic tracking supports USD, PLN and EUR without FX. */
+export const MARKET_CURRENCIES = ["USD", "PLN", "EUR"] as const;
+export type MarketCurrency = (typeof MARKET_CURRENCIES)[number];
+
+export interface MarketListingCandidate {
+  symbol: string;
+  name: string;
+  exchange: string;
+  exchangeName: string;
+  instrumentType: "EQUITY" | "ETF";
+}
+
+export interface MarketSelectionChoice extends MarketListingCandidate {
+  receiptId: string;
+  targetId: string;
+  validUntil: string;
+}
+
+/** Search does not establish currency: obtain this identity from a validated quote before linking. */
+export interface MarketListing extends MarketListingCandidate {
+  currency: MarketCurrency;
+  timezone: string;
+}
+
+export type MarketSession = "REGULAR" | "CLOSED" | "PRE" | "PREPRE" | "POST" | "POSTPOST";
+
+/** Regular-session quote normalized at the provider boundary, independently of recorded manual prices. */
+export interface MarketQuote {
+  provider: "yahoo";
+  listing: MarketListing;
+  price: string;
+  marketAt: string;
+  marketDate: string;
+  fetchedAt: string;
+  marketState: MarketSession;
+  sourceIntervalMinutes: number | null;
+  delayMinutes: number | null;
+  sourceName: string | null;
+}
+
+export type MarketDataFailureReason =
+  "invalid_request" | "not_found" | "invalid_quote" | "provider_unavailable" | "timeout" | "cancelled";
+
+/** Deliberately excludes provider messages, response bodies, cookies and URLs. */
+export interface MarketDataFailure {
+  ok: false;
+  reason: MarketDataFailureReason;
+  status?: number;
+  /** Sanitized provider Retry-After instant, never a response header/body. */
+  retryAfter?: string;
+}
+
+export type MarketQuoteOutcome = { ok: true; quote: MarketQuote } | MarketDataFailure;
+export type MarketSearchResult = { ok: true; listings: MarketListingCandidate[] } | MarketDataFailure;
+export type MarketQuoteBatchResult = { ok: true; quotes: Record<string, MarketQuoteOutcome> } | MarketDataFailure;
+
+/** Explicit shared valuation projection. Numeric fields must be selected as ::text. */
+export interface EffectivePrice {
+  selected_price: string | null;
+  selected_date: string | null;
+  selected_at: string | null;
+  selected_source: "sale" | "manual_override" | "automatic" | "manual" | "missing";
+  quote_state: string;
+  wallet_currency: MarketCurrency;
+  manual_price_saved_at: string | null;
+}
+
+/** Result of an explicit download; due work has not been sent to the provider. */
+export interface MarketPriceDownloadItem {
+  listingId: string;
+  symbol: string;
+  outcome:
+    "success" | "older_quote" | "cooldown" | "refreshing" | "due" | "incompatible_currency" | MarketDataFailureReason;
+  incompatibleCount?: number;
+  retryAfter: string | null;
+}
+export type MarketPriceServiceFailure =
+  | {
+      ok: false;
+      reason: "not_found" | "incompatible_currency" | "lookup_expired" | "cooldown" | "refreshing" | "invalid_request";
+      retryAfter?: string | null;
+    }
+  | MarketDataFailure;
+/** Cached database selection context, kept separate from editable manual inputs. */
+export interface PositionValuation {
+  source: EffectivePrice["selected_source"];
+  currency: MarketCurrency;
+  selectedAt: string | null;
+  marketAt: string | null;
+  fetchedAt: string | null;
+  marketState: MarketSession | null;
+  delayMinutes: number | null;
+  quoteState: string;
+  refreshOutcome: string | null;
+  cooldownUntil: string | null;
+  manualSavedAt: string | null;
+  manualPrice: string | null;
+  manualPriceDate: string | null;
+  listing: MarketListing | null;
+  pendingSelection?: MarketListingCandidate | null;
+  pendingCurrency?: MarketCurrency | null;
+}
+
+export interface MovePositionInput {
+  wallet_id: string;
 }

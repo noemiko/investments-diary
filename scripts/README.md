@@ -24,6 +24,21 @@ Database commands require Docker and the project's local Supabase stack (`npx su
 | [`testing/database/test-snapshots-database.mjs`](testing/database/test-snapshots-database.mjs) | `npm run test:snapshots-db`: verifies exact totals, concurrent daily idempotency, RLS, restricted writes and immutable history.                                              | Local database container; reads migration chain without cron infrastructure.                                                                                                                    | PASS/failure output. Creates and drops a disposable database; scheduler tested separately.                                                                     |
 | [`testing/database/test-wallet-cron.mjs`](testing/database/test-wallet-cron.mjs)               | `npm run test:wallet-cron`: applies job registration twice and checks midnight UTC scheduling, singleton job and capture permissions. CI decimal-transport job calls it.     | Local database container with snapshot storage/function already installed.                                                                                                                      | PASS/failure output. Uses a transaction in the local `postgres` database and rolls back scheduler changes. Does not execute capture or wait for midnight.      |
 
+### Public market-data provider probe
+
+`npm run probe:market-data -- --live` runs `testing/market-data-probe.mjs` on Node.js 24.
+It imports the actual TypeScript server adapter using Node's built-in type stripping;
+the adapter has no runtime path aliases. The explicit `--live` flag permits public Yahoo
+requests for fixed symbols `AAPL` and `PKO.WA`. It does not load `.env`, access Supabase,
+read diary holdings, write cached quotes or expose a diagnostic HTTP route.
+
+The probe checks listing search, confirmed quote metadata, batch retrieval and SDK abort
+propagation through a controlled stalled fetch. Output contains pass/fail and safe public
+symbol metadata, not prices, raw provider errors, response payloads, cookies or credentials.
+Live availability is deliberately separate from deterministic CI fixtures. Local success
+does not establish deployed access; follow the [provider-validation recipe](../context/changes/automatic-stock-prices/provider-validation.md)
+before proceeding beyond the provider gate.
+
 ## Local demo
 
 | File                                                                     | Command / caller and purpose                                                                                                                     | Inputs and prerequisites                                                                                                                                                                  | Output, data effects and cleanup                                                                                                                                                                                                    |
@@ -32,7 +47,11 @@ Database commands require Docker and the project's local Supabase stack (`npx su
 | [`demo/lib/demo-data.mjs`](demo/lib/demo-data.mjs)                       | Internal helper imported by the seed command and demo tests; not a standalone command.                                                           | Owner identity, seed date, local URL validation and privileged client supplied by callers.                                                                                                | Generates deterministic fixture IDs, scenarios and synthetic observations; provisioning functions write demo records. Cleanup belongs to the caller.                                                                                |
 | [`demo/__tests__/demo-data.test.mjs`](demo/__tests__/demo-data.test.mjs) | `npm run test:demo-db`: Node tests for fixture arithmetic, zero-price sales, local-only URLs, preservation, repair, reset and collision refusal. | Local Supabase with migrations; private CLI credential discovery.                                                                                                                         | Test results. Creates a uniquely named disposable account, then deletes it and associated data in cleanup. Does not reset the persistent demo.                                                                                      |
 
-For the password prompt and sign-in walkthrough, see the [project README](../README.md#wallet-history-and-manual-test-demo). Existing demos retain previous fixture versions until an explicit reset.
+For the password prompt and sign-in walkthrough, see the [project README](../README.md#wallet-history-and-manual-test-demo).
+
+Every demo holding needs a stock selection, so the loader creates them through owner/wallet-bound receipts for the owner's Apple (`AAPL` / `NMS`) target, like migrated drafts; the selection labels each holding `AAPL`. The open twelfth holding (in `Demo · Rising`) is also linked to an owner-scoped Yahoo `AAPL` / `NMS` / USD listing. The fresh fixture has no manual price; the listing contains metadata only, with no synthetic quote or refresh attempt. Click **Download prices** on Positions to request a real quote. Seeding makes no provider requests and preserves existing synthetic amounts and history.
+
+Normal reruns fill missing fixtures and upgrade that older demo holding's link only while it remains open, not deleted and unlinked in a compatible wallet. Edited labels, manual prices and user-selected listings are preserved. An already-existing canonical listing is reused without modifying any cache fields; a real quote already cached there may immediately become effective. Explicit reset restores recognised fixtures, removes the fixture wallets' selection receipts, clears any target's link to the deterministic fixture cache row and removes only that row, after refusing unrelated position or lookup-receipt references. Independently created cache rows are retained.
 
 ## Observability
 
@@ -50,13 +69,13 @@ For the password prompt and sign-in walkthrough, see the [project README](../REA
 | [`automation/roadmap-to-linear.mjs`](automation/roadmap-to-linear.mjs)         | `node scripts/automation/roadmap-to-linear.mjs`: previews roadmap issues; `--apply` creates/reuses issues, labels and blocking relations. | Reads `context/foundation/roadmap.md`. Apply requires `LINEAR_API_KEY`, `LINEAR_TEAM_KEY`; optional `LINEAR_PROJECT_NAME`. Dry run needs no credentials.    | Prints preview or Linear identifiers. Default is read-only with no API calls. Apply writes persistent Linear records; reuses issues by ID prefix, with no automatic rollback. No CI/automatic caller. |
 | [`automation/configure-wallet-cron.mjs`](automation/configure-wallet-cron.mjs) | `npm run configure:wallet-cron`: local repair/reapplication helper for the versioned scheduling migration.                                | Local database container with snapshot storage/function installed. Reads the migration SQL directly.                                                        | SQL output/failure. Persists the named `wallet-daily-observations` job; repeated registration updates it without duplicates. Does not capture immediately or roll back.                               |
 
-**Daily scheduling:** normal migrations run once and register the job. PostgreSQL then calls `public.capture_wallet_snapshots()` each day at **00:00 UTC**. Neither the migration file nor an npm command runs each midnight. `configure:wallet-cron` targets local Docker only; normal production migration deployment is separate. See [wallet operations](../context/deployment/wallet-observations.md) for job history, missed observations and disabling the named job.
+**Daily scheduling:** normal migrations run once and register the job. PostgreSQL then calls `public.capture_wallet_snapshots()` each day at **00:00 UTC**. Neither the migration file nor an npm command runs each midnight. `configure:wallet-cron` targets local Docker only; normal production migration deployment is separate. See [wallet operations](../context/deployment/deploy-plan.md#wallet-observations-and-cron) for job history, missed observations and disabling the named job.
 
 ## Deployment
 
-| File                                                                     | Command / caller and purpose                                               | Inputs and prerequisites                                                 | Output, data effects and cleanup                                                                                                                                                                                                            |
-| ------------------------------------------------------------------------ | -------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`deployment/vercel-ignore-build.sh`](deployment/vercel-ignore-build.sh) | Called automatically through `vercel.json` as Vercel's Ignored Build Step. | Bash, Git history; base is `VERCEL_GIT_PREVIOUS_SHA`, otherwise `HEAD^`. | Prints decision. **Exit 0 skips deployment; exit 1 requests a build**, including when base history is unavailable. Docs-only changes (`context/`, `docs/`, Markdown) skip. No writes or cleanup. Keep rules aligned with CI `paths-ignore`. |
+| File                                                                     | Command / caller and purpose                                               | Inputs and prerequisites                                                 | Output, data effects and cleanup                                                                                                                                                                                                                                              |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`deployment/vercel-ignore-build.sh`](deployment/vercel-ignore-build.sh) | Called automatically through `vercel.json` as Vercel's Ignored Build Step. | Bash, Git history; base is `VERCEL_GIT_PREVIOUS_SHA`, otherwise `HEAD^`. | Prints decision. **Exit 0 skips deployment; exit 1 requests a build**, including when base history is unavailable. Docs-only changes (`docs/`, Markdown) skip; operator SQL under `context/` counts as code. No writes or cleanup. Keep rules aligned with CI `paths-ignore`. |
 
 ## Adding or changing a script
 
@@ -65,3 +84,23 @@ For the password prompt and sign-in walkthrough, see the [project README](../REA
 - Resolve repository resources relative to the script when appropriate; update imports and automatic callers when moving files. Run npm commands from the repository root.
 - Keep tests with their script category in `__tests__/`; TypeScript tests are discovered by Vitest, while the demo Node tests run through `test:demo-db`.
 - Use local disposable fixtures for verification. Do not run integrations with external write flags merely to check path wiring.
+
+### Market-price persistence verification
+
+`npm run test:market-prices-db` runs `testing/database/test-market-prices-database.mjs`,
+`testing/database/test-market-price-recovery.mjs` and
+`testing/database/test-required-selection-migration.mjs`; CI's local decimal-transport job calls it.
+The required-selection runner applies the chain up to that migration in a disposable database, then
+proves every position gets a selection (Apple for open/closed/deleted/PLN/EUR drafts per account, a
+matching target for confirmed listings), that labels/prices/save times/wallets/receipts/cache and
+observations are unchanged, the guard is re-enabled, inserts without a selection fail, and a first
+download prices USD Apple holdings while PLN/EUR ones count as `incompatible_currency`.
+It needs the running local Supabase PostgreSQL container and creates/drops a disposable
+database. The complete migration chain is exercised with legacy fixtures inserted before
+the new migration. Checks cover preserved facts/history, the earlier confirmation contract followed by the approved USD/denomination revision,
+owner isolation, the shared price-selection view, identical manual resaves, equal/later
+market timestamps, competing claims, lease recovery, retained quotes and cooldowns.
+No provider requests or diary reset occur. Exact quote RPC/PostgREST transport is also
+covered by `tests/database/market-prices.test.ts` through `npm run test:decimal-db`.
+
+The recovery runner applies the [operator template](../context/deployment/automatic-stock-prices-manual-selection.sql) only in its disposable database. It proves retained cache/selection/position/observation facts, exact manual/sale application and future-capture parity, unchanged view columns/security/grants and unchanged capture definition/privileges, then restores normal selection without rewriting observations. Cron is verified separately. See the [release/recovery runbook](../context/deployment/deploy-plan.md#stock-price-release-and-recovery) for human-controlled hosted rollout, failure handling and compatible recovery. The template is not in the forward migration chain and is never automatically applied to diary data.

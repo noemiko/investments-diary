@@ -8,17 +8,27 @@ import { formatAmount, formatPercent, formatSignedAmount } from "@/lib/format";
 import { createClient } from "@/lib/supabase";
 import { listWalletPositions, listWallets } from "@/lib/services/wallets";
 import { describeWalletResults, groupByWallet, walletValue } from "@/lib/wallet";
+import type { MarketCurrency } from "@/types";
 
 const supabase = createClient(Astro.request.headers, Astro.cookies);
 
 // A failed read must not cost the author the page: render an error state instead of a 500.
-let rows: { id: string; name: string; startingValue: string; result: ReturnType<typeof walletValue> }[] | null = null;
+let rows:
+  | {
+      id: string;
+      name: string;
+      currency: MarketCurrency;
+      startingValue: string;
+      result: ReturnType<typeof walletValue>;
+    }[]
+  | null = null;
 try {
   const [wallets, positions] = await Promise.all([listWallets(supabase), listWalletPositions(supabase)]);
   const byWallet = groupByWallet(positions);
   rows = wallets.map((wallet) => ({
     id: wallet.id,
     name: wallet.name,
+    currency: wallet.currency,
     startingValue: wallet.starting_value,
     result: walletValue(wallet, byWallet.get(wallet.id) ?? []),
   }));
@@ -74,6 +84,7 @@ try {
                   <a href={`/dashboard/wallets/${row.id}`} class="underline underline-offset-4 hover:text-primary">
                     {row.name}
                   </a>
+                  <p class="text-xs font-normal text-muted-foreground">{row.currency}</p>
                 </TableCell>
                 <TableCell className="text-right text-muted-foreground tabular-nums">
                   {formatAmount(row.startingValue)}

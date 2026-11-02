@@ -3,6 +3,7 @@ project: "Investments Diary"
 version: 1
 status: draft
 created: 2026-09-20
+updated: 2026-10-30
 context_type: greenfield
 product_type: web-app
 target_scale:
@@ -56,9 +57,11 @@ already own and why they bought it.
 
 ### Secondary
 
-- Current prices update themselves from a live source, so unrealized results stay correct
-  without the author typing them. Pleasant, but the product is not a failure without it —
-  manual price entry is the MVP path.
+- Confirmed US and Polish stock/ETF listings supply automatic prices for open-position
+  results, wallet totals and future daily observations. Free delayed data is acceptable;
+  manual entry remains available when a listing is unlinked or a usable automatic quote
+  has not been obtained. Prices download only when the user clicks **Download prices**;
+  navigation and reloads display saved quotes without provider calls (FR-014).
 
 ### Guardrails
 
@@ -104,7 +107,7 @@ already own and why they bought it.
 
 ### Recording
 
-- FR-003: User can record an investment with instrument, buy price and buy date required, and quantity and broker label optional. Priority: must-have
+- FR-003: User can record an investment with a supported Yahoo stock/ETF selected from search, buy price and buy date required, and quantity and broker label optional. New entries must have a server-validated listing selection when saved; a typed name alone is insufficient. Search, selection and saving do not download quotes. The first explicit **Download prices** action verifies trading currency/timezone before applying a price. Every investment requires a stock selection, enforced by the database. Existing draft investments were assigned Apple (`AAPL`, Nasdaq) by owner decision on 2026-11-02, through the same pending-selection path new investments use; entries that already had a confirmed listing kept a matching selection. Existing entries retain their labels and manual-price support. A selection cannot be edited: an investment with the wrong stock is deleted and recreated. This creation-flow revision was approved on 2026-10-30. Priority: must-have
   > Socrates: Counter-argument considered: "five fields plus prose is too slow for the
   > moment of buying, and slow entry kills the habit." Resolution: revised — the three
   > fields needed to compute a result are required, the rest can be completed later.
@@ -120,6 +123,11 @@ already own and why they bought it.
   > Socrates: Counter-argument considered: "manual prices go stale and a stale comparison
   > is worse than none." Resolution: revised — staleness is made visible rather than
   > prevented, so the author can discount an old number.
+  > For a linked automatically priced position, a manual correction is retained separately
+  > and temporarily selects the manual price until a provider quote's market timestamp is
+  > strictly later than the correction's database-stamped save time. Equal or older market
+  > timestamps do not replace it, including after an identical manual-price resubmission.
+  > Earlier manual entries retain unknown save times; migration does not invent those times.
 - FR-007: User can close a position by recording sell price and sell date. Priority: must-have
   > Socrates: Counter-argument considered: "a long-term investor rarely sells, so this may
   > go unused for months." Resolution: kept unchanged — a diary that cannot record an
@@ -154,7 +162,48 @@ already own and why they bought it.
 ### Wallets
 
 - FR-013: User can keep several named wallets, each with an editable starting value, and assign every investment to one wallet. Live value is starting value plus realised results from closed positions and unrealised results from open positions, excluding deleted records. Missing quantity or an open position's missing quote is explicitly counted as excluded. Freshness uses the oldest counted open quote only. Wallets can be created and edited but not deleted.
-  A wallet dashboard shows current realised/open results and immutable daily wallet-value observations captured at midnight UTC. Observations use recorded manual data, retain their coverage/freshness context and are not market-price or cash-balance history. Users can inspect30/90/365-day or all-time ranges and point details. Earlier unavailable values and missed days are not backfilled; later edits, sales and delete/restore do not rewrite saved observations. Priority: should-have
+  A wallet dashboard shows current realised/open results and immutable daily wallet-value observations captured at midnight UTC. Future observations use the same effective manual/automatic price selection as the application, retaining currency, source coverage and quote-time context. Capture uses the cached values available then and performs no provider downloads; prices may be old when the user has not downloaded prices recently. Users can inspect 30/90/365-day or all-time ranges and point details. Earlier unavailable values and missed days are not backfilled; later edits, sales, delete/restore and reassignment do not rewrite saved observations. Observations without a denomination inherit their wallet currency by explicit owner decision; their recorded amounts, dates and results remain unchanged and use the ordinary denominated history view. These are observations of recorded diary value, not reconstructed market-price or cash-balance history. Priority: should-have
+
+### Automatic prices and denomination
+
+- FR-014: User can search supported US/Polish stock and ETF listings and inspect company,
+  exchange and instrument type when recording a new investment (FR-003). The original
+  diary label of an existing entry is retained; free-text labels are not automatically guessed as provider
+  symbols. Confirmed listings supply regular-session prices to open-position results,
+  confrontation views, wallet totals and future observations through shared price
+  selection. Quotes download server-side only after the user clicks **Download prices**,
+  using an authenticated POST, bounded requests and deduplication across holdings of the
+  same owned listing. A click can request newer prices regardless of the last successful
+  download's age. Page loads, navigation, reloads, timers and snapshot capture do not
+  fetch quotes, and investment-save POSTs do not wait for market downloads. New investments
+  select provider listing metadata before saving; quote verification occurs on their
+  first dashboard download. Existing-position listing confirmation is retired
+  (2026-11-02): a holding's only stock identity is its creation-time selection, and
+  requests to search, download or confirm a different listing for an existing holding
+  are rejected without provider work. No currency or timezone is inferred from search metadata.
+  Search submission may
+  retrieve listing metadata but does not download quotes or change valuation data.
+  Failed-attempt cooldown remains 15 minutes, or longer when required by the provider;
+  another download requires a later button click rather than an automatic retry. Closed results use
+  recorded sale values; deleted holdings are excluded. Failed refreshes retain a valid
+  cached automatic quote with visible source/time/error state; if no automatic quote
+  exists, use a saved manual price or show missing coverage. Price time and fetch time
+  remain distinct. Yahoo via pinned `yahoo-finance2@4.0.5` is the selected candidate,
+  conditional on successful local and deployed US/GPW access and cancellation checks.
+  Failure of that gate stops integration rather than silently changing provider.
+  Priority: should-have
+- FR-015: New wallets require USD, PLN or EUR, with no FX conversion or mixed-currency
+  aggregation. Existing wallets without a currency are assigned USD. Wallet currency
+  is frozen after creation; no deferred confirmation or attestation flow remains.
+  A linked position's quote currency must match its wallet currency. Observations
+  without a currency label inherit their wallet denomination; recorded amounts and
+  dates are preserved without conversion or recalculation. This simplification was
+  explicitly approved on 2026-10-30. Priority: should-have
+- FR-016: User can reassign a non-deleted open or closed position between their own
+  wallets with matching currencies, preserving its factual fields and past recorded
+  amounts and dates. Conflicting denominations are rejected. Reassignment changes
+  current/future wallet membership and observations; it does not convert historical
+  amounts or require a legacy currency attestation. Priority: should-have
 
 ## Non-Functional Requirements
 
@@ -207,12 +256,15 @@ existing route protection does — to be confirmed when that work is planned.
   and the diary never flags an investment as off-strategy. This is the stronger rule
   implied by the author's own goal of sticking to a strategy, deliberately held back so it
   cannot grow into the first version unnoticed.
-- **No live price source.** Current prices are typed by the author. The integration is
-  recorded as a secondary success criterion and stays out of the first version.
+- **No guaranteed real-time feed, FX conversion or unattended price downloads.** FR-014
+  adds best-effort delayed quotes through an explicit **Download prices** button,
+  retaining manual fallback. Page-load downloads, automatic retries, streaming,
+  periodic browser refresh, scheduled provider polling and historical price backfill
+  remain outside this change.
 - **No brokers as managed records.** A broker is a text label on an investment. There is no
-  screen for managing brokers and no fees, currencies or account numbers. Wallets (FR-013)
-  are the author's own named groupings of investments, not broker accounts, and carry no
-  currency, fees or account numbers either.
+  screen for managing brokers, fees or account numbers. Wallets (FR-013) are the author's
+  own named groupings of investments, not broker accounts. Their USD/PLN/EUR denomination
+  exists to prevent invalid mixed-currency totals (FR-015), not to model broker accounts.
 - **No sharing with anyone else.** No read-only links, no advisor access, no export for
   another person to read. The diary is single-tenant and private by construction, which is
   what the honesty the product depends on requires.
@@ -223,5 +275,5 @@ existing route protection does — to be confirmed when that work is planned.
 2. ~~**What happens to past entries when a reason category is renamed or removed?**~~ — **Resolved 2026-09-25:** renaming a category updates its name everywhere, past entries included; removing one is a soft delete, and past entries still show the category name marked as removed. Still open, to settle when the work is planned: whether a removed category is offered for new entries, and whether it can be restored.
 3. ~~**Sign-up behaviour and unauthenticated-visitor handling**~~ — **Resolved 2026-09-25:** open registration. A signed-out visitor on a gated view is assumed to be redirected to sign-in (to confirm when planned).
 4. **User stories for the remaining paths** — only the confrontation path has acceptance criteria. Back-filling an existing holding, updating a price and closing a position do not. Owner: user. Resolve before implementation.
-5. **Live price source as a later addition** — recorded as a secondary success criterion and an explicit non-goal for version one. Owner: user. No date.
-6. **Wallets and the remaining position paths** — FR-013 includes realised and open results under the accepted close-position decision; daily observations preserve historical diary totals. Still open: whether an investment can move between wallets (decide with FR-008), and whether a wallet can be deleted. Owner: user.
+5. ~~**Live price source as a later addition**~~ — **Resolved for `automatic-stock-prices`, 2026-10-30:** FR-014 defines the agreed delayed-data integration, subject to the provider-validation gate. It supersedes the earlier first-version exclusion for this change.
+6. ~~**Wallets and the remaining position paths**~~ — **Resolved for `automatic-stock-prices`, 2026-10-30:** FR-016 permits owned-wallet reassignment with matching denominations; FR-013 preserves past observations, and wallets remain non-deletable.

@@ -3,6 +3,7 @@ import DeletePositionControl from "@/components/positions/DeletePositionControl.
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import PositionResult from "@/components/positions/PositionResult.astro";
+import PriceContext from "@/components/market-prices/PriceContext.astro";
 import { formatDate, formatNumber } from "@/lib/format";
 import type { PositionListItem } from "@/types";
 
@@ -72,6 +73,9 @@ const { positions, showWallet = true } = Astro.props;
             sell_price={position.sell_price}
             sell_date={position.sell_date}
           />
+          <div class="min-w-48 max-w-64 whitespace-normal">
+            <PriceContext valuation={position.valuation} />
+          </div>
         </TableCell>
         <TableCell className="text-right text-muted-foreground tabular-nums">
           {position.quantity === null ? "—" : formatNumber(position.quantity)}

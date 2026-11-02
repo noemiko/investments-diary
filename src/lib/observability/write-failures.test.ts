@@ -10,6 +10,9 @@ import {
 } from "@/lib/services/positions";
 import { createWallet, updateWallet } from "@/lib/services/wallets";
 import { reportUnexpected } from "@/lib/observability/reporter";
+vi.mock("@/lib/services/market-selections", () => ({
+  readMarketSelection: vi.fn(() => Promise.resolve({ receiptId: "receipt", targetId: "target", symbol: "AAPL" })),
+}));
 vi.mock("@/lib/observability/reporter", async (original) => ({
   ...(await original<object>()),
   reportUnexpected: vi.fn(),
@@ -39,6 +42,7 @@ const input = {
   broker_label: null,
   reason_text: "private",
   wallet_id: "wallet",
+  listing_receipt_id: "receipt",
 };
 const writes = [
   { operation: "createPosition", run: (c: ReturnType<typeof client>) => createPosition(c, "user", input) },
@@ -51,11 +55,13 @@ const writes = [
   { operation: "restorePosition", run: (c: ReturnType<typeof client>) => restorePosition(c, "id") },
   {
     operation: "createWallet",
-    run: (c: ReturnType<typeof client>) => createWallet(c, "user", { name: "private", starting_value: "0" }),
+    run: (c: ReturnType<typeof client>) =>
+      createWallet(c, "user", { name: "private", starting_value: "0", currency: "USD" }),
   },
   {
     operation: "updateWallet",
-    run: (c: ReturnType<typeof client>) => updateWallet(c, "id", { name: "private", starting_value: "0" }),
+    run: (c: ReturnType<typeof client>) =>
+      updateWallet(c, "id", { name: "private", starting_value: "0", currency: "USD" }),
   },
   {
     operation: "closePosition",

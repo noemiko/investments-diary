@@ -12,7 +12,7 @@ export async function listWalletSnapshots(
     client
       .from("wallet_snapshots")
       .select(
-        "wallet_id,observation_day,captured_at,starting_value::text,value::text,realised_change::text,open_change::text,realised_count,open_count,not_counted,as_of",
+        "wallet_id,observation_day,captured_at,starting_value::text,value::text,realised_change::text,open_change::text,realised_count,open_count,not_counted,as_of,currency,automatic_count,manual_count,oldest_market_at",
       )
       .eq("wallet_id", walletId)
       .order("observation_day", { ascending: true })

@@ -1,18 +1,17 @@
 name: CI
 
-# Docs-only changes (context/, docs/, *.md) skip CI. Keep in sync with scripts/deployment/vercel-ignore-build.sh.
+# Docs-only changes (docs/, *.md) skip CI. Operator SQL under context/ is code.
+# Keep in sync with scripts/deployment/vercel-ignore-build.sh.
 
 on:
   push:
     branches: [master]
     paths-ignore:
-      - "context/**"
       - "docs/**"
       - "**/*.md"
   pull_request:
     branches: [master]
     paths-ignore:
-      - "context/**"
       - "docs/**"
       - "**/*.md"
 
@@ -57,6 +56,8 @@ jobs:
         run: npm run test:decimal-db
       - name: Verify versioned wallet cron infrastructure
         run: npm run test:wallet-cron
+      - name: Verify market migrations and manual recovery
+        run: npm run test:market-prices-db
       - name: Stop local Supabase
         if: always()
         run: supabase stop --no-backup

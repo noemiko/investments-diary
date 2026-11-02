@@ -2,6 +2,8 @@ import { z } from "astro/zod";
 import { NUMBER_MESSAGE, parseDecimal } from "@/lib/validation/position";
 import {
   WALLET_FORM_FIELDS,
+  MARKET_CURRENCIES,
+  type MarketCurrency,
   type WalletFormErrors,
   type WalletFormField,
   type WalletFormValues,
@@ -26,6 +28,7 @@ const startingValue = z.string().transform((raw, ctx): string => {
 const walletFormSchema = z.object({
   name: z.string().trim().min(1, "Name the wallet").max(60, "Use at most 60 characters"),
   starting_value: startingValue,
+  currency: z.enum(MARKET_CURRENCIES, { error: "Choose USD, PLN or EUR" }),
 });
 
 /** Reads the wallet form's fields from a POST body; absent fields become empty strings. */
@@ -41,8 +44,14 @@ export function readWalletForm(form: FormData): WalletFormValues {
 export type ParseWalletResult = { success: true; data: WalletInput } | { success: false; errors: WalletFormErrors };
 
 /** Parses raw wallet-form values into `WalletInput`, or returns the first message per field. */
-export function parseWalletForm(values: WalletFormValues): ParseWalletResult {
-  const result = walletFormSchema.safeParse(values);
+export function parseWalletForm(
+  values: WalletFormValues,
+  options: { fixedCurrency?: MarketCurrency } = {},
+): ParseWalletResult {
+  if (options.fixedCurrency && values.currency !== "" && values.currency !== options.fixedCurrency) {
+    return { success: false, errors: { currency: "Wallet currency cannot be changed" } };
+  }
+  const result = walletFormSchema.safeParse({ ...values, currency: options.fixedCurrency ?? values.currency });
   if (result.success) return { success: true, data: result.data };
 
   const errors: WalletFormErrors = {};

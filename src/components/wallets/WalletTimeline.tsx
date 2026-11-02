@@ -2,13 +2,21 @@ import { useEffect, useRef, useState } from "react";
 import { aggregateAmount, historyGeometry, historyRange, type HistoryRange } from "@/lib/wallet-history";
 import { formatAmount, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import type { WalletSnapshot } from "@/types";
+import type { MarketCurrency, WalletSnapshot } from "@/types";
 
 const timestamp = (value: string) =>
   new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(
     new Date(value),
   ) + " UTC";
-export function WalletTimeline({ snapshots, today }: { snapshots: WalletSnapshot[]; today: string }) {
+function CurrencyTimeline({
+  snapshots,
+  today,
+  currency,
+}: {
+  snapshots: WalletSnapshot[];
+  today: string;
+  currency: MarketCurrency;
+}) {
   const chartRef = useRef<HTMLElement>(null);
   const [width, setWidth] = useState(720);
   useEffect(() => {
@@ -51,16 +59,16 @@ export function WalletTimeline({ snapshots, today }: { snapshots: WalletSnapshot
   return (
     <section
       ref={chartRef}
-      aria-labelledby="wallet-history-title"
+      aria-labelledby={`wallet-history-${currency}`}
       className="border-border min-w-0 space-y-4 rounded-xl border p-4 sm:p-6"
     >
       <div>
-        <h2 id="wallet-history-title" className="text-xl font-semibold">
-          Recorded daily wallet value
-        </h2>
+        <h3 id={`wallet-history-${currency}`} className="text-lg font-semibold">
+          {currency} observations
+        </h3>
         <p className="text-muted-foreground mt-1 text-sm">
-          Daily observations at midnight UTC, using manually entered prices. This is recorded diary value, not
-          market-price history.
+          Daily observations at midnight UTC use saved effective prices. Downloaded quotes may be old; capture does not
+          download prices.
         </p>
         {last && (
           <p className="text-muted-foreground mt-2 text-sm">
@@ -187,6 +195,14 @@ export function WalletTimeline({ snapshots, today }: { snapshots: WalletSnapshot
                 {current.open_count} open) · {current.not_counted} excluded
               </p>
               <p>
+                {current.automatic_count == null || current.manual_count == null
+                  ? "Source coverage is unavailable for this observation."
+                  : `${current.automatic_count} automatic · ${current.manual_count} manual open prices`}
+                {current.oldest_market_at
+                  ? ` · Oldest automatic market time ${timestamp(current.oldest_market_at)}`
+                  : ""}
+              </p>
+              <p>
                 {current.as_of
                   ? `Open prices as of ${formatDate(current.as_of)}`
                   : current.realised_count
@@ -234,6 +250,27 @@ export function WalletTimeline({ snapshots, today }: { snapshots: WalletSnapshot
           </details>
         </>
       )}
+    </section>
+  );
+}
+
+/** Display recorded observations by denomination without changing stored amounts. */
+export function WalletTimeline({ snapshots, today }: { snapshots: WalletSnapshot[]; today: string }) {
+  const currencies = [...new Set(snapshots.map((point) => point.currency))];
+  return (
+    <section className="min-w-0 space-y-4" aria-labelledby="wallet-history-title">
+      <h2 id="wallet-history-title" className="text-xl font-semibold">
+        Recorded daily wallet value
+      </h2>
+      {!snapshots.length && <p className="text-muted-foreground">Waiting for the first daily observation</p>}
+      {currencies.map((currency) => (
+        <CurrencyTimeline
+          key={currency}
+          snapshots={snapshots.filter((point) => point.currency === currency)}
+          today={today}
+          currency={currency}
+        />
+      ))}
     </section>
   );
 }

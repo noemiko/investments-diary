@@ -31,7 +31,12 @@ test("daily wallet dashboard: ranges, exact details, reload, keyboard, mobile an
   try {
     const w = await admin
       .from("wallets")
-      .insert({ user_id: owner, name: "Daily chart fixture", starting_value: "1000" })
+      .insert({
+        currency: "USD",
+        user_id: owner,
+        name: "Daily chart fixture",
+        starting_value: "1000",
+      })
       .select("id")
       .single();
     if (w.error) throw w.error;
@@ -44,6 +49,9 @@ test("daily wallet dashboard: ranges, exact details, reload, keyboard, mobile an
         observation_day: day,
         captured_at: `${day}T00:00:00Z`,
         starting_value: "1000",
+        currency: "USD",
+        automatic_count: 0,
+        manual_count: 0,
         value: String([950, 1050, 1140][i]),
         realised_change: String([-50, 50, 140][i]),
         open_change: "0",
@@ -75,12 +83,20 @@ test("daily wallet dashboard: ranges, exact details, reload, keyboard, mobile an
     await first.focus();
     await first.press("Enter");
     await expect(page.locator("[data-history-details]")).toContainText("950.00");
-    await page.screenshot({ path: info.outputPath("wallet-desktop.png"), fullPage: true });
+    await page.screenshot({
+      path: info.outputPath("wallet-desktop.png"),
+      fullPage: true,
+      style: "astro-dev-toolbar { display: none !important; }",
+    });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.locator('svg circle[role="button"]').last().tap();
     await expect(page.locator("[data-history-details]")).toContainText("1,140.00");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-    await page.screenshot({ path: info.outputPath("wallet-mobile.png"), fullPage: true });
+    await page.screenshot({
+      path: info.outputPath("wallet-mobile.png"),
+      fullPage: true,
+      style: "astro-dev-toolbar { display: none !important; }",
+    });
     expect(errors).toEqual([]);
     await page.reload();
     await expect(page.getByText("Observation data (2)", { exact: true })).toBeVisible();

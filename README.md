@@ -182,7 +182,7 @@ npm run dev
 BASE_URL=http://localhost:4321 npm run smoke
 ```
 
-It requires local Supabase with email confirmation disabled. It creates persistent test accounts and fixtures; never point it at production.
+It requires local Supabase with email confirmation disabled and the Supabase CLI available. It creates persistent test accounts and owner-bound listing-choice fixtures without contacting Yahoo; native selection/save validation and financial reads remain real. Never point it at production.
 
 > **Note:** this script exists primarily to guard the development of the starter itself — it is a fast sanity check that dependency upgrades did not break the build or the Supabase auth flow. It is **not** a substitute for a real test suite. Once you build your own product on top of this starter, add proper tests (unit, integration, end-to-end) suited to your application.
 
@@ -198,6 +198,8 @@ GitHub Actions runs two jobs on every push and PR to `master`:
 MIT
 
 ## Wallet history and manual-test demo
+
+When recording a new investment, choose a wallet, search Yahoo listings and select the intended stock/ETF before saving. Search, selection and Save retain your other entries and do not download a price. Click **Download prices** on Positions afterward; this verifies trading currency/timezone and saves a usable quote. A currency mismatch leaves your recorded values unchanged. Existing investments keep their labels and manual-price support.
 
 Run these commands from the project directory with local Supabase running:
 
@@ -227,13 +229,17 @@ Open [local sign-in](http://localhost:4321/auth/signin) and use:
 
 The demo provides 100 investments across five wallets with synthetic daily history. Normal reruns preserve your edits and keep the original account password. In the same terminal, run `npm run seed:demo` again without re-entering the password. In a new terminal, repeat the password-prompt block using the original password.
 
+Every demo holding selects Apple (**AAPL**), as investments saved before stock selections existed do. The open twelfth holding in **Demo · Rising** is already linked to Apple on Nasdaq (USD). It starts without a manual or cached quote, so click **Download prices** on Positions to fetch its first real market price. The loader only seeds listing metadata and never contacts Yahoo. Synthetic purchase amounts and historical observations remain demo data.
+
+Rerunning the loader also links that holding in older demos if it is still open, not deleted and unlinked, preserving any edited label or manual price. An existing selected listing is kept. If the account already has the same AAPL listing in its cache, the loader reuses it unchanged; any real quote already saved there can immediately supply the holding's effective price.
+
 To restore the original demo fixtures explicitly:
 
 ```sh
 npm run seed:demo -- --reset
 ```
 
-Reset affects recognised demo fixtures only and refuses unrelated references. See [wallet observations](context/deployment/wallet-observations.md) for daily capture, scheduler verification and further setup details.
+Reset affects recognised demo fixtures only and refuses unrelated references, including positions or lookup receipts referencing the fixture listing. It restores the fixture's metadata-only cache row; independently created canonical cache rows are preserved. See [wallet observations](context/deployment/deploy-plan.md#wallet-observations-and-cron) for daily capture, scheduler verification and further setup details.
 
 Run `npm run test:snapshots-db` and `npm run test:demo-db` against local Supabase. The versioned scheduler migration activates daily capture when applied. Verify it locally with `npm run test:wallet-cron`; production migration deployment remains a separate authorised step.
 

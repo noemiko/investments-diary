@@ -51,3 +51,17 @@ the misleading guard stays in the history.
 `add constraint`) has no guarded form, write the whole file unguarded.
 
 **Applies to:** plan, implement, impl-review
+
+## Keep automatic agents out of Vercel cloud
+
+- **Context**: Verification steps run by an automatic agent during /10x-implement and /10x-impl-review (previews, smoke checks, deployment validation), e.g. the automatic-stock-prices change.
+- **Problem**: The agent created and removed Vercel deployments (`vercel deploy`, `vercel remove`) in the live project, which also hosts production and real diary data. One wrong flag or target could change production.
+- **Rule**: automatic agent shouldn't ask or run anything in vercel cloud;
+- **Applies to**: all
+
+## Never write local user paths into documentation
+
+- **Context**: Any context/ artifact written by a skill: plans, research, verification logs, foundation docs.
+- **Problem**: An absolute path such as /Users/<name>/Documents/... reveals the user's personal username and machine layout to anyone the repo is shared with.
+- **Rule**: do not write in any documentation user local path to the project
+- **Applies to**: all

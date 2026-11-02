@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
 import type { ApiDatabase } from "@/db/api.types";
 import { formatAmount } from "@/lib/format";
-import { listPositions } from "@/lib/services/positions";
+import { listPositions, listConfrontationPositions } from "@/lib/services/positions";
 import { listWalletPositions } from "@/lib/services/wallets";
 import { groupByWallet, walletValue } from "@/lib/wallet";
 
@@ -22,6 +22,26 @@ function fixture(count: number, cap = 1000, failAfter?: number) {
     buy_date: "2026-01-01",
     created_at: "2026-01-01T00:00:00Z",
     deleted_at: null,
+    selected_price: "12",
+    selected_date: index === count - 2 ? "2026-01-01" : "2026-10-01",
+    selected_at: null,
+    selected_source: "manual",
+    wallet_currency: "USD",
+    quote_state: "unlinked",
+    refresh_outcome: null,
+    cooldown_until: null,
+    manual_price_saved_at: null,
+    quote_market_at: null,
+    quote_fetched_at: null,
+    quote_symbol: null,
+    quote_exchange: null,
+    quote_currency: null,
+    quote_timezone: null,
+    listing_name: null,
+    exchange_name: null,
+    instrument_type: null,
+    market_state: null,
+    delay_minutes: null,
     wallets: { name: index % 2 === 0 ? "One" : "Two" },
     reason_categories: { name: "Category" },
   }));
@@ -89,6 +109,7 @@ describe("complete wallet reads", () => {
     const { client } = fixture(1200, 137);
     expect(await listWalletPositions(client)).toHaveLength(1200);
     expect(await listPositions(client)).toHaveLength(1200);
+    expect(await listConfrontationPositions(client)).toHaveLength(1200);
   });
 
   it("handles an empty dataset", async () => {

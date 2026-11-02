@@ -47,7 +47,7 @@ ${chain}
 grant all on all tables in schema public to authenticated, anon;
 do $$ begin
  if (select count(*) from positions) <> 3 then raise exception 'migration lost existing rows'; end if;
- if exists(select 1 from positions p join positions_before b using(id) where to_jsonb(p)-'sell_price'-'sell_date' <> b.facts)
+ if exists(select 1 from positions p join positions_before b using(id) where to_jsonb(p)-'sell_price'-'sell_date'-'market_listing_id'-'listing_confirmed_at'-'manual_price_saved_at'-'market_target_id'-'market_selection_receipt_id' <> b.facts)
  then raise exception 'migration altered existing facts'; end if;
  if exists(select 1 from positions where sell_price is not null or sell_date is not null)
  then raise exception 'existing rows did not remain open'; end if;
