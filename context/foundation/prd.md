@@ -3,7 +3,7 @@ project: "Investments Diary"
 version: 1
 status: draft
 created: 2026-09-20
-updated: 2026-10-30
+updated: 2026-11-02
 context_type: greenfield
 product_type: web-app
 target_scale:
@@ -95,11 +95,18 @@ already own and why they bought it.
 
 ### Account
 
-- FR-001: User can create an account and sign in. Priority: must-have
+- FR-001: User can sign in to an account the owner created; nobody can create an account from the app or the
+  public Auth API (amended 2026-11-02). Priority: must-have
   > Socrates: Counter-argument considered: "a local-only diary needs no accounts."
   > Resolution: kept, with the justification made honest — sign-in exists so the diary is
   > reachable from more than one device and survives the loss of a machine, not for
   > security in the abstract.
+  > Socrates (amendment 2026-11-02): Counter-argument considered: "public sign-up costs
+  > nothing while the diary has one author." Resolution: revised by owner decision — public
+  > sign-up let anyone with the URL create an account in a private financial diary.
+  > Accounts are now created only by the owner (email and password, already confirmed), and
+  > the in-app sign-up form and the public Auth sign-up API both refuse. Existing accounts
+  > keep signing in and out.
 - FR-002: User can sign out. Priority: must-have
   > Socrates: Counter-argument considered: "nobody signs out of their own diary."
   > Resolution: kept — the diary may be opened on a shared or work machine, and sign-out
@@ -245,10 +252,14 @@ device the user signs in on.
 Flat user model: one kind of user. An account owns its own diary and sees only its own
 entries. There is no sharing, no read-only viewer, and no administrator role in the MVP.
 
-Sign-up: open registration (resolved 2026-09-25). Anyone may create an account, so privacy
-rests on every diary view being gated and every entry being readable only by its owner. An
-unauthenticated visitor reaching a gated view is assumed to be redirected to sign-in, as the
-existing route protection does — to be confirmed when that work is planned.
+Sign-up: owner-created accounts (decided 2026-11-02, superseding the open registration
+resolved on 2026-09-25). Nobody can create an account from the app or from the public
+Supabase Auth sign-up API; the app has no sign-up page. The owner creates each account
+outside the app with an email and a password, already confirmed. Privacy still rests on
+every diary view being gated and every entry being readable only by its owner; closing
+sign-up removes strangers' accounts rather than replacing that gating. An unauthenticated
+visitor reaching a gated view is assumed to be redirected to sign-in, as the existing route
+protection does — to be confirmed when that work is planned.
 
 ## Non-Goals
 
@@ -273,7 +284,7 @@ existing route protection does — to be confirmed when that work is planned.
 
 1. ~~**How does the reason lock interact with the reason being optional?**~~ — **Resolved 2026-09-25:** an entry saved without a reason can have one added later; the lock window starts when the reason is first written, not when the entry is created.
 2. ~~**What happens to past entries when a reason category is renamed or removed?**~~ — **Resolved 2026-09-25:** renaming a category updates its name everywhere, past entries included; removing one is a soft delete, and past entries still show the category name marked as removed. Still open, to settle when the work is planned: whether a removed category is offered for new entries, and whether it can be restored.
-3. ~~**Sign-up behaviour and unauthenticated-visitor handling**~~ — **Resolved 2026-09-25:** open registration. A signed-out visitor on a gated view is assumed to be redirected to sign-in (to confirm when planned).
+3. ~~**Sign-up behaviour and unauthenticated-visitor handling**~~ — **Resolved 2026-11-02:** owner-created accounts only; nobody can create an account from the app or the public Auth API (FR-001, Access Control). ~~Resolved 2026-09-25: open registration.~~ (superseded 2026-11-02) A signed-out visitor on a gated view is assumed to be redirected to sign-in (to confirm when planned).
 4. **User stories for the remaining paths** — only the confrontation path has acceptance criteria. Back-filling an existing holding, updating a price and closing a position do not. Owner: user. Resolve before implementation.
 5. ~~**Live price source as a later addition**~~ — **Resolved for `automatic-stock-prices`, 2026-10-30:** FR-014 defines the agreed delayed-data integration, subject to the provider-validation gate. It supersedes the earlier first-version exclusion for this change.
 6. ~~**Wallets and the remaining position paths**~~ — **Resolved for `automatic-stock-prices`, 2026-10-30:** FR-016 permits owned-wallet reassignment with matching denominations; FR-013 preserves past observations, and wallets remain non-deletable.

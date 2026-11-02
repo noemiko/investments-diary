@@ -126,24 +126,24 @@ SUPABASE_URL=https://<project-ref>.supabase.co
 SUPABASE_KEY=<anon-key>
 ```
 
-### Email confirmation in local development
+### Creating an account
 
-By default Supabase requires email confirmation before a user can sign in. To skip this during local development:
+Public sign-up is closed; the owner creates each account from the terminal. With local Supabase running:
 
-1. Open the Supabase dashboard for your project
-2. Go to **Authentication → Email → Confirm email**
-3. Toggle it **off**
+```sh
+npm run user:create -- --email you@example.com
+```
 
-Users can then sign in immediately after sign-up without clicking a confirmation link.
+Type a password of at least 12 characters twice at the hidden prompt (it runs `psql` in the local database container, so nothing else is needed). The account is already confirmed, so you can sign in at [local sign-in](http://localhost:4321/auth/signin) straight away. An email that already has an account is refused.
+
+For the hosted project the owner needs Docker and the tools image (`npm run tools:build`, once) instead of a host `psql`, and adds `--production --db-url <connection string without the password>`. The script runs `psql` in that image, asks the owner to type the project ref to confirm, and `psql` asks for the database password at its own hidden prompt. The password is never stored in a file or environment variable, and agents never run this mode. See [Project scripts](scripts/README.md#accounts).
 
 ### Auth routes
 
-| Route                 | Description                                                             |
-| --------------------- | ----------------------------------------------------------------------- |
-| `/auth/signin`        | Email/password sign-in form                                             |
-| `/auth/signup`        | Email/password sign-up form                                             |
-| `/auth/confirm-email` | Post-signup "check your inbox" page                                     |
-| `/dashboard`          | Example protected page (redirects to `/auth/signin` if unauthenticated) |
+| Route          | Description                                                             |
+| -------------- | ----------------------------------------------------------------------- |
+| `/auth/signin` | Email/password sign-in form                                             |
+| `/dashboard`   | Example protected page (redirects to `/auth/signin` if unauthenticated) |
 
 Route protection is handled in `src/middleware.ts`. Add paths to the `PROTECTED_ROUTES` array there to require authentication.
 
@@ -174,14 +174,14 @@ Pushing to the connected GitHub repository deploys automatically — the command
 
 ## Smoke test
 
-`scripts/testing/smoke.mjs` is a dependency-free Node script that walks the whole auth flow (sign-up, sign-in, protected page, sign-out) over HTTP. Run it against the local dev server after dependency upgrades:
+`scripts/testing/smoke.mjs` is a dependency-free Node script that walks the whole auth flow (sign-in, protected page, sign-out) over HTTP and checks that public sign-up is refused, both by the app (no sign-up route) and by local Supabase Auth. Run it against the local dev server after dependency upgrades:
 
 ```bash
 npm run dev
 BASE_URL=http://localhost:4321 npm run smoke
 ```
 
-It requires local Supabase with email confirmation disabled and the Supabase CLI available. It creates persistent test accounts and owner-bound listing-choice fixtures without contacting Yahoo; native selection/save validation and financial reads remain real. Never point it at production.
+It requires local Supabase and the Supabase CLI available. It creates two persistent test accounts through the local Auth admin API, and owner-bound listing-choice fixtures without contacting Yahoo; native selection/save validation and financial reads remain real. Never point it at production.
 
 > **Note:** this script exists primarily to guard the development of the starter itself — it is a fast sanity check that dependency upgrades did not break the build or the Supabase auth flow. It is **not** a substitute for a real test suite. Once you build your own product on top of this starter, add proper tests (unit, integration, end-to-end) suited to your application.
 

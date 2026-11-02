@@ -54,7 +54,7 @@ it("keeps concurrent request scopes separate across asynchronous auth and handle
   const before = getIsolationScope().getScopeData().tags;
   const seen: Record<string, unknown>[] = [];
   await Promise.all(
-    ["/auth/signin", "/auth/signup"].map(
+    ["/auth/callback", "/auth/signin"].map(
       async (route) =>
         await onRequest(context(route), async () => {
           await Promise.resolve();
@@ -63,7 +63,7 @@ it("keeps concurrent request scopes separate across asynchronous auth and handle
         }),
     ),
   );
-  expect(seen.map((tags) => tags.route).sort()).toEqual(["/auth/signin", "/auth/signup"]);
+  expect(seen.map((tags) => tags.route).sort()).toEqual(["/auth/callback", "/auth/signin"]);
   expect(seen[0]?.request_id).toMatch(/^[\da-f-]{36}$/);
   expect(seen[0]?.request_id).not.toBe(seen[1]?.request_id);
   expect(getIsolationScope().getScopeData().tags).toEqual(before);

@@ -4,7 +4,6 @@ import { isUnexpectedAuthError } from "@/lib/observability/auth";
 import { reportUnexpected } from "@/lib/observability/reporter";
 import { createClient } from "@/lib/supabase";
 import { POST as signIn } from "@/pages/api/auth/signin";
-import { POST as signUp } from "@/pages/api/auth/signup";
 import { POST as signOut } from "@/pages/api/auth/signout";
 import { GET as exchangeCode } from "@/pages/auth/callback";
 import type { APIContext } from "astro";
@@ -46,29 +45,6 @@ describe("auth error classification", () => {
   });
 });
 
-it.each(["email_address_invalid", "validation_failed"])(
-  "signup preserves the %s validation redirect without reporting an incident",
-  async (code) => {
-    const error = new AuthApiError("Invalid input", 422, code);
-    vi.mocked(createClient).mockReturnValue({
-      auth: { signUp: vi.fn().mockResolvedValue({ error }) },
-    } as unknown as ReturnType<typeof createClient>);
-    const request = new Request("http://localhost/api/auth/signup", {
-      method: "POST",
-      body: new URLSearchParams({ email: "invalid-address", password: "secret" }),
-    });
-    const response = await signUp({
-      request,
-      url: new URL(request.url),
-      cookies: {},
-      redirect: (location: string) => new Response(null, { status: 302, headers: { location } }),
-    } as unknown as APIContext);
-    expect(response.status).toBe(302);
-    expect(response.headers.get("location")).toBe("/auth/signup?error=Invalid%20input");
-    expect(reportUnexpected).not.toHaveBeenCalled();
-  },
-);
-
 const handlers = [
   {
     handler: signIn,
@@ -76,13 +52,6 @@ const handlers = [
     operation: "auth.signIn",
     path: "/api/auth/signin",
     target: "/auth/signin?error=private",
-  },
-  {
-    handler: signUp,
-    method: "POST",
-    operation: "auth.signUp",
-    path: "/api/auth/signup",
-    target: "/auth/signup?error=private",
   },
   { handler: signOut, method: "POST", operation: "auth.signOut", path: "/api/auth/signout", target: "/" },
   {
@@ -99,7 +68,7 @@ it.each(handlers)(
     const error = new AuthRetryableFetchError("private", 503);
     const result = vi.fn().mockResolvedValue({ error });
     vi.mocked(createClient).mockReturnValue({
-      auth: { signInWithPassword: result, signUp: result, signOut: result, exchangeCodeForSession: result },
+      auth: { signInWithPassword: result, signOut: result, exchangeCodeForSession: result },
     } as unknown as ReturnType<typeof createClient>);
     const request = new Request(
       `http://localhost${path}`,
@@ -122,7 +91,7 @@ it.each(handlers)(
 it.each(handlers)("$operation ignores an expected missing-session result", async ({ handler, method, path }) => {
   const result = vi.fn().mockResolvedValue({ error: new AuthSessionMissingError() });
   vi.mocked(createClient).mockReturnValue({
-    auth: { signInWithPassword: result, signUp: result, signOut: result, exchangeCodeForSession: result },
+    auth: { signInWithPassword: result, signOut: result, exchangeCodeForSession: result },
   } as unknown as ReturnType<typeof createClient>);
   const request = new Request(
     `http://localhost${path}`,

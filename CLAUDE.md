@@ -86,11 +86,12 @@ Scripts are in @package.json; only the non-obvious ones are listed here.
 - `npm run build` — production SSR build into `.vercel/output/`. There is no preview server with
   this adapter — see tripwires
 - `npx astro check` — type-checks `.astro` files; CI runs it, there is no npm script
-- `npm run smoke` — walks sign-up → sign-in → protected page → sign-out over HTTP against a
+- `npm run smoke` — walks sign-in → protected page → sign-out over HTTP against a
   **running** server, and proves cross-account isolation (account B cannot see or borrow account
   A's positions or categories). Needs `BASE_URL` (default `http://localhost:4321`) and the local
-  Supabase stack (`npx supabase start`). Creates two accounts per run — never point it at
-  production. Run after dependency upgrades.
+  Supabase stack (`npx supabase start`). Proves public sign-up is refused by the app and by local
+  Supabase Auth, and creates two accounts per run through the local Auth admin API — never point
+  it at production. Run after dependency upgrades.
 
 ## Architecture
 
@@ -107,7 +108,7 @@ per-page auth check.
 ### Auth is form-POST, not fetch
 
 Auth forms are native `<form method="POST">` posting to
-`src/pages/api/auth/{signin,signup,signout}.ts`, which respond with **redirects** — errors come
+`src/pages/api/auth/{signin,signout}.ts`, which respond with **redirects** — errors come
 back as `?error=<message>` and are rendered server-side into the React island's `serverError` prop
 (@src/pages/auth/signin.astro). The React validation in @src/components/auth/SignInForm.tsx is UX
 polish over a flow that works without JS. Keep new auth-adjacent forms on this pattern rather than
@@ -134,10 +135,9 @@ switching to client fetch.
 ## Environment
 
 Node 24.21.0, pinned in `.nvmrc` (fnm switches on `cd`) and declared in `package.json`
-`engines.node`. Setup is otherwise in @README.md, with one correction: its "Email confirmation in
-local development" section walks you through disabling confirmations by hand in Studio, but
-`supabase/config.toml` already ships `enable_confirmations = false`. Skip those steps; signup
-completes without a mailbox.
+`engines.node`. Setup is otherwise in @README.md. Public sign-up is closed
+(`enable_signup = false` in `supabase/config.toml`); create local accounts with `npm run user:create`,
+which makes them already confirmed, so no mailbox is needed.
 
 ## CI
 

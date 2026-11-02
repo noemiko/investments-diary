@@ -1,9 +1,9 @@
 // Smoke test: proves the Supabase auth flow still works end-to-end over HTTP (redirects, cookies, gating),
-// that a deleted position can be restored, that the new-investment form confronts the author with their
+// that public sign-up is closed in the app and in local Supabase Auth, that a deleted position can be restored, that the new-investment form confronts the author with their
 // same-category positions (server-rendered part only; the live reveal needs JS), that a wallet counts its
 // positions (FR-013), and that one account cannot see, borrow, delete or restore another account's diary data.
 // Zero dependencies on purpose. Run against a live server: BASE_URL=http://localhost:4321 node scripts/testing/smoke.mjs
-// Creates two accounts per run — never point it at production.
+// Creates two accounts per run through the local Auth admin API — never point it at production.
 
 import { randomBytes, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
@@ -42,6 +42,23 @@ async function fixtureJson(path, { method = "GET", body, key = fixtureStatus.SER
   });
   if (!response.ok) throw new Error(`Local smoke fixture failed (${response.status})`);
   return response.json();
+}
+// The owner creates accounts outside the app; smoke stands in for that with the local admin API.
+async function createAccount(who) {
+  await fixtureJson("/auth/v1/admin/users", {
+    method: "POST",
+    body: { email: who.email, password, email_confirm: true },
+  });
+  return { status: 200, location: "", body: "" };
+}
+// A direct call to local Supabase, shaped like `request()`'s result so a step can check it.
+async function supabaseRequest(path, { method = "GET", body, key = fixtureStatus.ANON_KEY } = {}) {
+  const response = await fetch(fixtureUrl.origin + path, {
+    method,
+    headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  return { status: response.status, location: "", body: await response.text() };
 }
 async function fixtureSelection(who, walletId, symbol) {
   if (!who.owner) {
@@ -282,10 +299,11 @@ const steps = [
   ["home renders", () => request(a, "/"), { status: 200 }],
   ["dashboard redirects anonymous user", () => request(a, "/dashboard"), { status: 302, location: "/auth/signin" }],
   [
-    "signup creates account",
+    "app has no signup endpoint",
     () => request(a, "/api/auth/signup", { method: "POST", form: { email: a.email, password } }),
-    { status: 302, location: "/auth/confirm-email" },
+    { status: 404 },
   ],
+  ["owner creates account A", () => createAccount(a), { status: 200 }],
   [
     "signin rejects wrong password",
     () => request(a, "/api/auth/signin", { method: "POST", form: { email: a.email, password: "wrong" } }),
@@ -294,7 +312,7 @@ const steps = [
   [
     "signin accepts correct password",
     () => request(a, "/api/auth/signin", { method: "POST", form: { email: a.email, password } }),
-    { status: 302, location: "/" },
+    { status: 302, location: "/", exactLocation: true },
   ],
   ["dashboard renders for signed-in user", () => request(a, "/dashboard"), { status: 200 }],
 
@@ -524,14 +542,15 @@ const steps = [
 
   // Account B must not see or borrow A's data.
   [
-    "B: signup creates account",
-    () => request(b, "/api/auth/signup", { method: "POST", form: { email: b.email, password } }),
-    { status: 302, location: "/auth/confirm-email" },
+    "B: Supabase Auth refuses public signup",
+    () => supabaseRequest("/auth/v1/signup", { method: "POST", body: { email: b.email, password } }),
+    { status: 422, includes: ["signup_disabled"] },
   ],
+  ["owner creates account B", () => createAccount(b), { status: 200 }],
   [
     "B: signin accepts correct password",
     () => request(b, "/api/auth/signin", { method: "POST", form: { email: b.email, password } }),
-    { status: 302, location: "/" },
+    { status: 302, location: "/", exactLocation: true },
   ],
   [
     "B: dashboard does not list A's position",
@@ -707,7 +726,7 @@ const steps = [
   [
     "A: signin accepts correct password again",
     () => request(a, "/api/auth/signin", { method: "POST", form: { email: a.email, password } }),
-    { status: 302, location: "/" },
+    { status: 302, location: "/", exactLocation: true },
   ],
   [
     "A: detail page still shows the result",
