@@ -58,6 +58,8 @@ jobs:
         run: npm run test:wallet-cron
       - name: Verify market migrations and manual recovery
         run: npm run test:market-prices-db
+      - name: Verify every RLS policy is backed by a grant
+        run: npm run test:grants-db
       - name: Stop local Supabase
         if: always()
         run: supabase stop --no-backup
