@@ -57,7 +57,7 @@ with your own past reasoning at the moment of deciding improves how you invest.
 | S-07 | reason-lock-editing           | correct an investment's facts and add a missing reason, after which the reason locks                         | S-01                                    | FR-008, FR-004                 | proposed |
 | S-08 | evolve-reason-categories      | rename a reason category everywhere, or remove it while past positions keep it                               | S-01                                    | FR-005                         | proposed |
 | S-09 | named-wallets                 | group investments into named wallets and see totals with missing-data and price-date context                 | S-01, S-02, S-05                        | FR-013 (should-have)           | done     |
-| S-10 | close-public-signup           | have accounts created only by the owner's script/CLI; nobody can sign up from the app or the public Auth API | —                                       | FR-001 (amended 2026-11-02)    | proposed |
+| S-10 | close-public-signup           | have accounts created only by the owner's script/CLI; nobody can sign up from the app or the public Auth API | —                                       | FR-001 (amended 2026-11-02)    | in-progress |
 | F-01 | consolidate-db-contract-tests | (technical) one database contract test checks grants and owner-only access on every table                    | automatic-stock-prices Phase 6 accepted | NFR privacy; FR-013–FR-016     | done |
 
 ## Baseline
@@ -240,7 +240,7 @@ which is exactly what this roadmap avoids.
   - What is "the script and CLI"? A repo script using the Auth admin API needs the service-role key, which must never be pulled into local `.env`; the alternative is the Supabase dashboard's "Add user" or a one-off run in the owner's own terminal with the key supplied at run time. — Owner: user. Block: no (settle during `/10x-plan`).
   - Should the owner's script set a password, or send an invite/magic-link email? — Owner: user. Block: no (settle during `/10x-plan`).
 - **Risk:** Removing the page while the hosted Auth setting stays on leaves registration open to anyone with the public anon key, so the dashboard switch is part of done, verified by a refused sign-up request. Locking out is the opposite risk: confirm an owner account can still be created before disabling sign-up in production.
-- **Status:** proposed
+- **Status:** in-progress
 
 ## Backlog Handoff
 

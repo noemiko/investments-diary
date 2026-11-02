@@ -48,6 +48,10 @@ Ordered by severity. Items marked **[new]** are not in `infrastructure.md`.
    in your Supabase project. The PRD lists this as Open Question 3 (open registration vs
    a single provisioned account) and says to resolve it _before implementation_. It is
    still open while the app is live. → Phase B, step B3.
+   Actions: decided 2026-11-02 (PRD FR-001 amended, OQ3 resolved): owner-created accounts only. Code side is change
+   `close-public-signup` (`context/changes/close-public-signup/`): the sign-up page and API are removed
+   (`/auth/signup` → 404) and the owner creates accounts with `npm run user:create`. The hosted Auth setting is
+   still B3 (human).
 2. **[fixed] Supabase Auth URL config for production (HIGH).** `supabase/config.toml` only
    has `site_url = "http://127.0.0.1:3000"`, and that file configures the **local** stack
    only. In the hosted project, the Site URL and Redirect URLs must include
@@ -114,6 +118,18 @@ Ordered by severity. Items marked **[new]** are not in `infrastructure.md`.
   `vercel env ls` (names only), `vercel deploy` **without** `--prod` (preview), and
   read-only `curl` against production.
 
+### Production service-role key
+
+`npm run user:create` creates owner accounts (email and password, already confirmed). It targets the local Supabase
+stack by default. `--production --url https://<ref>.supabase.co` targets the hosted project.
+
+- The production service-role key is **owner-only**. The owner copies it from the Supabase dashboard at run time and
+  types it into the script's hidden prompt, then types the project ref to confirm.
+- It is never stored in any file (`.env`, `.env.local`, repo, notes), env var, shell history or Vercel, and never
+  pasted into the conversation.
+- **Agents never run `npm run user:create --production`**, and never ask for the key. Agents may run the local
+  default.
+
 ## 4. Plan
 
 ### Phase A — Inventory (agent, read-only)
@@ -129,12 +145,12 @@ Ordered by severity. Items marked **[new]** are not in `infrastructure.md`.
 
 On branch `chore/deploy-hardening`, in one PR:
 
-| #   | Owner     | Action                                                                                                                                                                                                                                                                                                                                                                                                                |
-| --- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| B1  | agent     | (a) `npm i -E @supabase/ssr@0.12.7`. (b) ~~Fix `verify` skill~~ done 2026-09-24. (c) ~~Rewrite `tech-stack.md` body~~ done 2026-09-24. (d) Optional: remove `@astrojs/sitemap`, add `<meta name="robots" content="noindex">` in `Layout.astro`. Then run the `verify` skill (sync → lint → check → build)                                                                                                             |
-| B2  | **human** | Supabase Dashboard → Authentication → URL Configuration: **Site URL** = `https://investments-diary.vercel.app`, **Redirect URLs** += `https://investments-diary.vercel.app/**`. Without the `/**` entry Supabase rejects signup's `emailRedirectTo` (`/auth/callback`), falls back to Site URL, and the PKCE `?code=` is dropped on `/`. Add a pattern for previews only if they should use auth (see open decisions) |
-| B3  | **human** | Resolve PRD Open Question 3. Recommended for single-tenant: (1) create your account through `/auth/signup` or in the Supabase panel, (2) Authentication → Sign In / Providers → **disable "Allow new users to sign up"**, (3) delete any stray accounts in Users. Record the decision in `prd.md` → Open Questions. Hiding the `/auth/signup` form in code is optional: the Supabase setting is the real gate         |
-| B4  | agent     | Open the PR. CI (`ci` + `smoke`) must be green. The `smoke` job uses **local** Supabase, so it doesn't depend on B3                                                                                                                                                                                                                                                                                                   |
+| #   | Owner     | Action                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| --- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| B1  | agent     | (a) `npm i -E @supabase/ssr@0.12.7`. (b) ~~Fix `verify` skill~~ done 2026-09-24. (c) ~~Rewrite `tech-stack.md` body~~ done 2026-09-24. (d) Optional: remove `@astrojs/sitemap`, add `<meta name="robots" content="noindex">` in `Layout.astro`. Then run the `verify` skill (sync → lint → check → build)                                                                                                                                                                                 |
+| B2  | **human** | Supabase Dashboard → Authentication → URL Configuration: **Site URL** = `https://investments-diary.vercel.app`, **Redirect URLs** += `https://investments-diary.vercel.app/**`. Without the `/**` entry Supabase rejects signup's `emailRedirectTo` (`/auth/callback`), falls back to Site URL, and the PKCE `?code=` is dropped on `/`. Add a pattern for previews only if they should use auth (see open decisions)                                                                     |
+| B3  | **human** | PRD Open Question 3 is resolved (2026-11-02: owner-created accounts, change `close-public-signup`). Your production account already exists; further accounts are created with `npm run user:create --production` (see [production service-role key](#production-service-role-key)). (1) Authentication → Sign In / Providers → **disable "Allow new users to sign up"**, (2) delete any stray accounts in Users. The removed `/auth/signup` form is not the gate: the Supabase setting is |
+| B4  | agent     | Open the PR. CI (`ci` + `smoke`) must be green. The `smoke` job uses **local** Supabase, so it doesn't depend on B3                                                                                                                                                                                                                                                                                                                                                                       |
 
 ### Phase C — Vercel project settings (human, panel)
 
@@ -156,15 +172,15 @@ On branch `chore/deploy-hardening`, in one PR:
 
 ### Phase E — Verification (agent, read-only against prod)
 
-| #   | Owner     | Check                                                                                                               | Expected                                                                    |
-| --- | --------- | ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| E1  | agent     | `for p in / /auth/signin; do curl -s -o /dev/null -w '%{http_code}\n' https://investments-diary.vercel.app$p; done` | `200`, `200`                                                                |
-| E2  | agent     | `curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' https://investments-diary.vercel.app/dashboard`           | `302 …/auth/signin` (gating works = Supabase client configured)             |
-| E3  | agent     | `npx vercel@latest inspect https://investments-diary.vercel.app`                                                    | Deployment ID = the one promoted in D3                                      |
-| E4  | **human** | Sign in with your own account in the browser, open `/dashboard`, sign out                                           | Works. Session survives a refresh                                           |
-| E5  | **human** | Private window → `/auth/signup` → try to create an account                                                          | Supabase rejects it ("Signups not allowed") if B3 is done                   |
-| E6  | agent     | `npx vercel@latest logs https://investments-diary.vercel.app` for ~2 min during E4                                  | No 5xx. Logs are kept only **1h** on Hobby, so check them now, not tomorrow |
-| E7  | human     | Open any preview URL in a private window                                                                            | Vercel login screen (C1)                                                    |
+| #   | Owner     | Check                                                                                                                                          | Expected                                                                    |
+| --- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| E1  | agent     | `for p in / /auth/signin; do curl -s -o /dev/null -w '%{http_code}\n' https://investments-diary.vercel.app$p; done`                            | `200`, `200`                                                                |
+| E2  | agent     | `curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' https://investments-diary.vercel.app/dashboard`                                      | `302 …/auth/signin` (gating works = Supabase client configured)             |
+| E3  | agent     | `npx vercel@latest inspect https://investments-diary.vercel.app`                                                                               | Deployment ID = the one promoted in D3                                      |
+| E4  | **human** | Sign in with your own account in the browser, open `/dashboard`, sign out                                                                      | Works. Session survives a refresh                                           |
+| E5  | **human** | Call the hosted Auth API sign-up endpoint (`POST https://<ref>.supabase.co/auth/v1/signup` with the public key and a throwaway email/password) | `422 signup_disabled` if B3 is done. `/auth/signup` in the app returns 404  |
+| E6  | agent     | `npx vercel@latest logs https://investments-diary.vercel.app` for ~2 min during E4                                                             | No 5xx. Logs are kept only **1h** on Hobby, so check them now, not tomorrow |
+| E7  | human     | Open any preview URL in a private window                                                                                                       | Vercel login screen (C1)                                                    |
 
 **Do not run** `npm run smoke` against production (gap 4).
 
@@ -190,7 +206,8 @@ On branch `chore/deploy-hardening`, in one PR:
 2. ~~**Local dev on the production database.**~~ **Resolved 2026-09-24:** dev switched to the
    local stack with a guard in code (see gap 5). Migrations: `npx supabase migration new`,
    then `npx supabase db reset` locally, and `npx supabase db push` to production (human only).
-3. **Sign-up (PRD OQ3)**: see B3.
+3. ~~**Sign-up (PRD OQ3)**~~ **Resolved 2026-11-02:** owner-created accounts (change `close-public-signup`). The
+   hosted setting is still B3.
 
 ## 7. Execution log
 
