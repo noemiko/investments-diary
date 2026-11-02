@@ -14,6 +14,7 @@ import {
 } from "@/lib/services/positions";
 import { listWalletPositions } from "@/lib/services/wallets";
 import { walletValue } from "@/lib/wallet";
+import { selectionReceipt } from "./selection-fixture";
 
 it("uses identical cached effective values on all reads, preserving zero sales, manual corrections and move facts", async () => {
   const url = new URL(process.env.SUPABASE_TEST_URL ?? "http://invalid");
@@ -92,17 +93,18 @@ it("uses identical cached effective values on all reads, preserving zero sales, 
           user_id: owner,
           wallet_id: source,
           category_id: category.data.id,
-          instrument: "Mapped",
+          instrument: "AAPL",
+          market_selection_receipt_id: await selectionReceipt(author, owner, source, "AAPL"),
           buy_price: "10",
           buy_date: "2026-01-01",
           quantity: "2",
-          market_listing_id: cache.data.id,
         },
         {
           user_id: owner,
           wallet_id: source,
           category_id: category.data.id,
-          instrument: "Zero sale",
+          instrument: "ZERO",
+          market_selection_receipt_id: await selectionReceipt(author, owner, source, "ZERO"),
           buy_price: "10",
           buy_date: "2026-01-01",
           quantity: "2",
@@ -114,9 +116,14 @@ it("uses identical cached effective values on all reads, preserving zero sales, 
       ])
       .select("id,instrument");
     if (positions.error) throw positions.error;
-    const open = positions.data.find((p) => p.instrument === "Mapped")?.id,
-      closed = positions.data.find((p) => p.instrument === "Zero sale")?.id;
+    // The selection guard labels each holding with its target symbol.
+    const open = positions.data.find((p) => p.instrument === "AAPL")?.id,
+      closed = positions.data.find((p) => p.instrument === "ZERO")?.id;
     if (!open || !closed) throw new Error("Missing positions");
+    // A selected insert starts unlinked; link the verified cache as a download would.
+    expect(
+      (await admin.from("positions").update({ market_listing_id: cache.data.id }).eq("id", open)).error,
+    ).toBeNull();
     const list = await listPositions(author),
       detail = await getPosition(author, open),
       confrontation = await listConfrontationPositions(author),

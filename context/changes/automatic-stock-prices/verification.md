@@ -4,10 +4,7 @@
 
 - Saved the agreed five-phase plan and brief before beginning Phase 1.
 - Verified five phases and fifteen matching, initially unchecked Success Criteria/Progress rows.
-- Saved plan SHA-256: `dae15d9f9e7cb9aeecc83fe40a2717db4e01cb1b27a3f6dba496c8c0c0440218`.
-- Saved brief SHA-256: `0d5657e4813500a85836d1be69592fafd51e16507799e5592d441a091be484c3`.
-- Loaded planning skill: `/Users/noemi.kowalewska/Documents/projects/xdev10/.agents/skills/10x-plan/SKILL.md`.
-- Loaded skill SHA-256: `5c82d6f4d96592539f1a561111726689c79ff8446ab27946dd957cc29645ccfe`.
+- Loaded planning skill: `10x-plan/SKILL.md`.
 - Change identity was preserved; status advanced from preparing to planned using the metadata guard, then to implementing on entry to Phase 1.
 - Roadmap lookup found no exact `automatic-stock-prices` item; the roadmap is unchanged.
 
@@ -263,3 +260,35 @@ Progress 4.1, 4.2 and 4.4 are verified for the new creation flow. Manual 4.3 rem
 ### Manual confirmation — 2026-11-02
 
 The owner confirmed **Manual check passed** for the revised new-investment selection/save/dashboard-download flow and Phase 4 item 4.3, including retained input, corrections, wallet moves, recoverable errors and history. All Phase 4 Progress rows are now verified. The commit is awaiting approval of its message; no production migration or deployment occurred.
+
+## Phase 5 preflight — 2026-11-02
+
+- Phase 4 was committed as `0a954cb` after owner approval; pre-commit lint passed. Owner chose delegated Phase 5 preparation. The only entry-time dirty path was the planned Phase 4 SHA write-back in `plan.md`.
+- Local Node 24, installed static/unit/browser commands, running Supabase/Docker and the app on port 4321 are available. The delegated work prepares operational recovery and audits deterministic regression gaps; the parent retains gates, staging, manual confirmation and commit.
+- Read-only GitHub inventory: remote `master` is `0a7f868322484e600511751b57c97755120a9e32`; no remote `prices-automated` branch or PR exists. No push, PR, merge or remote workflow run occurred.
+- Vercel CLI 65.9.0 is authenticated. Environment-name inspection shows `SUPABASE_URL` and `SUPABASE_KEY` scoped to Production only; values were not read or pulled. A full application preview is not configured and is not a runnable deployed acceptance gate yet.
+- Read-only production baseline: deployment `dpl_FVc6GVQQMXRWeV69KuVAcfajfwaD`, `READY`, unique URL `https://investments-diary-oi2k5w6fn-wakarimasen8-8554.vercel.app`. CLI metadata did not establish its source commit. GET `/` and `/auth/signin` returned 200; unauthenticated `/dashboard` returned 302 to `/auth/signin`. These are baseline health checks, not verification of the new feature.
+- Release constraint: the denomination migration removes metadata/RPC contracts used by older application builds. The schema-first rollout requires a reviewed maintenance transition; an arbitrary pre-feature deployment is not a compatible rollback artifact. Hosted migration execution, environment changes and production promotion/rollback remain human-owned under `context/deployment/deploy-plan.md`.
+
+### Explicit local provider probe
+
+`npm run probe:market-data -- --live` initially failed before network access because Node 24 strip-only execution cannot erase TypeScript constructor parameter properties in `RequestFailure`. Replaced those properties with equivalent declared fields/constructor assignments, retaining SDK error and Retry-After behavior without new dependencies or experimental runtime flags.
+
+The explicit rerun PASSed under Node `v24.21.0`, SDK `4.0.5`, on 2026-11-02: AAPL and PKO.WA search, confirmation and batch checks all succeeded; controlled SDK-fetch cancellation completed in 103 ms. Safe metadata: AAPL USD/NMS/`America/New_York`, regular market time `2026-10-30T20:00:01Z`, fetched `2026-11-02T08:42:16.349Z`, PREPRE; PKO.WA PLN/WSE/`Europe/Warsaw`, market time `2026-11-02T08:27:15Z`, fetched `2026-11-02T08:42:17.601Z`, REGULAR. Provider-reported delay fields are metadata, not freshness guarantees. The command reads fixed public symbols only, no diary data or env files. This receipt proves local provider access; it does not mark Phase 5 deployed application item 5.3 passed.
+
+### Hosted migration dry-run review — 2026-11-02
+
+Owner ran `npx supabase migration list --linked` and `npx supabase db push --dry-run` in their own authenticated terminal (Supabase CLI 2.117.0). Nothing was applied.
+
+- Already applied remotely: `20260929141102_create_diary_core`, `20261015094649_add_position_current_price`. No remote-only migrations.
+- Pending, in filename order: the five remaining predecessors (`20261019112848_create_wallets`, `20261019150000_prevent_wallet_deletion`, `20261028120000_close_position`, `20261028160000_wallet_snapshots`, `20261028170000_register_daily_wallet_snapshot_job`) followed by the eleven feature migrations `20261030110418_market_price_persistence` … `20261102140000_revoke_listing_column_updates`, exactly as listed in the runbook.
+- Result: **PASS** — pending chain matches the runbook's predecessor and eleven-feature-migration order; no unexpected, missing or out-of-order file.
+- Release note: cron registration is still pending, so runbook step 3's "registration activates the job — check/pause it after migration" branch applies. Production positions will receive the required Apple selection from `20261102120000` during the same apply.
+
+## Phase 5 results — 2026-11-02
+
+- Implemented: release runbook and recovery template (view-based manual selection, capture unchanged), CI scope for operator SQL, required stock selection (`20261102120000`, every existing position assigned Apple by owner decision, NOT NULL), retired existing-position listing confirmation (UI removed, endpoints 409 `selection_already_set`, lookup RPCs revoked in `20261102130000`, listing-column UPDATE revoked in `20261102140000`), fixtures and demo creating selections through receipts. All three migrations applied to local Supabase only.
+- Database gates PASS: `test:market-prices-db` (migrations, recovery/re-enable, required selection), `test:decimal-db` (5 files / 14 tests), `test:snapshots-db`, `test:close-db`, `test:wallet-db`, `test:wallet-cron`, `test:demo-db`. The required-selection test fixture was narrowed to the real column grants after it masked the column revoke.
+- Deliberate breaks: removing the guard re-enable failed with `selection guard not re-enabled`; removing the column revoke failed with `market_listing_id updatable by authenticated`. Both migrations were restored from the staged versions.
+- Static and unit PASS: Astro sync, lint, Astro check (0 errors), build, `npm test` (396 tests). Browser PASS: 7 Playwright tests after the owner restarted the dev server. Local HTTP smoke PASS, all steps.
+- Manual: owner approved the release and recovery runbook (5.3); owner-run hosted dry run matched the eleven-feature-migration order (5.5). No hosted migration, deployment or Vercel command was run by the agent.

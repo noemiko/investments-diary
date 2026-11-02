@@ -245,9 +245,6 @@ export type MarketPriceServiceFailure =
       retryAfter?: string | null;
     }
   | MarketDataFailure;
-export type MarketListingLookupResult =
-  { ok: true; lookupId: string; listing: MarketListing; quote: MarketQuote } | MarketPriceServiceFailure;
-
 /** Cached database selection context, kept separate from editable manual inputs. */
 export interface PositionValuation {
   source: EffectivePrice["selected_source"];

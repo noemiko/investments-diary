@@ -2,7 +2,6 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, expect, it, vi } from "vitest";
 import { DownloadPrices } from "./DownloadPrices";
-import { ListingControl } from "./ListingControl";
 import { MovePositionControl } from "./MovePositionControl";
 import { actionMessage } from "./client";
 import type { Wallet } from "@/types";
@@ -10,39 +9,14 @@ import type { Wallet } from "@/types";
 afterEach(() => {
   vi.restoreAllMocks();
 });
-it("renders explicit download and search controls without starting provider work", () => {
+it("renders the explicit download control without starting provider work or pointing at listing setup", () => {
   const network = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("Unexpected network request"));
-  const dashboard = renderToStaticMarkup(createElement(DownloadPrices, { enabled: true }));
-  const detail = renderToStaticMarkup(
-    createElement(ListingControl, { positionId: "position", currency: "USD", initialListing: null }),
-  );
-  expect(dashboard).toContain("Download prices");
-  expect(dashboard).toContain("Opening or reloading a page uses saved prices");
-  expect(detail).toContain("Search listings");
-  expect(detail).toContain("Quotes require Download prices");
-  expect(detail).not.toContain("Confirm listing:");
-  expect(network).not.toHaveBeenCalled();
-});
-it("shows a saved search selection on detail without claiming it is an unlinked or verified quote", () => {
-  const network = vi.spyOn(globalThis, "fetch");
-  const detail = renderToStaticMarkup(
-    createElement(ListingControl, {
-      positionId: "position",
-      currency: "USD",
-      initialListing: null,
-      initialSelection: {
-        symbol: "AAPL",
-        name: "Apple",
-        exchange: "NMS",
-        exchangeName: "Nasdaq",
-        instrumentType: "EQUITY",
-      },
-    }),
-  );
-  expect(detail).toContain("Selected:");
-  expect(detail).toContain("AAPL");
-  expect(detail).toContain("Download prices on the dashboard");
-  expect(detail).not.toContain("No listing linked");
+  for (const enabled of [true, false]) {
+    const dashboard = renderToStaticMarkup(createElement(DownloadPrices, { enabled }));
+    expect(dashboard).toContain("Download prices");
+    expect(dashboard).toContain("Opening or reloading a page uses saved prices");
+    expect(dashboard).not.toContain("Link stock listing");
+  }
   expect(network).not.toHaveBeenCalled();
 });
 it("offers compatible target wallets without currency setup or attestation", () => {

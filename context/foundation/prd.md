@@ -107,7 +107,7 @@ already own and why they bought it.
 
 ### Recording
 
-- FR-003: User can record an investment with a supported Yahoo stock/ETF selected from search, buy price and buy date required, and quantity and broker label optional. New entries must have a server-validated listing selection when saved; a typed name alone is insufficient. Search, selection and saving do not download quotes. The first explicit **Download prices** action verifies trading currency/timezone before applying a price. Existing entries retain their labels and manual-price support. This creation-flow revision was approved on 2026-10-30. Priority: must-have
+- FR-003: User can record an investment with a supported Yahoo stock/ETF selected from search, buy price and buy date required, and quantity and broker label optional. New entries must have a server-validated listing selection when saved; a typed name alone is insufficient. Search, selection and saving do not download quotes. The first explicit **Download prices** action verifies trading currency/timezone before applying a price. Every investment requires a stock selection, enforced by the database. Existing draft investments were assigned Apple (`AAPL`, Nasdaq) by owner decision on 2026-11-02, through the same pending-selection path new investments use; entries that already had a confirmed listing kept a matching selection. Existing entries retain their labels and manual-price support. A selection cannot be edited: an investment with the wrong stock is deleted and recreated. This creation-flow revision was approved on 2026-10-30. Priority: must-have
   > Socrates: Counter-argument considered: "five fields plus prose is too slow for the
   > moment of buying, and slow entry kills the habit." Resolution: revised — the three
   > fields needed to compute a result are required, the rest can be completed later.
@@ -166,20 +166,21 @@ already own and why they bought it.
 
 ### Automatic prices and denomination
 
-- FR-014: User can search supported US/Polish stock and ETF listings, inspect company,
-  exchange and quote currency, and confirm a listing for an open position. The original
-  diary label is retained; free-text labels are not automatically guessed as provider
+- FR-014: User can search supported US/Polish stock and ETF listings and inspect company,
+  exchange and instrument type when recording a new investment (FR-003). The original
+  diary label of an existing entry is retained; free-text labels are not automatically guessed as provider
   symbols. Confirmed listings supply regular-session prices to open-position results,
   confrontation views, wallet totals and future observations through shared price
   selection. Quotes download server-side only after the user clicks **Download prices**,
   using an authenticated POST, bounded requests and deduplication across holdings of the
   same owned listing. A click can request newer prices regardless of the last successful
   download's age. Page loads, navigation, reloads, timers and snapshot capture do not
-  fetch quotes, and investment-save POSTs do not wait for market downloads. Listing
-  setup on an existing position requires this explicit button click for its quote lookup; confirmation
-  reuses that validated result without another provider request. New investments instead
+  fetch quotes, and investment-save POSTs do not wait for market downloads. New investments
   select provider listing metadata before saving; quote verification occurs on their
-  first dashboard download. No currency or timezone is inferred from search metadata.
+  first dashboard download. Existing-position listing confirmation is retired
+  (2026-11-02): a holding's only stock identity is its creation-time selection, and
+  requests to search, download or confirm a different listing for an existing holding
+  are rejected without provider work. No currency or timezone is inferred from search metadata.
   Search submission may
   retrieve listing metadata but does not download quotes or change valuation data.
   Failed-attempt cooldown remains 15 minutes, or longer when required by the provider;

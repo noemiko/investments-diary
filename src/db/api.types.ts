@@ -13,12 +13,21 @@ type DecimalWrites<
   Update: TextFields<T["Update"], K>;
 };
 type Tables = Database["public"]["Tables"];
+// The selection guard derives market_target_id from the receipt; NOT NULL makes the receipt mandatory.
+type SelectedInsert<T extends { Insert: unknown }> = Omit<T, "Insert"> & {
+  Insert: Omit<T["Insert"], "market_target_id" | "market_selection_receipt_id"> & {
+    market_selection_receipt_id: string;
+    market_target_id?: never;
+  };
+};
 type Functions = Database["public"]["Functions"];
 
 export type ApiDatabase = Omit<Database, "public"> & {
   public: Omit<Database["public"], "Tables" | "Functions"> & {
     Tables: Omit<Tables, "positions" | "wallets" | "wallet_snapshots" | "market_quote_cache"> & {
-      positions: DecimalWrites<Tables["positions"], "buy_price" | "quantity" | "current_price" | "sell_price">;
+      positions: SelectedInsert<
+        DecimalWrites<Tables["positions"], "buy_price" | "quantity" | "current_price" | "sell_price">
+      >;
       market_quote_cache: DecimalWrites<
         Tables["market_quote_cache"],
         "price" | "delay_minutes" | "source_interval_minutes"

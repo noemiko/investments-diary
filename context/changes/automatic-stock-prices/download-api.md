@@ -1,11 +1,11 @@
 # Phase 3 API walkthrough
 
-The dashboard buttons and listing island are integrated in Phase 4. Phase 3 exposes
-these authenticated JSON POST contracts for those controls. GET requests return 405
+The dashboard **Download prices** button is integrated in Phase 4. Phase 3 exposes
+this authenticated JSON POST contract for it. GET requests return 405
 and do not search or download. Browser calls send the normal same-origin session
 cookie; no service-role key is involved. Opening a page or waiting does not download.
 
-Use the local app at `http://127.0.0.1:4321`, sign in and open an owned, open position.
+Use the local app at `http://127.0.0.1:4321`, sign in and note an owned, open position UUID.
 Existing wallets without a previous denomination use USD; new wallets choose USD, PLN or EUR. Use synthetic USD and PLN wallets/positions for
 this walkthrough if the existing diary does not contain both denominations.
 
@@ -23,49 +23,28 @@ async function priceAction(path, body) {
 }
 ```
 
-1. **Search metadata.** Replace `POSITION_ID` with the owned position UUID.
+1. **Existing-position listing changes are retired.** A holding's stock identity is its
+   creation-time selection; it cannot be searched for, re-downloaded under another
+   symbol or confirmed as a different listing. The former routes remain only to give
+   stale clients a clear answer:
 
    ```js
    await priceAction("listings/search", { positionId: "POSITION_ID", query: "Apple" });
+   await priceAction("listings/download", { positionId: "POSITION_ID", symbol: "AAPL" });
+   await priceAction("listings/confirm", { positionId: "POSITION_ID", lookupId: "LOOKUP_ID" });
    ```
 
-   Results contain at most ten stock/ETF candidates with symbol, name and exchange.
-   Search supplies no price or confirmed currency and does not update valuations.
-   A Polish example query is `PKO`. Distinguish the returned exchanges/symbols before
-   choosing a candidate rather than matching the diary's original label automatically.
+   Each returns HTTP 409 `{ ok: false, reason: "selection_already_set" }` after the
+   usual sign-in and same-origin checks, without reading the body or calling the
+   provider. The database functions behind the former flow
+   (`claim_listing_lookup`, `finish_listing_lookup`, `confirm_listing_lookup`) are not
+   executable by signed-in users either (`20261102130000_retire_listing_lookup_rpcs.sql`),
+   so direct PostgREST calls are refused too. A holding with the wrong stock is deleted
+   and recreated with the right selection. Investments saved before selections existed were assigned Apple
+   (`AAPL`/`NMS`) by owner decision on 2026-11-02; holdings that already had a
+   confirmed listing kept a selection matching it.
 
-2. **Explicit Download prices for the chosen candidate.** In a USD wallet:
-
-   ```js
-   const lookup = await priceAction("listings/download", {
-     positionId: "POSITION_ID",
-     symbol: "AAPL",
-   });
-   lookup;
-   ```
-
-   A successful result includes an opaque `lookupId`, the server-validated exchange,
-   currency and timezone, and a regular-session quote with separate market/fetch
-   timestamps. For a PLN position use `PKO.WA`. The original diary label stays intact.
-   A cross-currency candidate returns `incompatible_currency` with HTTP 409.
-
-3. **Confirm the returned listing.** Inspect its identity first, then:
-
-   ```js
-   await priceAction("listings/confirm", {
-     positionId: "POSITION_ID",
-     lookupId: lookup.result.lookupId,
-   });
-   ```
-
-   This reuses the saved, owner/position-bound receipt and performs no provider call.
-   Receipts expire after 30 minutes. An expired/substituted receipt fails safely;
-   repeat the explicit candidate download if needed. Receipt expiry does not itself
-   cause any download. Do not supply browser-copied currency, exchange or price fields:
-   unknown request fields are rejected, and confirmation resolves all metadata on the
-   server.
-
-4. **Explicit Download prices for selected holdings.** All owned mapped or pending-selection open holdings:
+2. **Explicit Download prices for selected holdings.** All owned open holdings (every holding has a selection):
 
    ```js
    await priceAction("download", {});
@@ -90,14 +69,14 @@ async function priceAction(path, body) {
    wallets retain their manual values and report `incompatible_currency`. Search metadata
    is never used to invent a quote denomination.
 
-5. **Unavailable/recoverable behavior.** A controlled provider timeout/HTTP failure
+3. **Unavailable/recoverable behavior.** A controlled provider timeout/HTTP failure
    is covered by deterministic service/SDK fixtures; do not force a real Yahoo rate
    limit. If the provider is unavailable during this manual walkthrough, expect safe
    `provider_unavailable`, `timeout` or per-listing failure results, followed by a
    cooldown. The response contains no raw provider payload, URL, cookie or crumb.
    Last valid saved quotes and manual entries remain intact. Longer Retry-After
    instructions are respected. Wait until the reported instant and explicitly retry;
-   waiting alone never makes a request. Search itself can be retried explicitly.
+   waiting alone never makes a request.
 
 ## New-investment creation
 

@@ -58,12 +58,12 @@ export function createTargetRepository(client: ReturnType<typeof createClient>, 
           .is("sell_price", null)
           .is("sell_date", null)
           .is("market_listing_id", null)
-          .not("market_target_id", "is", null)
           .order("id");
         if (positionIds) query = query.in("id", positionIds);
         return query.range(from, to);
       });
-      const ids = [...new Set(positions.map((p) => p.market_target_id).filter((id): id is string => id !== null))];
+      // Every holding has a selection (NOT NULL); unlinked open ones are pending download.
+      const ids = [...new Set(positions.map((p) => p.market_target_id))];
       const targets: PendingTarget[] = [];
       for (let start = 0; start < ids.length; start += 50) {
         const result = await client

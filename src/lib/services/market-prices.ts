@@ -7,7 +7,6 @@ import { createTargetRepository, type TargetRepository } from "./market-target-r
 import type {
   MarketDataFailure,
   MarketListing,
-  MarketListingLookupResult,
   MarketPriceDownloadItem,
   MarketPriceServiceFailure,
   MarketQuote,
@@ -57,7 +56,11 @@ function report(result: MarketDataFailure) {
     operation: "marketPrices",
   });
 }
-/** Provider calls exist only in explicit search/download methods, never in read composition. */
+/**
+ * Provider calls exist only in the explicit Download prices method, never in read composition.
+ * Existing-position listing search/lookup/confirm was retired on 2026-11-02 (one stock identity per
+ * holding); its database RPCs are no longer executable by signed-in users.
+ */
 export function createMarketPriceService(
   client: ReturnType<typeof createClient>,
   userId: string,
@@ -75,12 +78,6 @@ export function createMarketPriceService(
     if (row?.cooldownUntil && Date.parse(row.cooldownUntil) > now())
       return { reason: "cooldown", retryAfter: row.cooldownUntil };
     return { reason: "refreshing", retryAfter: row?.leaseUntil ?? null };
-  }
-  async function search(positionId: string, query: string, signal?: AbortSignal) {
-    if (!(await repository.position(positionId))) return { ok: false as const, reason: "not_found" as const };
-    const result = await api().searchListings(query, { signal });
-    if (!result.ok) report(result);
-    return result;
   }
   async function download(
     positionIds?: string[],
@@ -258,76 +255,5 @@ export function createMarketPriceService(
       budget.dispose();
     }
   }
-  async function lookup(positionId: string, symbol: string, signal?: AbortSignal): Promise<MarketListingLookupResult> {
-    const position = await repository.position(positionId);
-    if (!position) return { ok: false, reason: "not_found" };
-    const receipt = await repository.receipt(positionId, symbol);
-    const token = await repository.claimLookup(receipt.id);
-    if (!token) return { ok: false, ...blocked(await repository.readReceipt(positionId, receipt.id)) };
-    const budget = providerBudget(signal, options.budgetMs);
-    let cached: PriceCache | null = null;
-    let cacheToken: string | null = null;
-    try {
-      cached = await repository.candidate(symbol, position.currency);
-      if (cached) {
-        cacheToken = await repository.claim(cached.id);
-        if (!cacheToken) {
-          await repository.finishLookup(receipt.id, token, undefined, undefined, true);
-          return { ok: false, ...blocked(await repository.cache(cached.id)) };
-        }
-      }
-      if (budget.stopped) {
-        if (cached && cacheToken) await repository.release(cached.id, cacheToken);
-        await repository.finishLookup(receipt.id, token, undefined, undefined, true);
-        return { ok: false, reason: signal?.aborted ? "cancelled" : "timeout" };
-      }
-      const response = await budget.run(async (operationSignal): Promise<MarketQuoteOutcome> => {
-        if (!cached) return api().confirmListing(symbol, { signal: operationSignal });
-        const batch = await api().fetchQuotes([identity(cached)], { signal: operationSignal });
-        return batch.ok ? (batch.quotes[symbol] ?? { ok: false, reason: "not_found" }) : batch;
-      });
-      let outcome = response.ok ? response.value : response;
-      if (outcome.ok && outcome.quote.listing.currency !== position.currency) {
-        await repository.finishLookup(receipt.id, token);
-        return { ok: false, reason: "incompatible_currency" };
-      }
-      if (!outcome.ok) {
-        outcome = quoteFailure(outcome);
-        report(outcome);
-        if (cached && cacheToken) await repository.finish(cached.id, cacheToken, outcome);
-        await repository.finishLookup(receipt.id, token, undefined, outcome.retryAfter);
-        const state = await repository.readReceipt(positionId, receipt.id);
-        return { ...outcome, ...(state?.cooldownUntil ? { retryAfter: state.cooldownUntil } : {}) };
-      }
-      cached ??= await repository.ensureCache(outcome.quote);
-      cacheToken ??= await repository.claim(cached.id);
-      if (!cacheToken) {
-        await repository.finishLookup(receipt.id, token, undefined, undefined, true);
-        return { ok: false, ...blocked(await repository.cache(cached.id)) };
-      }
-      await repository.finish(cached.id, cacheToken, outcome);
-      if (!(await repository.finishLookup(receipt.id, token, cached.id)))
-        return { ok: false, reason: "lookup_expired" };
-      const saved = await repository.cache(cached.id);
-      const quote = saved ? cachedQuote(saved) : null;
-      if (!quote) return { ok: false, reason: "lookup_expired" };
-      return { ok: true, lookupId: receipt.id, listing: quote.listing, quote };
-    } finally {
-      budget.dispose();
-    }
-  }
-  async function confirm(positionId: string, receiptId: string): Promise<{ ok: true } | MarketPriceServiceFailure> {
-    const position = await repository.position(positionId);
-    if (!position) return { ok: false, reason: "not_found" };
-    const receipt = await repository.readReceipt(positionId, receiptId);
-    if (!receipt) return { ok: false, reason: "not_found" };
-    if (!receipt.cacheId || !receipt.validUntil || Date.parse(receipt.validUntil) <= now())
-      return { ok: false, reason: "lookup_expired" };
-    const cached = await repository.cache(receipt.cacheId);
-    if (cached?.currency !== position.currency) return { ok: false, reason: "incompatible_currency" };
-    const confirmed = await repository.confirm(positionId, receiptId);
-    if (confirmed === "incompatible_currency") return { ok: false, reason: "incompatible_currency" };
-    return confirmed ? { ok: true } : { ok: false, reason: "lookup_expired" };
-  }
-  return { search, download, lookup, confirm };
+  return { download };
 }

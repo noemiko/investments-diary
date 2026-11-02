@@ -283,7 +283,7 @@ export type Database = {
           manual_price_saved_at: string | null
           market_listing_id: string | null
           market_selection_receipt_id: string | null
-          market_target_id: string | null
+          market_target_id: string
           price_date: string | null
           quantity: number | null
           reason_text: string | null
@@ -306,7 +306,7 @@ export type Database = {
           manual_price_saved_at?: string | null
           market_listing_id?: string | null
           market_selection_receipt_id?: string | null
-          market_target_id?: string | null
+          market_target_id: string
           price_date?: string | null
           quantity?: number | null
           reason_text?: string | null
@@ -329,7 +329,7 @@ export type Database = {
           manual_price_saved_at?: string | null
           market_listing_id?: string | null
           market_selection_receipt_id?: string | null
-          market_target_id?: string | null
+          market_target_id?: string
           price_date?: string | null
           quantity?: number | null
           reason_text?: string | null

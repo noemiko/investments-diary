@@ -7,7 +7,6 @@ import Layout from "@/layouts/Layout.astro";
 import DeletePositionControl from "@/components/positions/DeletePositionControl.astro";
 import PositionResult from "@/components/positions/PositionResult.astro";
 import PriceContext from "@/components/market-prices/PriceContext.astro";
-import { ListingControl } from "@/components/market-prices/ListingControl";
 import { MovePositionControl } from "@/components/market-prices/MovePositionControl";
 import { listWallets } from "@/lib/services/wallets";
 import { Badge } from "@/components/ui/badge";
@@ -217,15 +216,6 @@ const inputClass =
             </section>
           ) : (
             <>
-              {position.valuation && (
-                <ListingControl
-                  positionId={position.id}
-                  currency={position.valuation.currency}
-                  initialListing={position.valuation.listing}
-                  initialSelection={position.valuation.pendingSelection}
-                  client:load
-                />
-              )}
               <section class="flex flex-col gap-4">
                 <h2 class="text-lg font-semibold">Current price</h2>
                 <p class="text-sm text-muted-foreground">

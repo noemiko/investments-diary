@@ -13,7 +13,7 @@ local and controlled deployed evidence for both US and GPW retrieval and cancell
   ten deduplicated Yahoo stock/ETF candidates. Search does not establish currency.
 - `confirmListing(symbol, { signal? })`: fetch and validate regular-session quote and
   confirmed listing identity before linking. Required metadata includes exchange,
-  USD/PLN currency, an IANA timezone, and a usable nonfuture market timestamp.
+USD/PLN/EUR currency, an IANA timezone, and a usable nonfuture market timestamp.
 - `fetchQuotes(listings, { signal? })`: one batch of up to fifty confirmed listings,
   returning outcomes keyed by symbol. Missing, invalid and changed-identity members do
   not discard valid members. The later orchestration layer owns multiple batches.

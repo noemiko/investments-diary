@@ -114,6 +114,7 @@ it("round-trips the full numeric range, nullable values, joins and pagination wi
     .insert({
       user_id: owner,
       instrument: "Exact",
+      market_selection_receipt_id: await selectionFor(wallet),
       buy_date: "2026-01-01",
       buy_price: "999999999999.99999998",
       quantity: max,
@@ -151,6 +152,7 @@ it("round-trips the full numeric range, nullable values, joins and pagination wi
   const low = await author.from("positions").insert({
     user_id: owner,
     instrument: "Minimum",
+    market_selection_receipt_id: await selectionFor(wallet),
     buy_date: "2026-01-01",
     buy_price: min,
     quantity: null,
@@ -162,13 +164,15 @@ it("round-trips the full numeric range, nullable values, joins and pagination wi
     .from("positions")
     .select(projection)
     .eq("wallet_id", wallet)
-    .order("instrument")
+    // Both rows carry the selection's symbol as their label, so order by price instead.
+    .order("buy_price", { ascending: false })
     .range(0, 0);
   const second = await author
     .from("positions")
     .select(projection)
     .eq("wallet_id", wallet)
-    .order("instrument")
+    // Both rows carry the selection's symbol as their label, so order by price instead.
+    .order("buy_price", { ascending: false })
     .range(1, 1);
   expect(first.error).toBeNull();
   expect(second.error).toBeNull();

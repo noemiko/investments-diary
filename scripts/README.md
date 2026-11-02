@@ -49,9 +49,9 @@ before proceeding beyond the provider gate.
 
 For the password prompt and sign-in walkthrough, see the [project README](../README.md#wallet-history-and-manual-test-demo).
 
-The open `AAPL · Demo` holding (the deterministic twelfth position, in `Demo · Rising`) is linked to an owner-scoped Yahoo `AAPL` / `NMS` / USD listing. The fresh fixture has no manual price; the listing contains metadata only, with no synthetic quote or refresh attempt. Click **Download prices** on Positions to request a real quote. Seeding makes no provider requests and preserves existing synthetic amounts and history.
+Every demo holding needs a stock selection, so the loader creates them through owner/wallet-bound receipts for the owner's Apple (`AAPL` / `NMS`) target, like migrated drafts; the selection labels each holding `AAPL`. The open twelfth holding (in `Demo · Rising`) is also linked to an owner-scoped Yahoo `AAPL` / `NMS` / USD listing. The fresh fixture has no manual price; the listing contains metadata only, with no synthetic quote or refresh attempt. Click **Download prices** on Positions to request a real quote. Seeding makes no provider requests and preserves existing synthetic amounts and history.
 
-Normal reruns fill missing fixtures and upgrade that older demo holding's link only while it remains open, not deleted and unlinked in a compatible wallet. Edited labels, manual prices and user-selected listings are preserved. An already-existing canonical listing is reused without modifying any cache fields; a real quote already cached there may immediately become effective. Explicit reset restores recognised fixtures and removes only the deterministic fixture cache row, after refusing unrelated position or lookup-receipt references. Independently created cache rows are retained.
+Normal reruns fill missing fixtures and upgrade that older demo holding's link only while it remains open, not deleted and unlinked in a compatible wallet. Edited labels, manual prices and user-selected listings are preserved. An already-existing canonical listing is reused without modifying any cache fields; a real quote already cached there may immediately become effective. Explicit reset restores recognised fixtures, removes the fixture wallets' selection receipts, clears any target's link to the deterministic fixture cache row and removes only that row, after refusing unrelated position or lookup-receipt references. Independently created cache rows are retained.
 
 ## Observability
 
@@ -69,13 +69,13 @@ Normal reruns fill missing fixtures and upgrade that older demo holding's link o
 | [`automation/roadmap-to-linear.mjs`](automation/roadmap-to-linear.mjs)         | `node scripts/automation/roadmap-to-linear.mjs`: previews roadmap issues; `--apply` creates/reuses issues, labels and blocking relations. | Reads `context/foundation/roadmap.md`. Apply requires `LINEAR_API_KEY`, `LINEAR_TEAM_KEY`; optional `LINEAR_PROJECT_NAME`. Dry run needs no credentials.    | Prints preview or Linear identifiers. Default is read-only with no API calls. Apply writes persistent Linear records; reuses issues by ID prefix, with no automatic rollback. No CI/automatic caller. |
 | [`automation/configure-wallet-cron.mjs`](automation/configure-wallet-cron.mjs) | `npm run configure:wallet-cron`: local repair/reapplication helper for the versioned scheduling migration.                                | Local database container with snapshot storage/function installed. Reads the migration SQL directly.                                                        | SQL output/failure. Persists the named `wallet-daily-observations` job; repeated registration updates it without duplicates. Does not capture immediately or roll back.                               |
 
-**Daily scheduling:** normal migrations run once and register the job. PostgreSQL then calls `public.capture_wallet_snapshots()` each day at **00:00 UTC**. Neither the migration file nor an npm command runs each midnight. `configure:wallet-cron` targets local Docker only; normal production migration deployment is separate. See [wallet operations](../context/deployment/wallet-observations.md) for job history, missed observations and disabling the named job.
+**Daily scheduling:** normal migrations run once and register the job. PostgreSQL then calls `public.capture_wallet_snapshots()` each day at **00:00 UTC**. Neither the migration file nor an npm command runs each midnight. `configure:wallet-cron` targets local Docker only; normal production migration deployment is separate. See [wallet operations](../context/deployment/deploy-plan.md#wallet-observations-and-cron) for job history, missed observations and disabling the named job.
 
 ## Deployment
 
-| File                                                                     | Command / caller and purpose                                               | Inputs and prerequisites                                                 | Output, data effects and cleanup                                                                                                                                                                                                            |
-| ------------------------------------------------------------------------ | -------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`deployment/vercel-ignore-build.sh`](deployment/vercel-ignore-build.sh) | Called automatically through `vercel.json` as Vercel's Ignored Build Step. | Bash, Git history; base is `VERCEL_GIT_PREVIOUS_SHA`, otherwise `HEAD^`. | Prints decision. **Exit 0 skips deployment; exit 1 requests a build**, including when base history is unavailable. Docs-only changes (`context/`, `docs/`, Markdown) skip. No writes or cleanup. Keep rules aligned with CI `paths-ignore`. |
+| File                                                                     | Command / caller and purpose                                               | Inputs and prerequisites                                                 | Output, data effects and cleanup                                                                                                                                                                                                                                              |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`deployment/vercel-ignore-build.sh`](deployment/vercel-ignore-build.sh) | Called automatically through `vercel.json` as Vercel's Ignored Build Step. | Bash, Git history; base is `VERCEL_GIT_PREVIOUS_SHA`, otherwise `HEAD^`. | Prints decision. **Exit 0 skips deployment; exit 1 requests a build**, including when base history is unavailable. Docs-only changes (`docs/`, Markdown) skip; operator SQL under `context/` counts as code. No writes or cleanup. Keep rules aligned with CI `paths-ignore`. |
 
 ## Adding or changing a script
 
@@ -87,11 +87,20 @@ Normal reruns fill missing fixtures and upgrade that older demo holding's link o
 
 ### Market-price persistence verification
 
-`npm run test:market-prices-db` runs `testing/database/test-market-prices-database.mjs`.
+`npm run test:market-prices-db` runs `testing/database/test-market-prices-database.mjs`,
+`testing/database/test-market-price-recovery.mjs` and
+`testing/database/test-required-selection-migration.mjs`; CI's local decimal-transport job calls it.
+The required-selection runner applies the chain up to that migration in a disposable database, then
+proves every position gets a selection (Apple for open/closed/deleted/PLN/EUR drafts per account, a
+matching target for confirmed listings), that labels/prices/save times/wallets/receipts/cache and
+observations are unchanged, the guard is re-enabled, inserts without a selection fail, and a first
+download prices USD Apple holdings while PLN/EUR ones count as `incompatible_currency`.
 It needs the running local Supabase PostgreSQL container and creates/drops a disposable
 database. The complete migration chain is exercised with legacy fixtures inserted before
-the new migration. Checks cover preserved facts/history, explicit currency confirmation,
+the new migration. Checks cover preserved facts/history, the earlier confirmation contract followed by the approved USD/denomination revision,
 owner isolation, the shared price-selection view, identical manual resaves, equal/later
 market timestamps, competing claims, lease recovery, retained quotes and cooldowns.
 No provider requests or diary reset occur. Exact quote RPC/PostgREST transport is also
 covered by `tests/database/market-prices.test.ts` through `npm run test:decimal-db`.
+
+The recovery runner applies the [operator template](../context/deployment/automatic-stock-prices-manual-selection.sql) only in its disposable database. It proves retained cache/selection/position/observation facts, exact manual/sale application and future-capture parity, unchanged view columns/security/grants and unchanged capture definition/privileges, then restores normal selection without rewriting observations. Cron is verified separately. See the [release/recovery runbook](../context/deployment/deploy-plan.md#stock-price-release-and-recovery) for human-controlled hosted rollout, failure handling and compatible recovery. The template is not in the forward migration chain and is never automatically applied to diary data.

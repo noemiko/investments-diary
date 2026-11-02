@@ -14,7 +14,7 @@ Date: 2026-10-28. Updated: 2026-10-29. All implementation code is present; human
 
 Production migration, scheduler activation and deployment were not performed. No prior real history was backfilled. The persistent demo account is created on demand with npm run seed:demo and DEMO_USER_PASSWORD; test runs used disposable accounts.
 
-Operational/development guide: context/deployment/wallet-observations.md.
+Operational/development guide (consolidated): [wallet observations and cron](../../deployment/deploy-plan.md#wallet-observations-and-cron).
 
 ## Scheduler IaC follow-up
 

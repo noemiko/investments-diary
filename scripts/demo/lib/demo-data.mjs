@@ -2,6 +2,16 @@ import { createHash } from "node:crypto";
 export const DEMO_EMAIL = "wallet-demo@example.test";
 export const DEMO_MARKER = "wallet-performance-v1";
 const LINKED_POSITION_INDEX = 11;
+// Pending selection metadata only; currency and timezone come from the first explicit download.
+const APPLE_TARGET = {
+  provider: "yahoo",
+  symbol: "AAPL",
+  exchange: "NMS",
+  listing_name: "Apple Inc.",
+  exchange_name: "NasdaqGS",
+  instrument_type: "EQUITY",
+};
+const TARGET_IDENTITY = "user_id,provider,symbol,exchange,instrument_type";
 export function fixtureId(owner, kind, index) {
   const hex = createHash("sha256").update(`${DEMO_MARKER}:${owner}:${kind}:${index}`).digest("hex");
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
@@ -54,7 +64,9 @@ export function demoFixtures(owner, today) {
       user_id: owner,
       wallet_id: wallets[w].id,
       category_id: categories[i % 4].id,
-      instrument: i === LINKED_POSITION_INDEX ? "AAPL · Demo" : `DEMO-${String(i + 1).padStart(3, "0")}`,
+      // Every holding needs a stock selection. Like migrated drafts, demo holdings select Apple,
+      // and the selection guard labels each one with the selected symbol.
+      instrument: APPLE_TARGET.symbol,
       market_listing_id: i === LINKED_POSITION_INDEX ? listings[0].id : null,
       buy_price: "50",
       buy_date: dayAt(today, -365),
@@ -133,6 +145,27 @@ function checked(result) {
   if (result.error) throw new Error(`Demo database operation failed (${result.error.code ?? "unknown"})`);
   return result.data;
 }
+/**
+ * Create (or reuse) the owner's Apple target and one fresh wallet-bound receipt per wallet, the same
+ * path the new-investment form uses. Receipts expire, so every run creates new ones.
+ */
+export async function demoSelectionReceipts(admin, owner, walletIds) {
+  checked(
+    await admin
+      .from("market_listing_targets")
+      .upsert({ user_id: owner, ...APPLE_TARGET }, { onConflict: TARGET_IDENTITY, ignoreDuplicates: true }),
+  );
+  let query = admin.from("market_listing_targets").select("id").eq("user_id", owner);
+  for (const key of ["provider", "symbol", "exchange", "instrument_type"]) query = query.eq(key, APPLE_TARGET[key]);
+  const targetId = checked(await query.single()).id;
+  const receipts = checked(
+    await admin
+      .from("market_selection_receipts")
+      .insert(walletIds.map((wallet_id) => ({ user_id: owner, wallet_id, target_id: targetId })))
+      .select("id,wallet_id"),
+  );
+  return new Map(receipts.map((receipt) => [receipt.wallet_id, receipt.id]));
+}
 async function all(query) {
   const rows = [];
   for (let from = 0; ; from += 500) {
@@ -205,6 +238,15 @@ export async function seedDemo(
       throw new Error("Reset would affect unrelated listing lookups; no fixtures changed");
     checked(await admin.from("wallet_snapshots").delete().eq("user_id", owner).in("wallet_id", walletIds));
     checked(await admin.from("positions").delete().eq("user_id", owner).in("id", positionIds));
+    // Receipts bind to fixture wallets; a selection's verified cache hint must not block the cache reset.
+    checked(await admin.from("market_selection_receipts").delete().eq("user_id", owner).in("wallet_id", walletIds));
+    checked(
+      await admin
+        .from("market_listing_targets")
+        .update({ cache_id: null })
+        .eq("user_id", owner)
+        .eq("cache_id", fixtures.listings[0].id),
+    );
     checked(await admin.from("market_quote_cache").delete().eq("user_id", owner).eq("id", fixtures.listings[0].id));
     checked(await admin.from("reason_categories").delete().eq("user_id", owner).in("id", categoryIds));
     checked(await admin.from("wallets").delete().eq("user_id", owner).in("id", walletIds));
@@ -220,16 +262,21 @@ export async function seedDemo(
   let listingQuery = admin.from("market_quote_cache").select("id");
   for (const key of identity) listingQuery = listingQuery.eq(key, listing[key]);
   const listingId = checked(await listingQuery.single()).id;
-  const positions = fixtures.positions.map((position, index) =>
-    index === LINKED_POSITION_INDEX ? { ...position, market_listing_id: listingId } : position,
-  );
   // Duplicate keys are ignored, not updated, so normal reruns preserve manual changes.
   for (const [table, rows] of [
     ["wallets", fixtures.wallets],
     ["reason_categories", fixtures.categories],
-    ["positions", positions],
   ])
     checked(await admin.from(table).upsert(rows, { onConflict: "id", ignoreDuplicates: true }));
+  // Selected inserts start unlinked (the guard clears market_listing_id); the repair step below
+  // links the demo AAPL holding to its listing.
+  const receipts = await demoSelectionReceipts(admin, owner, walletIds);
+  const positions = fixtures.positions.map((position) => ({
+    ...position,
+    market_listing_id: null,
+    market_selection_receipt_id: receipts.get(position.wallet_id),
+  }));
+  checked(await admin.from("positions").upsert(positions, { onConflict: "id", ignoreDuplicates: true }));
   // Upgrade older demos without resubmitting manual fields or changing user-selected listings.
   const target = checked(
     await admin

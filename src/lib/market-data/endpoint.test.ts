@@ -101,63 +101,51 @@ describe("authenticated explicit market-price endpoints", () => {
     }
     expect(createMarketPriceService).not.toHaveBeenCalled();
   });
-  it.each(handlers)(
-    "rejects malformed, oversized, non-JSON and forged-metadata requests at $path",
-    async ({ handler, body, operation }) => {
-      for (const bad of [
-        {},
-        { ...body, currency: "USD", exchange: "NMS", timezone: "UTC" },
-        { ...body, positionId: "bad" },
-      ]) {
-        // Empty body is the deliberate all-owned-holdings contract only for download.
-        if (operation === "download" && Object.keys(bad).length === 0) continue;
-        expect((await call(handler, bad)).status).toBe(400);
-      }
-      expect((await call(handler, body, { raw: "{" })).status).toBe(400);
-      expect((await call(handler, body, { raw: JSON.stringify("x".repeat(4097)) })).status).toBe(400);
-      expect((await call(handler, body, { contentType: "text/plain" })).status).toBe(400);
-      expect(service[operation]).not.toHaveBeenCalled();
-    },
-  );
-  it.each(handlers)(
-    "dispatches only the explicitly selected POST action at $path",
-    async ({ handler, body, operation }) => {
-      const response = await call(handler, body);
-      expect(response.status).toBe(200);
-      expect(response.headers.get("cache-control")).toBe("no-store");
-      expect(service[operation]).toHaveBeenCalledOnce();
-      for (const key of ["search", "download", "lookup", "confirm"] as const)
-        if (key !== operation) expect(service[key]).not.toHaveBeenCalled();
-      if (operation === "lookup")
-        expect(service.lookup).toHaveBeenCalledWith(positionId, "AAPL", expect.any(AbortSignal));
-      if (operation === "confirm") expect(service.confirm).toHaveBeenCalledExactlyOnceWith(positionId, lookupId);
-    },
-  );
-  it("rejects invalid query and identifier bounds before a provider call", async () => {
-    expect((await call(search, { positionId, query: "a" })).status).toBe(400);
-    expect((await call(search, { positionId, query: "a".repeat(101) })).status).toBe(400);
-    expect((await call(lookup, { positionId, symbol: "https://provider.test/private" })).status).toBe(400);
+  it("rejects malformed, oversized, non-JSON and forged-metadata download requests", async () => {
+    for (const bad of [{ positionIds: [positionId], currency: "USD" }, { positionIds: ["bad"] }, { positionIds: [] }])
+      expect((await call(download, bad)).status).toBe(400);
+    expect((await call(download, {}, { raw: "{" })).status).toBe(400);
+    expect((await call(download, {}, { raw: JSON.stringify("x".repeat(4097)) })).status).toBe(400);
+    expect((await call(download, {}, { contentType: "text/plain" })).status).toBe(400);
     expect((await call(download, { positionIds: Array.from({ length: 51 }, () => positionId) })).status).toBe(400);
-    expect(service.search).not.toHaveBeenCalled();
-    expect(service.lookup).not.toHaveBeenCalled();
     expect(service.download).not.toHaveBeenCalled();
   });
-  it("maps foreign-position and incompatible-currency service results without leaking metadata", async () => {
-    service.lookup
-      .mockResolvedValueOnce({ ok: false, reason: "not_found" })
-      .mockResolvedValueOnce({ ok: false, reason: "incompatible_currency" });
-    expect((await call(lookup, { positionId, symbol: "PKO.WA" })).status).toBe(404);
-    const incompatible = await call(lookup, { positionId, symbol: "PKO.WA" });
-    expect(incompatible.status).toBe(409);
-    expect(await incompatible.json()).toEqual({ ok: false, reason: "incompatible_currency" });
+  it("dispatches only an explicit Download prices POST, including the all-owned-holdings body", async () => {
+    for (const body of [{ positionIds: [positionId] }, {}]) {
+      const response = await call(download, body);
+      expect(response.status).toBe(200);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+    }
+    expect(service.download).toHaveBeenNthCalledWith(1, [positionId], expect.any(AbortSignal));
+    expect(service.download).toHaveBeenNthCalledWith(2, undefined, expect.any(AbortSignal));
+    for (const key of ["search", "lookup", "confirm"] as const) expect(service[key]).not.toHaveBeenCalled();
+  });
+  it.each(handlers.filter(({ operation }) => operation !== "download"))(
+    "rejects existing-position listing changes at $path with selection_already_set and no provider work",
+    async ({ handler, body }) => {
+      for (const request of [body, {}]) {
+        const response = await call(handler, request);
+        expect(response.status).toBe(409);
+        expect(response.headers.get("cache-control")).toBe("no-store");
+        expect(await response.json()).toEqual({ ok: false, reason: "selection_already_set" });
+      }
+      expect(createClient).not.toHaveBeenCalled();
+      expect(createMarketPriceService).not.toHaveBeenCalled();
+    },
+  );
+  it("maps foreign-position service results without leaking metadata", async () => {
+    service.download.mockResolvedValueOnce({ ok: false, reason: "not_found" });
+    const missing = await call(download, { positionIds: [positionId] });
+    expect(missing.status).toBe(404);
+    expect(await missing.json()).toEqual({ ok: false, reason: "not_found" });
   });
   it("returns recoverable safe unavailability and retry state, reporting unexpected failures once", async () => {
-    service.lookup.mockResolvedValueOnce({ ok: false, reason: "cooldown", retryAfter: "2026-10-30T13:00:00Z" });
-    const cooldown = await call(lookup, { positionId, symbol: "PKO.WA" });
+    service.download.mockResolvedValueOnce({ ok: false, reason: "cooldown", retryAfter: "2026-10-30T13:00:00Z" });
+    const cooldown = await call(download, {});
     expect(cooldown.status).toBe(429);
     expect(await cooldown.json()).toEqual({ ok: false, reason: "cooldown", retryAfter: "2026-10-30T13:00:00Z" });
-    service.search.mockRejectedValue(new Error("PRIVATE_PROVIDER_URL_AND_COOKIE"));
-    const unavailable = await call(search, { positionId, query: "Apple" });
+    service.download.mockRejectedValue(new Error("PRIVATE_PROVIDER_URL_AND_COOKIE"));
+    const unavailable = await call(download, {});
     expect(unavailable.status).toBe(503);
     expect(await unavailable.text()).not.toContain("PRIVATE_PROVIDER");
     expect(reportUnexpected).toHaveBeenCalledOnce();

@@ -4,23 +4,12 @@ import { createClient } from "@/lib/supabase";
 import { createMarketPriceService } from "@/lib/services/market-prices";
 import { reportUnexpected } from "@/lib/observability/reporter";
 
-const uuid = z.uuid();
-const schemas = {
-  download: z.object({ positionIds: z.array(uuid).min(1).max(50).optional() }).strict(),
-  search: z.object({ positionId: uuid, query: z.string().trim().min(2).max(100) }).strict(),
-  lookup: z
-    .object({
-      positionId: uuid,
-      symbol: z
-        .string()
-        .trim()
-        .toUpperCase()
-        .regex(/^[A-Z0-9][A-Z0-9.^=-]{0,49}$/),
-    })
-    .strict(),
-  confirm: z.object({ positionId: uuid, lookupId: uuid }).strict(),
-};
-type Action = keyof typeof schemas;
+const downloadSchema = z.object({ positionIds: z.array(z.uuid()).min(1).max(50).optional() }).strict();
+/**
+ * Existing-position listing search/download/confirm are retired: a holding's stock identity is its
+ * creation-time selection (FR-003/FR-014). Their routes stay so stale clients get a clear 409.
+ */
+type Action = "download" | "search" | "lookup" | "confirm";
 const routes: Record<Action, string> = {
   download: "/dashboard/market-prices/download",
   search: "/dashboard/market-prices/listings/search",
@@ -40,7 +29,7 @@ function status(reason: string) {
   if (["incompatible_currency", "lookup_expired"].includes(reason)) return 409;
   return 503;
 }
-/** A JSON POST contract for the Phase 4 buttons; no GET handler can invoke provider work. */
+/** A JSON POST contract for Download prices; no GET handler can invoke provider work. */
 export function marketPriceEndpoint(action: Action): APIRoute {
   return async (context: APIContext) => {
     const request = context.request;
@@ -50,6 +39,8 @@ export function marketPriceEndpoint(action: Action): APIRoute {
     if (request.headers.get("origin") !== new URL(request.url).origin)
       return json({ ok: false, reason: "forbidden" }, 403);
     if (request.headers.get("sec-fetch-site") === "cross-site") return json({ ok: false, reason: "forbidden" }, 403);
+    // Selections cannot be edited; a wrong holding is deleted and recreated. No provider work.
+    if (action !== "download") return json({ ok: false, reason: "selection_already_set" }, 409);
     if (request.headers.get("content-type")?.split(";", 1)[0].trim() !== "application/json")
       return json({ ok: false, reason: "invalid_request" }, 400);
     let body: unknown;
@@ -61,28 +52,10 @@ export function marketPriceEndpoint(action: Action): APIRoute {
       return json({ ok: false, reason: "invalid_request" }, 400);
     }
     try {
-      const client = createClient(request.headers, context.cookies);
-      const service = createMarketPriceService(client, context.locals.user.id);
-      const signal = request.signal;
-      // Parse separately so each action keeps its exact, strict body type.
-      let result;
-      if (action === "download") {
-        const parsed = schemas.download.safeParse(body);
-        if (!parsed.success) return json({ ok: false, reason: "invalid_request" }, 400);
-        result = await service.download(parsed.data.positionIds, signal);
-      } else if (action === "search") {
-        const parsed = schemas.search.safeParse(body);
-        if (!parsed.success) return json({ ok: false, reason: "invalid_request" }, 400);
-        result = await service.search(parsed.data.positionId, parsed.data.query, signal);
-      } else if (action === "lookup") {
-        const parsed = schemas.lookup.safeParse(body);
-        if (!parsed.success) return json({ ok: false, reason: "invalid_request" }, 400);
-        result = await service.lookup(parsed.data.positionId, parsed.data.symbol, signal);
-      } else {
-        const parsed = schemas.confirm.safeParse(body);
-        if (!parsed.success) return json({ ok: false, reason: "invalid_request" }, 400);
-        result = await service.confirm(parsed.data.positionId, parsed.data.lookupId);
-      }
+      const parsed = downloadSchema.safeParse(body);
+      if (!parsed.success) return json({ ok: false, reason: "invalid_request" }, 400);
+      const service = createMarketPriceService(createClient(request.headers, context.cookies), context.locals.user.id);
+      const result = await service.download(parsed.data.positionIds, request.signal);
       return json(result, result.ok ? 200 : status(result.reason));
     } catch (error) {
       reportUnexpected(error, { operation: "marketPrices", route: routes[action] });

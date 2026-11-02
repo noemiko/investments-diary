@@ -2,9 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { createClient } from "@/lib/supabase";
 import type { MarketQuote, MarketQuoteOutcome } from "@/types";
 import { createMarketPriceService, type MarketDataProvider } from "./market-prices";
-import type { LookupReceipt, PriceCache, PriceRepository } from "./market-price-repository";
+import type { PriceCache, PriceRepository } from "./market-price-repository";
 import type { PendingTarget, TargetRepository } from "./market-target-repository";
-import { reportUnexpected } from "@/lib/observability/reporter";
 vi.mock("@/lib/observability/reporter", () => ({
   reportUnexpected: vi.fn(),
   serviceError: (where: string, error: unknown) => new Error(where, { cause: error }),
@@ -57,18 +56,9 @@ function quote(row = listing()): MarketQuote {
 }
 function fixture(rows = [listing()], targetRows: PendingTarget[] = []) {
   const caches = new Map(rows.map((r) => [r.id, { ...r }]));
-  let receipt: LookupReceipt = {
-    id: "receipt",
-    cacheId: null,
-    validUntil: null,
-    cooldownUntil: null,
-    leaseUntil: null,
-  };
   const repository: PriceRepository = {
     downloadListings: vi.fn<PriceRepository["downloadListings"]>(() => Promise.resolve(rows)),
-    position: vi.fn<PriceRepository["position"]>(() => Promise.resolve({ currency: "USD" as const })),
     cache: vi.fn<PriceRepository["cache"]>((id) => Promise.resolve(caches.get(id) ?? null)),
-    candidate: vi.fn<PriceRepository["candidate"]>(() => Promise.resolve(null)),
     ensureCache: vi.fn<PriceRepository["ensureCache"]>((q) => {
       const row = { ...listing(), ...q.listing, price: null };
       caches.set(row.id, row);
@@ -89,15 +79,6 @@ function fixture(rows = [listing()], targetRows: PendingTarget[] = []) {
       else if (row) row.cooldownUntil = result.ok ? null : (result.retryAfter ?? "2026-10-30T12:15:00Z");
       return Promise.resolve(true);
     }),
-    receipt: vi.fn<PriceRepository["receipt"]>(() => Promise.resolve(receipt)),
-    readReceipt: vi.fn<PriceRepository["readReceipt"]>(() => Promise.resolve(receipt)),
-    claimLookup: vi.fn<PriceRepository["claimLookup"]>(() => Promise.resolve("lookup-token")),
-    finishLookup: vi.fn<PriceRepository["finishLookup"]>((_id, _token, cacheId, _retryAfter, release) => {
-      if (cacheId) receipt = { ...receipt, cacheId, validUntil: "2026-10-30T12:30:00Z" };
-      else if (!release) receipt = { ...receipt, cooldownUntil: "2026-10-30T12:15:00Z" };
-      return Promise.resolve(true);
-    }),
-    confirm: vi.fn<PriceRepository["confirm"]>(() => Promise.resolve(true)),
   };
   const provider: MarketDataProvider = {
     searchListings: vi.fn<MarketDataProvider["searchListings"]>(() => Promise.resolve({ ok: true, listings: [] })),
@@ -348,107 +329,5 @@ describe("explicit quote download orchestration", () => {
     expect(await service.download(["foreign"])).toEqual({ ok: false, reason: "not_found" });
     expect(provider.fetchQuotes).not.toHaveBeenCalled();
     expect(repository.claim).not.toHaveBeenCalled();
-  });
-});
-describe("search and validated listing receipts", () => {
-  it("searches metadata on explicit submission without quotes or persistence, preserving safe failure", async () => {
-    const { service, provider, repository } = fixture();
-    vi.mocked(provider.searchListings).mockResolvedValue({ ok: false, reason: "provider_unavailable", status: 503 });
-    expect(await service.search("position", "Apple")).toEqual({
-      ok: false,
-      reason: "provider_unavailable",
-      status: 503,
-    });
-    expect(provider.confirmListing).not.toHaveBeenCalled();
-    expect(provider.fetchQuotes).not.toHaveBeenCalled();
-    expect(repository.receipt).not.toHaveBeenCalled();
-    expect(reportUnexpected).toHaveBeenCalledWith(expect.any(Error), { operation: "marketPrices" });
-  });
-  it("requires an owned open position before candidate quotes", async () => {
-    const { service, provider, repository } = fixture();
-    vi.mocked(repository.position).mockResolvedValueOnce(null);
-    expect(await service.lookup("foreign", "STOCK0")).toEqual({ ok: false, reason: "not_found" });
-    expect(provider.confirmListing).not.toHaveBeenCalled();
-  });
-  it("persists normalized lookup data and confirms through a position-bound receipt without another quote", async () => {
-    const { service, provider, repository } = fixture();
-    const result = await service.lookup("position", "STOCK0");
-    expect(result).toMatchObject({
-      ok: true,
-      lookupId: "receipt",
-      listing: { symbol: "STOCK0", exchange: "NMS", currency: "USD", timezone: "UTC" },
-    });
-    expect(repository.receipt).toHaveBeenCalledWith("position", "STOCK0");
-    expect(await service.confirm("position", "receipt")).toEqual({ ok: true });
-    expect(repository.confirm).toHaveBeenCalledWith("position", "receipt");
-    expect(provider.confirmListing).toHaveBeenCalledOnce();
-    const lookupRequest = vi.mocked(provider.confirmListing).mock.calls[0];
-    expect(lookupRequest[0]).toBe("STOCK0");
-    expect(lookupRequest[1]?.signal).toBeInstanceOf(AbortSignal);
-    expect(provider.fetchQuotes).not.toHaveBeenCalled();
-  });
-  it("rejects incompatible lookup currency without creating or linking a guessed cache identity", async () => {
-    const { service, provider, repository } = fixture();
-    vi.mocked(provider.confirmListing).mockResolvedValue({
-      ok: true,
-      quote: { ...quote(), listing: { ...quote().listing, currency: "PLN" } },
-    });
-    expect(await service.lookup("position", "STOCK0")).toEqual({ ok: false, reason: "incompatible_currency" });
-    expect(repository.ensureCache).not.toHaveBeenCalled();
-    expect(repository.confirm).not.toHaveBeenCalled();
-  });
-  it("honors candidate receipt cooldown before network and known canonical cache cooldown before another lookup", async () => {
-    const { service, repository, provider } = fixture();
-    vi.mocked(repository.claimLookup).mockResolvedValueOnce(null);
-    vi.mocked(repository.readReceipt).mockResolvedValue({
-      id: "receipt",
-      cacheId: null,
-      validUntil: null,
-      cooldownUntil: "2026-10-30T13:00:00Z",
-      leaseUntil: null,
-    });
-    expect(await service.lookup("position", "STOCK0")).toMatchObject({ ok: false, reason: "cooldown" });
-    vi.mocked(repository.candidate).mockResolvedValue({ ...listing(), cooldownUntil: "2026-10-30T13:00:00Z" });
-    vi.mocked(repository.cache).mockResolvedValue({ ...listing(), cooldownUntil: "2026-10-30T13:00:00Z" });
-    vi.mocked(repository.claim).mockResolvedValue(null);
-    expect(await service.lookup("position", "STOCK0")).toMatchObject({ ok: false, reason: "cooldown" });
-    expect(repository.finishLookup).toHaveBeenCalledWith("receipt", "lookup-token", undefined, undefined, true);
-    expect(provider.confirmListing).not.toHaveBeenCalled();
-    expect(provider.fetchQuotes).not.toHaveBeenCalled();
-  });
-  it("retains known quote and records both cooldowns on candidate provider failure", async () => {
-    const { service, provider, repository, caches } = fixture();
-    vi.mocked(repository.candidate).mockResolvedValue(listing());
-    vi.mocked(provider.fetchQuotes).mockResolvedValue({ ok: false, reason: "timeout" });
-    expect(await service.lookup("position", "STOCK0")).toMatchObject({ ok: false, reason: "timeout" });
-    expect(repository.finish).toHaveBeenCalledWith("cache-0", "token-cache-0", { ok: false, reason: "timeout" });
-    expect(repository.finishLookup).toHaveBeenCalledWith("receipt", "lookup-token", undefined, undefined);
-    expect(caches.get("cache-0")?.price).toBe("10");
-  });
-  it("rejects expired or substituted receipts and changed wallet denomination without any provider call", async () => {
-    const { service, provider, repository } = fixture();
-    vi.mocked(repository.readReceipt)
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({
-        id: "receipt",
-        cacheId: "cache-0",
-        validUntil: "2026-10-30T11:59:59Z",
-        cooldownUntil: null,
-        leaseUntil: null,
-      })
-      .mockResolvedValue({
-        id: "receipt",
-        cacheId: "cache-0",
-        validUntil: "2026-10-30T13:00:00Z",
-        cooldownUntil: null,
-        leaseUntil: null,
-      });
-    expect(await service.confirm("other-position", "receipt")).toEqual({ ok: false, reason: "not_found" });
-    expect(await service.confirm("position", "receipt")).toEqual({ ok: false, reason: "lookup_expired" });
-    vi.mocked(repository.position).mockResolvedValue({ currency: "EUR" });
-    expect(await service.confirm("position", "receipt")).toEqual({ ok: false, reason: "incompatible_currency" });
-    expect(repository.confirm).not.toHaveBeenCalled();
-    expect(provider.confirmListing).not.toHaveBeenCalled();
-    expect(provider.fetchQuotes).not.toHaveBeenCalled();
   });
 });

@@ -14,17 +14,20 @@ The user must choose a Yahoo stock/ETF when creating an investment, then save wi
 
 ## Key Decisions Made
 
-| Decision          | Choice                                                                                           | Source          |
-| ----------------- | ------------------------------------------------------------------------------------------------ | --------------- |
-| Provider          | Yahoo through pinned `yahoo-finance2@4.0.5`, subject to feasibility gate                         | Research / Plan |
-| Price use         | Position results, wallet totals, and future observations                                         | User            |
-| Refresh           | Explicit **Download prices** click only; no successful-download age restriction                  | User (revised)  |
-| Listing identity  | Required Yahoo selection at creation; quote and currency verification on explicit download       | User (revised)  |
-| Currency          | One currency per wallet; USD, PLN or EUR; unset existing wallets become USD; no conversion       | User            |
-| Manual correction | Temporary override until a quote’s market time is strictly later than the correction’s save time | User            |
-| Provider failure  | Retain valid automatic quote; manual fallback if none exists                                     | User            |
-| Existing holdings | Allow reassignment between owned wallets; preserve past observations                             | User            |
-| Shared selection  | Database view consumed by application reads and snapshot capture                                 | Plan            |
+| Decision          | Choice                                                                                                                                 | Source            |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| Provider          | Yahoo through pinned `yahoo-finance2@4.0.5`, subject to feasibility gate                                                               | Research / Plan   |
+| Price use         | Position results, wallet totals, and future observations                                                                               | User              |
+| Refresh           | Explicit **Download prices** click only; no successful-download age restriction                                                        | User (revised)    |
+| Listing identity  | Required Yahoo selection at creation; quote and currency verification on explicit download                                             | User (revised)    |
+| Currency          | One currency per wallet; USD, PLN or EUR; unset existing wallets become USD; no conversion                                             | User              |
+| Manual correction | Temporary override until a quote’s market time is strictly later than the correction’s save time                                       | User              |
+| Provider failure  | Retain valid automatic quote; manual fallback if none exists                                                                           | User              |
+| Existing holdings | Allow reassignment between owned wallets; preserve past observations                                                                   | User              |
+| Shared selection  | Database view consumed by application reads and snapshot capture                                                                       | Plan              |
+| Recovery          | Additive manual-selection view migration; capture unchanged; no old-deployment rollback                                                | User (2026-11-02) |
+| Existing drafts   | Stock selection required in the DB; every existing investment assigned Apple (AAPL/NMS) by migration; old listing-confirm flow retired | User (2026-11-02) |
+| Deployed check    | Owner-run schema-first production release, then AAPL/PKO.WA walkthrough on production (Phase 6)                                        | User (2026-11-02) |
 
 ## Scope
 
@@ -38,17 +41,18 @@ The user must choose a Yahoo stock/ETF when creating an investment, then save wi
 
 ## Phases at a Glance
 
-| Phase | Deliverable                                  | Main risk                            |
-| ----- | -------------------------------------------- | ------------------------------------ |
-| 1     | Provider validation and documented contracts | Yahoo access or GPW coverage fails   |
-| 2     | Persistence and shared valuation selection   | Ownership or precedence errors       |
-| 3     | Bounded download and search services         | Throttling and partial responses     |
-| 4     | UI, reassignment, and valuation integration  | Inconsistent results across surfaces |
-| 5     | Verification and release preparation         | Migration or deployment differences  |
+| Phase | Deliverable                                                                | Main risk                                                                   |
+| ----- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| 1     | Provider validation and documented contracts                               | Yahoo access or GPW coverage fails                                          |
+| 2     | Persistence and shared valuation selection                                 | Ownership or precedence errors                                              |
+| 3     | Bounded download and search services                                       | Throttling and partial responses                                            |
+| 4     | UI, reassignment, and valuation integration                                | Inconsistent results across surfaces                                        |
+| 5     | Release readiness: local gates, tested recovery template, approved runbook | Regression gap or unreviewed release step                                   |
+| 6     | Owner-run production release and AAPL/PKO.WA acceptance                    | Old build serving the new schema; first full deployed check is on live data |
 
-**Prerequisites:** local Supabase, Node 24, and access to a controlled deployment environment for provider validation.
+**Prerequisites:** local Supabase, Node 24, and access to a controlled deployment environment for provider validation. Phase 5 ends with the owner's hosted `supabase db push --dry-run` review; the agent never connects to production. Phase 6 also needs a backup, a maintenance window away from 00:00 UTC and the owner's authenticated Supabase/Vercel sessions.
 
-**Estimated effort:** approximately 5–8 focused sessions, conditional on provider validation.
+**Estimated effort:** approximately 5–8 focused sessions for Phases 1–5, plus one owner-run release window for Phase 6.
 
 ## Open Risks & Assumptions
 
@@ -56,6 +60,8 @@ The user must choose a Yahoo stock/ETF when creating an investment, then save wi
 - Price age depends on provider delay and when the user last clicked **Download prices**; there is no automatic freshness guarantee.
 - Midnight observations use available saved values, potentially old when the user has not downloaded prices recently.
 - A failed download retains the previous quote. The existing 15-minute failure cooldown still applies, but never schedules a retry by itself.
+- The denomination migration breaks pre-feature builds. The release needs a maintenance boundary, and no earlier production deployment is a rollback target.
+- There is no Preview database, so the first full deployed check runs on production. The tested recovery template is the safety net.
 
 ## Success Criteria
 

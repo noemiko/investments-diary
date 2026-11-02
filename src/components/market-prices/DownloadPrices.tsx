@@ -54,11 +54,6 @@ export function DownloadPrices({ enabled }: { enabled: boolean }) {
       <p className="text-muted-foreground text-xs">
         Prices download only when you click. Opening or reloading a page uses saved prices.
       </p>
-      {!enabled && (
-        <p className="text-muted-foreground text-sm">
-          Choose Link stock listing next to an open investment below, then search, download and confirm its listing.
-        </p>
-      )}
       <div role="status" aria-live="polite" className="text-sm">
         {message}
       </div>

@@ -71,119 +71,117 @@ test("price controls fetch only on explicit actions and retain unsaved manual/sa
       .select("id")
       .single();
     if (cache.error) throw cache.error;
+    // Every holding needs a stock selection, created through the owner/wallet-bound receipt path.
+    const receiptFor = async (symbol: string) => {
+      const selection = await admin
+        .from("market_listing_targets")
+        .insert({
+          user_id: owner,
+          provider: "yahoo",
+          symbol,
+          exchange: "NMS",
+          listing_name: `${symbol} fixture`,
+          exchange_name: "Nasdaq",
+          instrument_type: "EQUITY",
+        })
+        .select("id")
+        .single();
+      if (selection.error) throw selection.error;
+      const receipt = await admin
+        .from("market_selection_receipts")
+        .insert({ user_id: owner, wallet_id: wallet.data.id, target_id: selection.data.id })
+        .select("id")
+        .single();
+      if (receipt.error) throw receipt.error;
+      return receipt.data.id;
+    };
     const position = await admin
       .from("positions")
       .insert({
         user_id: owner,
         wallet_id: wallet.data.id,
         category_id: category.data.id,
-        instrument: "Original label",
+        instrument: "AAPL",
+        market_selection_receipt_id: await receiptFor("AAPL"),
         buy_date: "2026-01-01",
         buy_price: "10",
         quantity: "2",
         current_price: "11",
-        market_listing_id: cache.data.id,
         price_date: "2026-01-02",
         reason_text: "Original reasoning",
       })
       .select("id")
       .single();
     if (position.error) throw position.error;
-    const unlinked = await admin
+    // A selected insert starts unlinked; link the verified cache as a download would.
+    expect(
+      (await admin.from("positions").update({ market_listing_id: cache.data.id }).eq("id", position.data.id)).error,
+    ).toBeNull();
+    const pending = await admin
       .from("positions")
       .insert({
         user_id: owner,
         wallet_id: wallet.data.id,
         category_id: category.data.id,
-        instrument: "Unlinked holding",
+        instrument: "MSFT",
+        market_selection_receipt_id: await receiptFor("MSFT"),
         buy_date: "2026-01-01",
         buy_price: "10",
       })
       .select("id")
       .single();
-    if (unlinked.error) throw unlinked.error;
+    if (pending.error) throw pending.error;
+    const baseURL = String(info.project.use.baseURL);
     expect(
       (
         await page.request.post("/api/auth/signin", {
           form: { email, password },
-          headers: { Origin: String(info.project.use.baseURL) },
+          headers: { Origin: baseURL },
           maxRedirects: 0,
         })
       ).status(),
     ).toBe(302);
+    // A holding's stock identity is its creation-time selection: existing-position listing
+    // search, download and confirmation are rejected before any provider work.
+    for (const [path, data] of [
+      ["/dashboard/market-prices/listings/search", { positionId: pending.data.id, query: "Apple" }],
+      ["/dashboard/market-prices/listings/download", { positionId: pending.data.id, symbol: "AAPL" }],
+      [
+        "/dashboard/market-prices/listings/confirm",
+        { positionId: pending.data.id, lookupId: "00000000-0000-4000-8000-000000000001" },
+      ],
+    ] as const) {
+      const rejected = await page.request.post(path, { data, headers: { Origin: baseURL } });
+      expect(rejected.status()).toBe(409);
+      expect(await rejected.json()).toEqual({ ok: false, reason: "selection_already_set" });
+    }
     const actions: string[] = [];
-    let unavailable = false;
     let releaseLookup: () => void = () => undefined;
     let lookupPending: Promise<void> | null = null;
-    const candidate = {
-      symbol: "AAPL",
-      name: "Apple",
-      exchange: "NMS",
-      exchangeName: "Nasdaq",
-      instrumentType: "EQUITY",
-    };
-    const listing = { ...candidate, currency: "USD", timezone: "America/New_York" };
     await page.route("**/dashboard/market-prices/**", async (route) => {
       const path = new URL(route.request().url()).pathname;
       actions.push(path);
       expect(route.request().method()).toBe("POST");
-      if (path.endsWith("/search")) {
-        await route.fulfill({ json: { ok: true, listings: [candidate] } });
-        return;
-      }
-      if (path.endsWith("/confirm")) {
-        await route.fulfill({ json: { ok: true } });
-        return;
-      }
       if (lookupPending) await lookupPending;
-      if (path === "/dashboard/market-prices/download") {
-        await route.fulfill({
-          json: {
-            ok: true,
-            results: [
-              { listingId: cache.data.id, symbol: "AAPL", outcome: "timeout", retryAfter: "2099-01-01T00:00:00Z" },
-            ],
-          },
-        });
-        return;
-      }
-      if (unavailable) {
-        await route.fulfill({
-          status: 503,
-          json: { ok: false, reason: "timeout", retryAfter: "2099-01-01T00:00:00Z" },
-        });
-        return;
-      }
       await route.fulfill({
         json: {
           ok: true,
-          lookupId: "00000000-0000-4000-8000-000000000001",
-          listing,
-          quote: {
-            provider: "yahoo",
-            listing,
-            price: "12",
-            marketAt: "2026-01-02T12:00:00Z",
-            marketDate: "2026-01-02",
-            fetchedAt: "2026-01-02T12:01:00Z",
-            marketState: "CLOSED",
-            delayMinutes: 15,
-            sourceIntervalMinutes: 15,
-            sourceName: null,
-          },
+          results: [
+            { listingId: cache.data.id, symbol: "AAPL", outcome: "timeout", retryAfter: "2099-01-01T00:00:00Z" },
+          ],
         },
       });
     });
     await page.goto("/dashboard");
-    await page.getByRole("link", { name: "Link stock listing for Unlinked holding", exact: true }).click();
-    await expect(page).toHaveURL(`/dashboard/positions/${unlinked.data.id}#stock-listing`);
-    await expect(page.locator("#stock-listing")).toBeInViewport();
-    expect(actions).toEqual([]);
+    await expect(page.getByRole("link", { name: /Link stock listing/ })).toHaveCount(0);
+    await expect(page.getByText(/Choose Link stock listing/)).toHaveCount(0);
+    await page.goto(`/dashboard/positions/${pending.data.id}`);
+    await expect(page.locator("#stock-listing")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Search listings", exact: true })).toHaveCount(0);
     await page.goto(`/dashboard/positions/${position.data.id}`);
-    await expect(page.getByRole("button", { name: "Search listings", exact: true })).toBeVisible();
     await page.reload();
     await waitForHydration(page);
-    await page.getByLabel("Company or symbol").fill("Apple");
+    await expect(page.locator("#stock-listing")).toHaveCount(0);
     await page.evaluate(() => {
       window.dispatchEvent(new Event("focus"));
       document.dispatchEvent(new Event("visibilitychange"));
@@ -191,39 +189,6 @@ test("price controls fetch only on explicit actions and retain unsaved manual/sa
     expect(actions).toEqual([]);
     await page.getByLabel("Price (per share)", { exact: true }).fill("42.12345678");
     await page.getByLabel("Sell price (per share)", { exact: true }).fill("67.2");
-    await page.getByRole("button", { name: "Search listings", exact: true }).click();
-    await expect(page.getByRole("button", { name: "Download prices for AAPL", exact: true })).toBeVisible();
-    expect(actions).toEqual(["/dashboard/market-prices/listings/search"]);
-    lookupPending = new Promise<void>((resolve) => {
-      releaseLookup = resolve;
-    });
-    await page.getByRole("button", { name: "Download prices for AAPL", exact: true }).evaluate((button) => {
-      (button as HTMLButtonElement).click();
-      (button as HTMLButtonElement).click();
-    });
-    await expect(page.getByRole("button", { name: "Download prices for AAPL", exact: true })).toBeDisabled();
-    releaseLookup();
-    lookupPending = null;
-    await expect(page.getByRole("button", { name: "Confirm listing", exact: true })).toBeVisible();
-    expect(actions.filter((path) => path.endsWith("/download"))).toHaveLength(1);
-    await expect(page.getByLabel("Price (per share)", { exact: true })).toHaveValue("42.12345678");
-    await expect(page.getByLabel("Sell price (per share)", { exact: true })).toHaveValue("67.2");
-    await page.getByRole("button", { name: "Confirm listing", exact: true }).click();
-    await expect(
-      page.getByText(
-        "Listing confirmed. The result uses the saved price selected by the diary; manual corrections may still take precedence.",
-      ),
-    ).toBeVisible();
-    expect(actions.filter((path) => path.endsWith("/download"))).toHaveLength(1);
-    await expect(page.getByLabel("Price (per share)", { exact: true })).toHaveValue("42.12345678");
-    await expect(page.locator('[data-price-refresh="position-result"]')).toContainText("+10.00%");
-    // The stubbed candidate price is 12, but the saved database selection remains 11.
-    await expect(page.locator('[data-price-refresh="position-result"]')).not.toContainText("+20.00%");
-    unavailable = true;
-    await page.getByRole("button", { name: "Download prices for AAPL", exact: true }).click();
-    await expect(page.getByText(/The provider did not respond in time/)).toBeVisible();
-    await expect(page.getByLabel("Price (per share)", { exact: true })).toHaveValue("42.12345678");
-    await expect(page.getByLabel("Sell price (per share)", { exact: true })).toHaveValue("67.2");
     await expect(page.locator('[data-price-refresh="position-result"]')).toContainText("+10.00%");
     await page.getByLabel("Target wallet", { exact: true }).selectOption(target.data.id);
     await page.getByRole("button", { name: "Move position", exact: true }).click();
@@ -268,7 +233,7 @@ test("price controls fetch only on explicit actions and retain unsaved manual/sa
       page.getByText("Download finished. Values below use the saved prices selected by the diary.", { exact: true }),
     ).toBeVisible();
     expect(actions).toEqual(["/dashboard/market-prices/download"]);
-    await expect(page.getByRole("row").filter({ hasText: "Original label" })).toContainText("+10.00%");
+    await expect(page.getByRole("row").filter({ hasText: "AAPL" })).toContainText("+10.00%");
     const retained = await admin.from("market_quote_cache").select("price::text").eq("id", cache.data.id).single();
     expect(retained.error).toBeNull();
     expect(retained.data?.price).toBe("11.00000000");

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
-import { assertLocal, demoFixtures, demoSnapshots, seedDemo } from "../lib/demo-data.mjs";
+import { assertLocal, demoFixtures, demoSelectionReceipts, demoSnapshots, seedDemo } from "../lib/demo-data.mjs";
 test("nonlocal origins rejected and synthetic latest totals agree with fixture arithmetic", () => {
   for (const url of ["https://localhost", "https://example.com", "http://127.0.0.1.evil.test"])
     assert.throws(() => assertLocal(url));
@@ -11,7 +11,8 @@ test("nonlocal origins rejected and synthetic latest totals agree with fixture a
   assert.equal(f.positions.length, 100);
   assert.equal(f.wallets.length, 5);
   const linked = f.positions[11];
-  assert.equal(linked.instrument, "AAPL · Demo");
+  // Every demo holding selects Apple; the selection guard labels it with the symbol.
+  assert.ok(f.positions.every((p) => p.instrument === "AAPL"));
   assert.equal(linked.market_listing_id, f.listings[0].id);
   assert.equal(linked.current_price, null);
   assert.equal(linked.sell_price, null);
@@ -130,13 +131,19 @@ test("local demo creation, preservation, repair, reset, unrelated references and
     await seedDemo(admin, password, { email, reset: true, today: "2026-10-29" });
     assert.equal((await readPosition()).market_listing_id, f.listings[0].id);
     assert.equal((await readPosition()).current_price, null);
-    assert.equal((await readPosition()).instrument, "AAPL · Demo");
+    assert.equal((await readPosition()).instrument, "AAPL");
     assert.equal((await readListing(alternate.id)).symbol, "MSFT");
     assert.equal(
       ok(await admin.from("positions").select("instrument").eq("id", f.positions[0].id).single()).instrument,
-      "DEMO-001",
+      "AAPL",
     );
-    const extra = { ...f.positions[1], id: randomUUID(), instrument: "Unrelated manually added" };
+    const receiptFor = async (walletId) => (await demoSelectionReceipts(admin, owner, [walletId])).get(walletId);
+    const extra = {
+      ...f.positions[1],
+      id: randomUUID(),
+      instrument: "Unrelated manually added",
+      market_selection_receipt_id: await receiptFor(f.positions[1].wallet_id),
+    };
     ok(await admin.from("positions").insert(extra));
     await assert.rejects(seedDemo(admin, password, { email, reset: true }), /unrelated/);
     assert.equal(ok(await admin.from("positions").select("id").eq("id", extra.id)).length, 1);
@@ -152,8 +159,12 @@ test("local demo creation, preservation, repair, reset, unrelated references and
       wallet_id: unrelatedWallet.id,
       category_id: unrelatedCategory.id,
       instrument: "Unrelated linked stock",
+      market_listing_id: null,
+      market_selection_receipt_id: await receiptFor(unrelatedWallet.id),
     };
     ok(await admin.from("positions").insert(outside));
+    // A selected insert starts unlinked; link the fixture cache as a confirmed listing would.
+    ok(await admin.from("positions").update({ market_listing_id: f.listings[0].id }).eq("id", outside.id));
     const beforeRefusal = await readPosition();
     await assert.rejects(seedDemo(admin, password, { email, reset: true }), /unrelated/);
     assert.deepEqual(await readPosition(), beforeRefusal);

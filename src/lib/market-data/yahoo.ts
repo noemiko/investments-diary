@@ -39,14 +39,14 @@ interface AdapterOptions {
 
 class RequestFailure extends Error {
   readonly reason: MarketDataFailureReason;
+  readonly status?: number;
+  readonly retryAfter?: string;
 
-  constructor(
-    reason: MarketDataFailureReason,
-    readonly status?: number,
-    readonly retryAfter?: string,
-  ) {
+  constructor(reason: MarketDataFailureReason, status?: number, retryAfter?: string) {
     super("Market data request did not complete");
     this.reason = reason;
+    this.status = status;
+    this.retryAfter = retryAfter;
   }
 }
 

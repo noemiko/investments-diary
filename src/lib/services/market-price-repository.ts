@@ -17,33 +17,13 @@ export interface PriceCache extends MarketListing {
   cooldownUntil: string | null;
   leaseUntil: string | null;
 }
-export interface LookupReceipt {
-  id: string;
-  cacheId: string | null;
-  validUntil: string | null;
-  cooldownUntil: string | null;
-  leaseUntil: string | null;
-}
 export interface PriceRepository {
   downloadListings: (positionIds?: string[]) => Promise<PriceCache[] | null>;
-  position: (id: string) => Promise<{ currency: MarketCurrency } | null>;
   cache: (id: string) => Promise<PriceCache | null>;
-  candidate: (symbol: string, currency: MarketCurrency) => Promise<PriceCache | null>;
   ensureCache: (quote: MarketQuote) => Promise<PriceCache>;
   claim: (id: string) => Promise<string | null>;
   release: (id: string, token: string) => Promise<void>;
   finish: (id: string, token: string, result: MarketQuoteOutcome) => Promise<boolean>;
-  receipt: (positionId: string, symbol: string) => Promise<LookupReceipt>;
-  readReceipt: (positionId: string, id: string) => Promise<LookupReceipt | null>;
-  claimLookup: (id: string) => Promise<string | null>;
-  finishLookup: (
-    id: string,
-    token: string,
-    cacheId?: string,
-    retryAfter?: string,
-    release?: boolean,
-  ) => Promise<boolean>;
-  confirm: (positionId: string, receiptId: string) => Promise<boolean | "incompatible_currency">;
 }
 
 const cacheColumns =
@@ -67,22 +47,6 @@ interface CacheRow {
   source_name: string | null;
   cooldown_until: string | null;
   lease_until: string | null;
-}
-const receiptColumns = "id,cache_id,valid_until,cooldown_until,lease_until";
-function receiptRow(row: {
-  id: string;
-  cache_id: string | null;
-  valid_until: string | null;
-  cooldown_until: string | null;
-  lease_until: string | null;
-}): LookupReceipt {
-  return {
-    id: row.id,
-    cacheId: row.cache_id,
-    validUntil: row.valid_until,
-    cooldownUntil: row.cooldown_until,
-    leaseUntil: row.lease_until,
-  };
 }
 function currency(value: string): MarketCurrency {
   if (value === "USD" || value === "PLN" || value === "EUR") return value;
@@ -159,34 +123,7 @@ export function createPriceRepository(client: ReturnType<typeof createClient>, u
       if (rows.length !== ids.length) throw new Error("Incomplete market listing data");
       return rows;
     },
-    async position(id) {
-      const { data, error } = await client
-        .from("positions")
-        .select("id,wallets!positions_wallet_fkey(currency,deleted_at)")
-        .eq("user_id", userId)
-        .eq("id", id)
-        .is("deleted_at", null)
-        .is("sell_price", null)
-        .is("sell_date", null)
-        .maybeSingle();
-      if (error) return fail(error);
-      return data?.wallets.deleted_at === null ? { currency: currency(data.wallets.currency) } : null;
-    },
     cache,
-    async candidate(symbol, denomination) {
-      const { data, error } = await client
-        .from("market_quote_cache")
-        .select(cacheColumns)
-        .eq("user_id", userId)
-        .eq("symbol", symbol)
-        .eq("currency", denomination)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle()
-        .overrideTypes<CacheRow | null, { merge: false }>();
-      if (error) return fail(error);
-      return data ? cacheRow(data) : null;
-    },
     async ensureCache(quote) {
       const l = quote.listing;
       const row = {
@@ -254,60 +191,6 @@ export function createPriceRepository(client: ReturnType<typeof createClient>, u
           : {}),
         ...(!result.ok && result.retryAfter ? { in_retry_after: result.retryAfter } : {}),
       });
-      if (error) return fail(error);
-      return data;
-    },
-    async receipt(positionId, symbol) {
-      const inserted = await client
-        .from("market_listing_lookups")
-        .insert({ user_id: userId, position_id: positionId, symbol })
-        .select(receiptColumns)
-        .single();
-      if (!inserted.error) return receiptRow(inserted.data);
-      if (inserted.error.code !== "23505") return fail(inserted.error);
-      const { data, error } = await client
-        .from("market_listing_lookups")
-        .select(receiptColumns)
-        .eq("user_id", userId)
-        .eq("position_id", positionId)
-        .eq("symbol", symbol)
-        .single();
-      if (error) return fail(error);
-      return receiptRow(data);
-    },
-    async readReceipt(positionId, id) {
-      const { data, error } = await client
-        .from("market_listing_lookups")
-        .select(receiptColumns)
-        .eq("user_id", userId)
-        .eq("position_id", positionId)
-        .eq("id", id)
-        .maybeSingle();
-      if (error) return fail(error);
-      return data ? receiptRow(data) : null;
-    },
-    async claimLookup(id) {
-      const { data, error } = await client.rpc("claim_listing_lookup", { in_lookup_id: id });
-      if (error) return fail(error);
-      return data;
-    },
-    async finishLookup(id, token, cacheId, retryAfter, release = false) {
-      const { data, error } = await client.rpc("finish_listing_lookup", {
-        in_lookup_id: id,
-        in_token: token,
-        ...(cacheId ? { in_cache_id: cacheId } : {}),
-        ...(retryAfter ? { in_retry_after: retryAfter } : {}),
-        in_release: release,
-      });
-      if (error) return fail(error);
-      return data;
-    },
-    async confirm(positionId, receiptId) {
-      const { data, error } = await client.rpc("confirm_listing_lookup", {
-        in_lookup_id: receiptId,
-        in_position_id: positionId,
-      });
-      if (error?.code === "23514") return "incompatible_currency";
       if (error) return fail(error);
       return data;
     },

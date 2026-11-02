@@ -1,10 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
-import { expect, it, vi } from "vitest";
+import { expect, it } from "vitest";
 import type { ApiDatabase } from "@/db/api.types";
 import { createWallet } from "@/lib/services/wallets";
-import { createMarketPriceService, type MarketDataProvider } from "@/lib/services/market-prices";
-import type { MarketQuote } from "@/types";
+import { selectionReceipt } from "./selection-fixture";
 
 it("transports exact quote decimals through owner-authenticated RPCs and the effective-price view", async () => {
   const url = new URL(process.env.SUPABASE_TEST_URL ?? "http://invalid");
@@ -61,14 +60,18 @@ it("transports exact quote decimals through owner-authenticated RPCs and the eff
         wallet_id: wallet.id,
         category_id: category.data.id,
         instrument: "Original label",
+        market_selection_receipt_id: await selectionReceipt(author, owner, wallet.id, "TEST.DE", "GER"),
         buy_date: "2026-01-01",
         buy_price: "0.00000001",
         quantity: "1",
-        market_listing_id: cache.data.id,
       })
       .select("id")
       .single();
     if (position.error) throw position.error;
+    // A selected insert starts unlinked; link the verified cache as a download would.
+    expect(
+      (await admin.from("positions").update({ market_listing_id: cache.data.id }).eq("id", position.data.id)).error,
+    ).toBeNull();
     for (const price of ["999999999999.99999999", "0.00000001"]) {
       const claim = await author.rpc("claim_market_quote_refresh", { in_cache_id: cache.data.id });
       expect(claim.error).toBeNull();
@@ -99,7 +102,7 @@ it("transports exact quote decimals through owner-authenticated RPCs and the eff
         selected_source: "automatic",
         wallet_currency: "EUR",
         quote_currency: "EUR",
-        instrument: "Original label",
+        instrument: "TEST.DE",
       });
       const raw = await author.from("market_quote_cache").select("price::text").eq("id", cache.data.id).single();
       expect(raw.error).toBeNull();
@@ -133,158 +136,91 @@ it("transports exact quote decimals through owner-authenticated RPCs and the eff
       refresh_outcome: "timeout",
       quote_state: "cooldown",
     });
-    // The real service/repository creates a position-bound receipt from an injected provider,
-    // then confirms it using saved server data without a second quote request.
     expect(
       (await admin.from("market_quote_cache").update({ cooldown_until: null }).eq("id", cache.data.id)).error,
     ).toBeNull();
-    const providerQuote: MarketQuote = {
-      provider: "yahoo",
-      listing: {
-        symbol: "TEST.DE",
-        name: "Test",
-        exchange: "GER",
-        exchangeName: "Xetra",
-        currency: "EUR",
-        timezone: "Europe/Berlin",
-        instrumentType: "EQUITY",
-      },
-      price: "16.12345678",
-      marketAt: "2026-01-03T12:00:00Z",
-      marketDate: "2026-01-03",
-      fetchedAt: "2026-01-03T12:01:00Z",
-      marketState: "CLOSED",
-      delayMinutes: 15,
-      sourceIntervalMinutes: 15,
-      sourceName: null,
-    };
-    const provider: MarketDataProvider = {
-      searchListings: vi.fn<MarketDataProvider["searchListings"]>(() => Promise.resolve({ ok: true, listings: [] })),
-      confirmListing: vi.fn<MarketDataProvider["confirmListing"]>(() =>
-        Promise.resolve({ ok: true, quote: providerQuote }),
-      ),
-      fetchQuotes: vi.fn<MarketDataProvider["fetchQuotes"]>(() =>
-        Promise.resolve({ ok: true, quotes: { "TEST.DE": { ok: true, quote: providerQuote } } }),
-      ),
-    };
-    const service = createMarketPriceService(author, owner, { provider });
-    const downloaded = await service.lookup(position.data.id, "TEST.DE");
-    expect(downloaded).toMatchObject({
-      ok: true,
-      listing: { currency: "EUR", exchange: "GER", timezone: "Europe/Berlin" },
-      quote: { price: "16.12345678" },
-    });
-    if (!downloaded.ok) throw new Error("Lookup failed");
-    expect(await service.confirm(position.data.id, downloaded.lookupId)).toEqual({ ok: true });
-    expect(provider.fetchQuotes).toHaveBeenCalledOnce();
-    expect(provider.confirmListing).not.toHaveBeenCalled();
-    const lookupArgs = { in_lookup_id: downloaded.lookupId, in_position_id: position.data.id };
-    expect((await foreign.from("market_listing_lookups").select("id").eq("id", downloaded.lookupId)).data).toEqual([]);
-    expect((await foreign.rpc("claim_listing_lookup", { in_lookup_id: downloaded.lookupId })).data).toBeNull();
-    expect((await foreign.rpc("confirm_listing_lookup", lookupArgs)).data).toBe(false);
-    expect(
-      (
-        await foreign
-          .from("market_listing_lookups")
-          .insert({ user_id: users[1], position_id: position.data.id, symbol: "TEST.DE" })
-      ).error,
-    ).not.toBeNull();
-    expect(
-      (
-        await author
-          .from("market_listing_lookups")
-          .update({ valid_until: "2099-01-01T00:00:00Z" })
-          .eq("id", downloaded.lookupId)
-      ).error,
-    ).not.toBeNull();
-    const otherPosition = await author
+    // Existing-position listing confirmation is retired (one stock identity per holding): its RPCs
+    // are refused for every signed-in caller, even with a receipt that would otherwise confirm.
+    const unlinked = await author
       .from("positions")
       .insert({
         user_id: owner,
         wallet_id: wallet.id,
         category_id: category.data.id,
         instrument: "Other position",
+        market_selection_receipt_id: await selectionReceipt(author, owner, wallet.id, "OTHER"),
         buy_date: "2026-01-01",
         buy_price: "1",
       })
+      .select("id,market_listing_id")
+      .single();
+    if (unlinked.error) throw unlinked.error;
+    expect(unlinked.data.market_listing_id).toBeNull();
+    // Owner-bound receipt rows stay readable and RLS-protected; only their RPCs are retired.
+    const lookup = await author
+      .from("market_listing_lookups")
+      .insert({ user_id: owner, position_id: unlinked.data.id, symbol: "TEST.DE" })
       .select("id")
       .single();
-    if (otherPosition.error) throw otherPosition.error;
-    expect(
-      (await author.rpc("confirm_listing_lookup", { ...lookupArgs, in_position_id: otherPosition.data.id })).data,
-    ).toBe(false);
-    // Concurrent REST calls must not both obtain a discovery lease.
-    const claims = await Promise.all([
-      author.rpc("claim_listing_lookup", { in_lookup_id: downloaded.lookupId }),
-      author.rpc("claim_listing_lookup", { in_lookup_id: downloaded.lookupId }),
-    ]);
-    for (const c of claims) expect(c.error).toBeNull();
-    const winning = claims.map((c) => c.data).filter((token): token is string => token !== null);
-    expect(winning).toHaveLength(1);
+    if (lookup.error) throw lookup.error;
     expect(
       (
         await admin
           .from("market_listing_lookups")
-          .update({ lease_until: "2020-01-01T00:00:00Z" })
-          .eq("id", downloaded.lookupId)
+          .update({ cache_id: cache.data.id, valid_until: "2099-01-01T00:00:00Z" })
+          .eq("id", lookup.data.id)
       ).error,
     ).toBeNull();
-    const reclaimed = await author.rpc("claim_listing_lookup", { in_lookup_id: downloaded.lookupId });
-    expect(reclaimed.error).toBeNull();
-    expect(reclaimed.data).toBeTruthy();
-    expect(reclaimed.data).not.toBe(winning[0]);
+    expect((await foreign.from("market_listing_lookups").select("id").eq("id", lookup.data.id)).data).toEqual([]);
     expect(
       (
-        await author.rpc("finish_listing_lookup", {
-          in_lookup_id: downloaded.lookupId,
-          in_token: winning[0],
+        await foreign
+          .from("market_listing_lookups")
+          .insert({ user_id: users[1], position_id: unlinked.data.id, symbol: "TEST.DE" })
+      ).error,
+    ).not.toBeNull();
+    expect(
+      (
+        await author
+          .from("market_listing_lookups")
+          .update({ valid_until: "2099-12-31T00:00:00Z" })
+          .eq("id", lookup.data.id)
+      ).error,
+    ).not.toBeNull();
+    const lookupArgs = { in_lookup_id: lookup.data.id, in_position_id: unlinked.data.id };
+    for (const client of [author, foreign]) {
+      for (const call of [
+        client.rpc("claim_listing_lookup", { in_lookup_id: lookup.data.id }),
+        client.rpc("finish_listing_lookup", {
+          in_lookup_id: lookup.data.id,
+          in_token: randomUUID(),
           in_cache_id: cache.data.id,
-        })
-      ).data,
-    ).toBe(false);
-    if (!reclaimed.data) throw new Error("Missing recovered lookup lease");
-    const released = await author.rpc("finish_listing_lookup", {
-      in_lookup_id: downloaded.lookupId,
-      in_token: reclaimed.data,
-      in_release: true,
+        }),
+        client.rpc("confirm_listing_lookup", lookupArgs),
+        client.rpc("confirm_listing_lookup", { ...lookupArgs, in_position_id: position.data.id }),
+      ]) {
+        const refused = await call;
+        expect(refused.data).toBeNull();
+        expect(refused.error?.code).toBe("42501");
+      }
+    }
+    const listings = await admin
+      .from("positions")
+      .select("id,market_listing_id")
+      .in("id", [position.data.id, unlinked.data.id])
+      .order("id");
+    expect(listings.error).toBeNull();
+    expect(Object.fromEntries((listings.data ?? []).map((p) => [p.id, p.market_listing_id]))).toEqual({
+      [position.data.id]: cache.data.id,
+      [unlinked.data.id]: null,
     });
-    expect(released.error).toBeNull();
-    expect(released.data).toBe(true);
-    // Failed discovery keeps existing cache and respects longer provider Retry-After.
-    const again = await author.rpc("claim_listing_lookup", { in_lookup_id: downloaded.lookupId });
-    if (!again.data) throw new Error("Missing lookup lease");
-    const retryAfter = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-    expect(
-      (
-        await author.rpc("finish_listing_lookup", {
-          in_lookup_id: downloaded.lookupId,
-          in_token: again.data,
-          in_retry_after: retryAfter,
-        })
-      ).error,
-    ).toBeNull();
-    expect((await author.rpc("claim_listing_lookup", { in_lookup_id: downloaded.lookupId })).data).toBeNull();
     const receipt = await author
       .from("market_listing_lookups")
-      .select("cache_id,cooldown_until")
-      .eq("id", downloaded.lookupId)
+      .select("lease_token,lease_until,cooldown_until")
+      .eq("id", lookup.data.id)
       .single();
     expect(receipt.error).toBeNull();
-    expect(receipt.data?.cache_id).toBe(cache.data.id);
-    expect(Date.parse(receipt.data?.cooldown_until ?? "")).toBeGreaterThanOrEqual(Date.parse(retryAfter));
-    expect(
-      (
-        await admin
-          .from("market_listing_lookups")
-          .update({ valid_until: "2020-01-01T00:00:00Z" })
-          .eq("id", downloaded.lookupId)
-      ).error,
-    ).toBeNull();
-    expect((await author.rpc("confirm_listing_lookup", lookupArgs)).data).toBe(false);
-    expect(await service.confirm(position.data.id, downloaded.lookupId)).toEqual({
-      ok: false,
-      reason: "lookup_expired",
-    });
+    expect(receipt.data).toEqual({ lease_token: null, lease_until: null, cooldown_until: null });
     // Releasing unattempted quote work clears the lease without a failed-attempt cooldown.
     const refresh = await author.rpc("claim_market_quote_refresh", { in_cache_id: cache.data.id });
     if (!refresh.data) throw new Error("Missing quote release lease");

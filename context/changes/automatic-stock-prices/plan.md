@@ -29,6 +29,18 @@ The owner requires choosing a matching Yahoo stock/ETF while creating an investm
 
 This supersedes the Phase 4 allowance for newly created unlinked holdings. Existing-position quote confirmation remains supported. Phase 4 automated rows are reopened for the revised creation/download flow; the previous checks remain historical evidence, not proof of this new behavior.
 
+## Approved release revision — 2026-11-02
+
+Phase 5 preflight found that the original release contract could not be executed as written. The owner approved:
+
+- **Recovery contract:** schema-compatible recovery replaces only the four `selected_*` outputs of `position_effective_prices` through a new reviewed additive migration copied from the operator template. `capture_wallet_snapshots()` stays unchanged and consumes the same view. This supersedes the earlier "restore a manual capture body" rollback.
+- **No pre-feature rollback target:** `20261030140619_set_wallet_denominations.sql` removes contracts used by older builds, so the release uses a schema-first maintenance transition. No previous production deployment is a valid post-migration rollback.
+- **Deployed acceptance on production:** there is no Preview database (Supabase variables are Production-scoped). Phase 5 ends at local release readiness plus owner review of the runbook. A new Phase 6 holds the human-run production release and the AAPL/PKO.WA walkthrough.
+
+Progress row 5.3 is reworded in place (it was unchecked); the deployed walkthrough moves to Phase 6. Follow-up on the same date: Phase 5 adds an owner-run hosted migration dry-run review (row 5.5), and post-migration production checks (6.1) are owner-run rather than agent-run.
+
+**Required stock selection — 2026-11-02.** All production investments are draft data. The owner made the stock selection (`positions.market_target_id`) required at the database level and assigned Apple Inc. (Yahoo `AAPL`, `NMS`, `EQUITY`) to every existing investment in every account, including closed, deleted and PLN/EUR-wallet holdings. This is an explicit owner assignment, not automatic ticker guessing. It uses the pending-selection path, so no currency, timezone or quote is written by hand, and the first explicit **Download prices** verifies the listing. PLN/EUR-wallet Apple holdings will report `incompatible_currency` until they are deleted and recreated. The confirmed listing (`market_listing_id`) stays nullable. Existing-position listing confirmation is retired from the UI and API, so each holding has one stock identity. This supersedes the earlier owner-run bulk-assignment design from the same date.
+
 ## Current State Analysis
 
 - Position services load decimal values as text and enforce owner access through the request-scoped client.
@@ -49,7 +61,7 @@ A confirmed listing supplies prices to open-position calculations after the user
 
 ## What We’re NOT Doing
 
-No FX conversion, streaming connections, page-load or reload downloads, periodic browser refresh, unattended provider job, automatic retries, automatic ticker guessing, historical backfill, or changes to recorded reasoning.
+No FX conversion, streaming connections, page-load or reload downloads, periodic browser refresh, unattended provider job, automatic retries, automatic ticker guessing, historical backfill, or changes to recorded reasoning, changing a saved stock selection, or confirming a different listing for an existing holding.
 
 ## Implementation Approach
 
@@ -206,26 +218,111 @@ Use the shared values throughout the diary, with matching-currency wallet moves 
 
 - New-investment selection, search, linking, correction, reassignment, outage display, and wallet history work through the UI without losing form input.
 
-## Phase 5: Verification and release preparation
+## Phase 5: Release readiness
 
 ### Overview
 
-Verify the feature against local fixtures and the deployment runtime.
+Prove the feature locally and prepare a reviewable, schema-compatible release and recovery path. Nothing in this phase touches hosted schema, environment settings or production.
 
 ### Changes Required
 
-**Files:** focused service/database/browser tests and operational documentation.
+#### 1. Repository and database gates
+
+**Files:** focused service/database/browser tests; [`scripts/testing/database/`](../../../scripts/testing/database/).
 
 **Intent:** Prove the financial and access contracts before release.
 
 **Contract:**
 
-- Keep CI deterministic using provider fixtures; live Yahoo probes are explicit checks.
-- Run repository verification in order: Astro sync, lint, Astro check, build, and unit tests.
-- Run local decimal transport, snapshot database, cron, and smoke checks appropriate to the changed paths.
-- Document provider failures, cache inspection, currency migration, and manual fallback.
-- Deploy migrations before the application that consumes them. Roll back application behavior without dropping stored data or rewriting observations.
-- Preserve the existing capture function signature so rollback can restore its manual selection body through a new migration if needed.
+- Keep CI deterministic using provider fixtures; live Yahoo probes stay explicit (`npm run probe:market-data -- --live`).
+- Run repository verification in order: Astro sync, lint, Astro check, build, unit tests. Run local decimal transport, market-price, snapshot, cron and smoke checks appropriate to the changed paths.
+- Close any regression gaps in ownership, decimal precision, manual boundaries, currency, reassignment and snapshot immutability found by the audit.
+
+#### 2. Manual-selection recovery template
+
+**Files:** [`context/deployment/automatic-stock-prices-manual-selection.sql`](../../deployment/automatic-stock-prices-manual-selection.sql), [`scripts/testing/database/test-market-price-recovery.mjs`](../../../scripts/testing/database/test-market-price-recovery.mjs), `package.json` (`test:market-prices-db`).
+
+**Intent:** Provide a tested way to fall back to manual/sale selection without an incompatible old deployment or a destructive down migration.
+
+**Contract:**
+
+- The template lives outside `supabase/migrations/` and never runs in the normal chain. It is copied into a new timestamped migration only during recovery.
+- It replaces only `selected_price`, `selected_date`, `selected_at`, `selected_source` with manual/sale values. It preserves view identity, column order/types, grants and `security_invoker=true`, using `CREATE OR REPLACE`.
+- `capture_wallet_snapshots()` keeps its no-argument `bigint` signature, privileges, body and midnight job, so app reads and future observations switch together.
+- Quote cache, targets, receipts, positions and existing observations are untouched. Automatic-only holdings show missing coverage until a manual price is saved.
+- Re-enabling restores the privately recorded normal view definition through another additive migration.
+
+#### 3. CI scope for operator SQL
+
+**Files:** [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml), [`scripts/deployment/vercel-ignore-build.sh`](../../../scripts/deployment/vercel-ignore-build.sh).
+
+**Intent:** Operator SQL under `context/` is code, so changes to it must run CI.
+
+**Contract:** Remove `context/**` from both docs-only ignore lists in lockstep. The `decimal-transport` job runs `npm run test:market-prices-db`, which includes the recovery test.
+
+#### 4. Release and recovery runbook
+
+**Files:** [`context/deployment/deploy-plan.md`](../../deployment/deploy-plan.md#stock-price-release-and-recovery), [`scripts/README.md`](../../../scripts/README.md).
+
+**Intent:** Give the owner a single human-executable procedure for the hosted release and recovery.
+
+**Contract:** The runbook covers:
+
+- release boundaries
+- predecessor and feature migration order
+- the maintenance transition (static maintenance boundary, cron pause/restore away from 00:00 UTC, whole-chain apply, schema checkpoint, compatible app promotion)
+- application acceptance
+- the provider-failure table
+- owner-scoped read-only inspection
+- compatible recovery
+
+It must state that the pre-migration production deployment is an inventory reference, not a rollback target. Hosted migrations, environment/protection changes, promotion and rollback stay human-owned.
+
+#### 5. Hosted migration dry-run review
+
+**Files:** [`verification.md`](verification.md) (owner-supplied summary only).
+
+**Intent:** Before the release window, confirm that the hosted ledger and the pending chain match what the runbook expects. That way a missing predecessor or an unexpected applied migration is caught while nothing has changed.
+
+**Contract:**
+
+- The owner runs `npx supabase migration list --linked` and `npx supabase db push --dry-run` in their own authenticated terminal against the confirmed production project. These commands read the ledger and apply nothing.
+- The agent compares the reported pending files with the runbook's predecessor and eight-feature migration order. It flags any unexpected applied, missing or out-of-order file.
+- Record only migration filenames and pass/fail in `verification.md`. Never record connection strings, project refs beyond what the deploy plan already holds, or credentials.
+- A mismatch blocks Phase 6 until the runbook is corrected and re-reviewed.
+
+#### 6. Required stock selection for every investment
+
+**Files:** new `supabase/migrations/<timestamp>_require_position_stock_selection.sql`, regenerated database types; the demo loader ([`scripts/demo/lib/demo-data.mjs`](../../../scripts/demo/lib/demo-data.mjs)) and every fixture that inserts positions directly (`tests/database/decimal.test.ts`, `scripts/testing/database/test-{market-prices,market-price-recovery,close,wallet,snapshots}-database.mjs`, `scripts/demo/__tests__/demo-data.test.mjs`); a migration test wired into `test:market-prices-db`; the runbook in `deploy-plan.md`; and FR-003/FR-014 in [`prd.md`](../../foundation/prd.md).
+
+**Intent:** Every investment must have a stock selection at the database level. Existing draft investments get Apple by explicit owner decision, through the same pending-selection path new investments use, so no currency, timezone or quote is written by hand.
+
+**Contract:**
+
+- In one unguarded migration (see lessons: no partial `if not exists`):
+  - For every account that owns positions, create or reuse a `market_listing_targets` row `yahoo`/`AAPL`/`NMS`/`EQUITY` (`Apple Inc.`, `NasdaqGS`).
+  - Positions that already have `market_listing_id` get a target matching that confirmed cache identity (provider/symbol/exchange/instrument type, `cache_id` set), not Apple. None exist in production; this keeps local and demo data consistent.
+  - Every other position, whether open, closed, deleted or in any wallet currency, gets the account's Apple target.
+  - Disable only `positions_guard_selection` around the backfill and re-enable it in the same migration; `guard_position_selection()` itself is unchanged, so no permanent bypass exists.
+  - Then `alter table public.positions alter column market_target_id set not null`.
+- The migration never writes `instrument` labels, prices, manual save times, wallets, receipts, quote cache rows or observations. `market_listing_id` stays nullable and is set only by a verified download.
+- New inserts must carry a valid selection receipt (the existing guard plus NOT NULL). The demo loader and fixtures create owner/wallet-bound receipts and targets through that path; the linked demo holding keeps its AAPL listing.
+- Additive rollback, if ever needed, is `drop not null` in a new migration; selections stay as data.
+- Add the migration to the runbook's feature-migration table, so the 5.5 dry run expects nine feature migrations.
+- Update FR-003/FR-014: every investment requires a stock selection; existing draft investments were assigned Apple by owner decision on 2026-11-02; existing-position listing confirmation is retired.
+
+#### 7. Retire existing-position listing confirmation
+
+**Files:** [`PositionsTable.astro`](../../../src/components/positions/PositionsTable.astro), [`ListingControl.tsx`](../../../src/components/market-prices/ListingControl.tsx), [`DownloadPrices.tsx`](../../../src/components/market-prices/DownloadPrices.tsx), [`endpoint.ts`](../../../src/lib/market-data/endpoint.ts) and its tests, [`download-api.md`](download-api.md), [`ui-verification.md`](ui-verification.md).
+
+**Intent:** A holding has exactly one stock identity, its creation-time selection, so the app must not offer or accept confirming a different listing for an existing holding.
+
+**Contract:**
+
+- Remove the **Link stock listing** action and the position-detail **Stock listing** controls, and the dashboard hint that points to them.
+- The existing-position `listings/search`, `listings/download` and `listings/confirm` endpoints reject with HTTP 409 `selection_already_set` and do no provider work. New-investment search/select and dashboard **Download prices** are unchanged.
+- A holding with the wrong stock is deleted and recreated; selections cannot be edited.
+- Update the walkthrough docs to remove the existing-position linking steps.
 
 ### Success Criteria
 
@@ -233,10 +330,65 @@ Verify the feature against local fixtures and the deployment runtime.
 
 - Repository static/unit checks and affected local database checks pass.
 - Regression scenarios cover ownership, decimal precision, manual boundaries, currency, reassignment, and snapshot immutability.
+- `npm run test:market-prices-db` proves normal → manual → normal recovery parity with preserved view columns/types/grants/security-invoker mode and unchanged cache, targets, receipts, positions and observations.
+- Local DB tests prove the required-selection migration gives every position a selection across accounts (open, closed, deleted and PLN/EUR-wallet holdings get an Apple selection; holdings with a confirmed listing get a selection matching that listing). It also proves labels, prices, save times, wallets and observations are unchanged, the guard is re-enabled and still rejects selection changes, inserts without a selection fail, existing-position listing confirmation is rejected, and a first explicit download prices USD-wallet Apple holdings while PLN/EUR ones report `incompatible_currency`. Fixture, demo and browser tests pass with selections created through receipts.
 
 #### Manual Verification
 
-- Deployed behavior passes the US/GPW walkthrough and rollback procedure is reviewable.
+- Owner reviews and approves the stock-price release and recovery runbook in `deploy-plan.md`, including the maintenance transition and the statement that no pre-feature deployment is a rollback target.
+- Owner-run `supabase migration list --linked` and `supabase db push --dry-run` show a pending hosted chain that matches the runbook's migration order, with filenames and result recorded in `verification.md`.
+
+## Phase 6: Production release and acceptance
+
+### Overview
+
+The owner runs the schema-first release on production and accepts the feature there. The agent prepares commands and records evidence; it does not apply hosted migrations, change settings or promote.
+
+### Changes Required
+
+#### 1. Schema-first maintenance release
+
+**Files:** [`context/deployment/deploy-plan.md`](../../deployment/deploy-plan.md#schema-first-rollout) (execution), [`verification.md`](verification.md) (evidence).
+
+**Intent:** Move production to the final schema and the compatible application without old builds serving traffic against it.
+
+**Contract:**
+
+- Follow the Phase 5 runbook steps in order.
+- Stop on any migration error. Do not use `db reset` or ledger repair.
+- Record the pre-release deployment, ledger, cron state, backups and fact digests. After the schema checkpoint, record the promoted deployment ID/URL and source commit. Restore the cron job to `0 0 * * *` with `select public.capture_wallet_snapshots();`.
+
+#### 2. Production acceptance
+
+**Files:** [`ui-verification.md`](ui-verification.md), [`download-api.md`](download-api.md) (walkthrough sources), [`verification.md`](verification.md) (results).
+
+**Intent:** Confirm the shipped behavior on the real runtime and data.
+
+**Contract:**
+
+- Using the owner's authorised holdings, walk through `AAPL` in a USD wallet and `PKO.WA` in a PLN wallet: select at creation, explicit dashboard **Download prices**, source/market time/currency display, and no download on reload/focus/wait.
+- Confirm existing manual holdings, history and wallet totals remain intact.
+- Never run `npm run smoke` against production.
+
+#### 3. Verify required Apple selections
+
+**Files:** [`verification.md`](verification.md) (owner-supplied counts and result).
+
+**Intent:** Confirm the migration gave every production investment a stock selection and that Apple prices arrive only through the explicit download.
+
+**Contract:**
+
+- The migration does the backfill; there is no separate owner-run assignment call.
+- After the schema checkpoint, the owner runs a read-only count of positions with `market_target_id is null` (expected 0) and of positions per selected symbol, then clicks **Download prices**.
+- Record only counts and the pass/fail result.
+
+### Success Criteria
+
+#### Manual Verification
+
+- Owner-run post-migration read-only checks on production report no unset wallet currencies, labelled snapshots, matching fact digests, restricted RLS/grants, and the unchanged capture signature and cron schedule. The agent prepares the queries and records the owner-supplied results; it does not connect to production.
+- Deployed production passes the AAPL/USD and PKO.WA/PLN walkthrough, with deployment ID, source commit and results recorded in `verification.md`.
+- Owner-run read-only check after the schema checkpoint shows no position without a stock selection, and the next explicit **Download prices** shows a verified AAPL/USD quote for open USD-wallet holdings while PLN/EUR-wallet holdings report `incompatible_currency` with their saved values intact.
 
 ## Testing Strategy
 
@@ -251,6 +403,8 @@ There is no automatic download interval. The user controls downloads through **D
 ## Migration Notes
 
 Use additive migrations. The owner explicitly authorized assigning USD to wallets without currency and inheriting wallet currency for observations without a label. Keep recorded numeric amounts, dates and results intact. Do not guess listing identities, historical manual-save times or missing source coverage. New wallets still choose USD/PLN/EUR; conflicting wallet denominations remain incompatible.
+
+The denomination migration is not backward compatible with pre-feature builds. Release schema-first behind a maintenance boundary. Recover through the additive manual-selection view template, never a down migration or an old deployment (see the 2026-11-02 release revision).
 
 ## References
 
@@ -301,21 +455,33 @@ Use additive migrations. The owner explicitly authorized assigning USD to wallet
 
 #### Automated
 
-- [x] 4.1 Cross-surface and database tests prove effective-price parity, reassignment boundaries, and unchanged historical observations.
-- [x] 4.2 Snapshot tests prove future observations use cached effective values with correct currency and source coverage.
-- [x] 4.4 Creation tests prove a Yahoo selection is required, foreign/invalid selections are rejected, search/select/save never download quotes, form values survive errors, and the first explicit download verifies and prices the saved selection.
+- [x] 4.1 Cross-surface and database tests prove effective-price parity, reassignment boundaries, and unchanged historical observations. — `0a954cb`
+- [x] 4.2 Snapshot tests prove future observations use cached effective values with correct currency and source coverage. — `0a954cb`
+- [x] 4.4 Creation tests prove a Yahoo selection is required, foreign/invalid selections are rejected, search/select/save never download quotes, form values survive errors, and the first explicit download verifies and prices the saved selection. — `0a954cb`
 
 #### Manual
 
-- [x] 4.3 New-investment selection, search, linking, correction, reassignment, outage display, and wallet history work through the UI without losing form input.
+- [x] 4.3 New-investment selection, search, linking, correction, reassignment, outage display, and wallet history work through the UI without losing form input. — `0a954cb`
 
-### Phase 5: Verification and release preparation
+### Phase 5: Release readiness
 
 #### Automated
 
-- [ ] 5.1 Repository static/unit checks and affected local database checks pass.
-- [ ] 5.2 Regression scenarios cover ownership, decimal precision, manual boundaries, currency, reassignment, and snapshot immutability.
+- [x] 5.1 Repository static/unit checks and affected local database checks pass.
+- [x] 5.2 Regression scenarios cover ownership, decimal precision, manual boundaries, currency, reassignment, and snapshot immutability.
+- [x] 5.4 `npm run test:market-prices-db` proves normal → manual → normal recovery parity with preserved view columns/types/grants/security-invoker mode and unchanged cache, targets, receipts, positions and observations.
+- [x] 5.6 Local DB tests prove the required-selection migration gives every position a selection across accounts (open, closed, deleted and PLN/EUR-wallet holdings get an Apple selection; holdings with a confirmed listing get a selection matching that listing). It also proves labels, prices, save times, wallets and observations are unchanged, the guard is re-enabled and still rejects selection changes, inserts without a selection fail, existing-position listing confirmation is rejected, and a first explicit download prices USD-wallet Apple holdings while PLN/EUR ones report `incompatible_currency`. Fixture, demo and browser tests pass with selections created through receipts.
 
 #### Manual
 
-- [ ] 5.3 Deployed behavior passes the US/GPW walkthrough and rollback procedure is reviewable.
+- [x] 5.3 Owner reviews and approves the stock-price release and recovery runbook in `deploy-plan.md`, including the maintenance transition and the statement that no pre-feature deployment is a rollback target.
+- [x] 5.5 Owner-run `supabase migration list --linked` and `supabase db push --dry-run` show a pending hosted chain that matches the runbook's migration order, with filenames and result recorded in `verification.md`.
+
+### Phase 6: Production release and acceptance
+
+#### Manual
+
+- [ ] 6.1 Owner-run post-migration read-only checks on production report no unset wallet currencies, labelled snapshots, matching fact digests, restricted RLS/grants, and the unchanged capture signature and cron schedule. The agent prepares the queries and records the owner-supplied results; it does not connect to production.
+
+- [ ] 6.2 Deployed production passes the AAPL/USD and PKO.WA/PLN walkthrough, with deployment ID, source commit and results recorded in `verification.md`.
+- [ ] 6.3 Owner-run read-only check after the schema checkpoint shows no position without a stock selection, and the next explicit **Download prices** shows a verified AAPL/USD quote for open USD-wallet holdings while PLN/EUR-wallet holdings report `incompatible_currency` with their saved values intact.

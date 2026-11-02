@@ -229,7 +229,7 @@ Open [local sign-in](http://localhost:4321/auth/signin) and use:
 
 The demo provides 100 investments across five wallets with synthetic daily history. Normal reruns preserve your edits and keep the original account password. In the same terminal, run `npm run seed:demo` again without re-entering the password. In a new terminal, repeat the password-prompt block using the original password.
 
-The open **AAPL · Demo** holding in **Demo · Rising** is already linked to Apple on Nasdaq (USD). It starts without a manual or cached quote, so click **Download prices** on Positions to fetch its first real market price. The loader only seeds listing metadata and never contacts Yahoo. Synthetic purchase amounts and historical observations remain demo data.
+Every demo holding selects Apple (**AAPL**), as investments saved before stock selections existed do. The open twelfth holding in **Demo · Rising** is already linked to Apple on Nasdaq (USD). It starts without a manual or cached quote, so click **Download prices** on Positions to fetch its first real market price. The loader only seeds listing metadata and never contacts Yahoo. Synthetic purchase amounts and historical observations remain demo data.
 
 Rerunning the loader also links that holding in older demos if it is still open, not deleted and unlinked, preserving any edited label or manual price. An existing selected listing is kept. If the account already has the same AAPL listing in its cache, the loader reuses it unchanged; any real quote already saved there can immediately supply the holding's effective price.
 
@@ -239,7 +239,7 @@ To restore the original demo fixtures explicitly:
 npm run seed:demo -- --reset
 ```
 
-Reset affects recognised demo fixtures only and refuses unrelated references, including positions or lookup receipts referencing the fixture listing. It restores the fixture's metadata-only cache row; independently created canonical cache rows are preserved. See [wallet observations](context/deployment/wallet-observations.md) for daily capture, scheduler verification and further setup details.
+Reset affects recognised demo fixtures only and refuses unrelated references, including positions or lookup receipts referencing the fixture listing. It restores the fixture's metadata-only cache row; independently created canonical cache rows are preserved. See [wallet observations](context/deployment/deploy-plan.md#wallet-observations-and-cron) for daily capture, scheduler verification and further setup details.
 
 Run `npm run test:snapshots-db` and `npm run test:demo-db` against local Supabase. The versioned scheduler migration activates daily capture when applied. Verify it locally with `npm run test:wallet-cron`; production migration deployment remains a separate authorised step.
 

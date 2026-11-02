@@ -13,5 +13,5 @@ const admin = createClient(origin, status.SERVICE_ROLE_KEY, {
 });
 const result = await seedDemo(admin, process.env.DEMO_USER_PASSWORD, { reset: args.includes("--reset") });
 console.log(
-  `Local demo ready: ${result.email}. Sign in with the DEMO_USER_PASSWORD used when the account was created. Five Demo wallets; synthetic history for manual testing only. Fresh demos include a linked AAPL holding: click Download prices on Positions to request a real quote. Existing edits and selected listings are preserved. No provider request was made by this loader.`,
+  `Local demo ready: ${result.email}. Sign in with the DEMO_USER_PASSWORD used when the account was created. Five Demo wallets; synthetic history for manual testing only. Every demo holding selects Apple and fresh demos include a linked AAPL holding: click Download prices on Positions to request a real quote. Existing edits and selected listings are preserved. No provider request was made by this loader.`,
 );
