@@ -11,6 +11,7 @@
     "build": "astro build",
     "astro": "astro",
     "lint": "eslint .",
+    "lint:sh": "scripts/tools/run.sh shellcheck scripts/accounts/create-user.sh scripts/testing/database/test-user-create.sh scripts/tools/run.sh",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "smoke": "node scripts/testing/smoke.mjs",
@@ -22,12 +23,15 @@
     "test:sentry-probe": "node scripts/observability/sentry-probe.mjs",
     "check:sentry-build": "node scripts/observability/check-sentry-build.mjs",
     "seed:demo": "node scripts/demo/seed-demo.mjs",
+    "user:create": "bash scripts/accounts/create-user.sh",
     "configure:wallet-cron": "node scripts/automation/configure-wallet-cron.mjs",
     "test:demo-db": "node --test scripts/demo/__tests__/demo-data.test.mjs",
     "test:wallet-cron": "node scripts/testing/database/test-wallet-cron.mjs",
     "probe:market-data": "node scripts/testing/market-data-probe.mjs",
     "test:recovery-db": "node scripts/testing/database/test-market-price-recovery.mjs",
-    "test:contract-db": "node scripts/testing/database/test-contract-database.mjs"
+    "test:contract-db": "node scripts/testing/database/test-contract-database.mjs",
+    "test:user-create-db": "bash scripts/testing/database/test-user-create.sh",
+    "tools:build": "docker build -t investments-diary-tools scripts/tools"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.10",

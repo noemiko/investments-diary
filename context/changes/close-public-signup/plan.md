@@ -49,9 +49,9 @@ confirmed request. Existing accounts keep signing in and out as before.
 
 - `POST <supabase>/auth/v1/signup` with the anon key returns `422` (`signup_disabled`) locally and in production.
 - `/auth/signup`, `/api/auth/signup` and `/auth/confirm-email` return 404; no page links to sign-up.
-- `npm run user:create -- --email <e>` creates a confirmed email/password account on local Supabase;
-  `npm run user:create -- --production --url https://<ref>.supabase.co --email <e>` does the same on the hosted
-  project after hidden-input key entry and a typed project-ref confirmation.
+- `npm run user:create -- --email <e>` creates a confirmed email/password account on local Supabase through
+  `psql`; `npm run user:create -- --production --db-url <pooler string> --email <e>` does the same on the hosted
+  project after a typed project-ref confirmation and `psql`'s hidden database-password prompt.
 - `npm run smoke` creates its two accounts with the admin API, proves both refusals above, and keeps every
   existing sign-in, isolation and sign-out check green.
 - PRD, deploy-plan, README, CLAUDE.md, test-plan and roadmap baseline describe owner-created accounts.
@@ -61,7 +61,10 @@ confirmed request. Existing accounts keep signing in and out as before.
 - Admin creation is unaffected by `enable_signup = false` (GoTrue `DISABLE_SIGNUP` gates only the public
   `/auth/v1/signup`); the seeder pattern (`seed-demo.mjs:6-13`) is the template for the local path.
 - Config changes need `npx supabase stop && npx supabase start` to take effect locally.
-- `vitest.config.ts` includes `scripts/**/__tests__/*.test.ts`, so script logic is unit-testable with `npm test`.
+- GoTrue stores bcrypt hashes; pgcrypto `crypt(pw, gen_salt('bf'))` produces a hash it verifies. Its token
+  columns must be `''`, not `NULL`, or password sign-in fails while scanning the row.
+- `scripts/testing/database/lib/db-harness.mjs:10` already reaches the local database through `docker exec` into
+  `supabase_db_investments-diary`, so local `psql` needs no host install.
 
 ## What We're NOT Doing
 
@@ -84,12 +87,16 @@ ordering constraint, and the switch may land before or after the deploy.
 
 ## Critical Implementation Details
 
-- **Production key handling.** The production service-role key is read only from a hidden TTY prompt — never
-  from argv, environment variables or any file — so it stays out of shell history and dotfiles. The production
-  path refuses to run without a TTY. Neither the key nor the password is ever printed or logged.
-- **Target guard.** Without `--production` the script must refuse any non-local URL (reuse `assertLocal`). With
-  `--production` it must refuse anything but `https://<ref>.supabase.co` and require the owner to type `<ref>`
-  before any request. Never infer production from an env var.
+- **Production secret handling.** The production database password is entered only into `psql`'s own hidden
+  prompt; a `--db-url` containing a password is refused, and nothing reads it from argv, env vars or files. The
+  production path refuses to run without a TTY. Neither the database password nor the account password is ever
+  printed or logged, and the account password reaches SQL base64-encoded over stdin, never on a command line.
+- **Target guard.** Without `--production` the script only ever talks to the local container. With
+  `--production` it requires a Supabase host and the owner typing the project ref before connecting. Never infer
+  production from an env var.
+- **Writing GoTrue's tables.** Accepted risk (owner decision): `auth.users`/`auth.identities` are owned by
+  Supabase Auth and may change on upgrade. `test:user-create-db` in CI signs in through the real Auth API so drift
+  turns CI red instead of failing silently.
 - **Smoke ordering.** Admin-created accounts must exist before the "signin rejects wrong password" step; the
   two refusal checks go where the old sign-up steps were.
 
@@ -142,68 +149,102 @@ prompt, never stored in any file, env var or Vercel, and agents never run `user:
 
 ### Overview
 
-Give the owner a create-only account path for local and hosted Supabase, before sign-up closes.
+Give the owner a create-only account path for local and hosted Supabase, before sign-up closes. Re-planned
+2026-11-02 (owner decision during implementation): a bash + SQL tool run through `psql`, instead of a Node
+script calling the Auth admin API.
 
 ### Changes Required:
 
-#### 1. Pure logic
+#### 1. SQL
 
-**File**: `scripts/accounts/lib/create-user.mjs` (new)
+**File**: `scripts/accounts/create-user.sql` (new)
 
-**Intent**: Hold the testable decisions: argument parsing, target resolution and guards, password validation,
-existing-account refusal.
+**Intent**: Create one confirmed email/password account in a single transaction, in the shape GoTrue itself
+writes, and refuse an email that already exists.
 
-**Contract**: Exports `parseArgs(argv)` → `{ email, production, url }` (rejects unknown flags, missing
-`--email`, `--url` without `--production` and vice versa); `resolveTarget({ production, url, localApiUrl })`
-→ `{ origin, projectRef | null }` (local: `assertLocal` from `scripts/demo/lib/demo-data.mjs`; production:
-`https:` and hostname `<ref>.supabase.co` only); `validatePassword(pw)` (minimum 12 characters, as the seeder);
-`createOwnerUser(admin, { email, password })` that refuses an existing email (paged `listUsers`, as the seeder)
-and calls `admin.auth.admin.createUser({ email, password, email_confirm: true })`, returning the email only.
+**Contract**: Reads psql variables `email` and `pw_b64` (the password, base64-encoded so no quoting or injection
+is possible). In one transaction: raise if `auth.users` already holds the email (case-insensitive); insert
+`auth.users` with `instance_id = '00000000-0000-0000-0000-000000000000'`, `aud`/`role = 'authenticated'`,
+`encrypted_password = crypt(<pw>, gen_salt('bf'))`, `email_confirmed_at = now()`,
+`raw_app_meta_data = {"provider":"email","providers":["email"]}`, `raw_user_meta_data = {}`, and the token
+columns (`confirmation_token`, `recovery_token`, `email_change`, `email_change_token_new`) as `''`, not `NULL`;
+insert the matching `auth.identities` row (`provider = 'email'`, `provider_id` = user id, `identity_data` with
+`sub`, `email`, `email_verified: true`). Prints only the created email.
 
 #### 2. Entry point
 
-**File**: `scripts/accounts/create-user.mjs` (new), `package.json`
+**File**: `scripts/accounts/create-user.sh` (new), `package.json`
 
-**Intent**: Wire prompts and credentials to the logic.
+**Intent**: Collect inputs safely and run the SQL against the chosen database.
 
-**Contract**: `npm run user:create -- --email <e> [--production --url https://<ref>.supabase.co]`. Local:
-credentials from `npx supabase status -o json` (as `seed-demo.mjs:6-13`). Production: refuse without a TTY;
-hidden prompt for the service-role key; prompt to type `<ref>` to confirm. Both: hidden password prompt entered
-twice. Prints `Created <email> on <local|project ref>` and nothing else sensitive.
+**Contract**: `npm run user:create -- --email <e> [--production --db-url <postgres connection string>]`.
+Local (default): runs `psql` inside the `supabase_db_investments-diary` container with `docker exec`.
+Production: requires `--db-url` whose host is a Supabase pooler or `db.<ref>.supabase.co` host, refuses without a
+TTY, requires the owner to type the project ref to confirm before connecting, and leaves the database password to
+`psql`'s own hidden prompt (the connection string must not contain a password; refuse one that does). Both: account
+password read twice with `read -s`, minimum 12 characters, passed to psql over stdin. Prints
+`Created <email> on <local|project ref>`; never echoes the passwords. In local mode without a TTY, the password is
+read twice from stdin so the integration check can run.
 
-#### 3. Tests
+#### 3. Remove the Node version
 
-**File**: `scripts/accounts/__tests__/create-user.test.ts` (new)
+**File**: `scripts/accounts/lib/create-user.mjs`, `scripts/accounts/create-user.mjs`,
+`scripts/accounts/__tests__/create-user.test.ts`
 
-**Intent**: Prove the guards that keep production safe.
+**Intent**: Drop the superseded Node implementation (never committed).
 
-**Contract**: Cases: local mode rejects `https://x.supabase.co` and `http://127.0.0.1.evil.test`; production
-mode rejects `http://`, non-`supabase.co` hosts and `x.supabase.co.evil.test`; flag combinations; short
-password; existing email refused without calling `createUser`; `createUser` receives `email_confirm: true`.
+**Contract**: Files deleted.
 
-#### 4. Docs
+#### 4. Integration check
 
-**File**: `scripts/README.md`, `README.md`
+**File**: `scripts/testing/database/test-user-create.sh` (new), `package.json`, `.github/workflows/ci.yml`
 
-**Intent**: Document the command, the hidden-key rule and that agents never run the production mode.
+**Intent**: Prove GoTrue accepts the rows — the real risk of writing its tables directly.
 
-**Contract**: New `accounts/` row in the folder table and a usage section; README "creating an account" replaces
-the sign-up instructions.
+**Contract**: `npm run test:user-create-db`, local Supabase only (refuses non-local API URL from
+`npx supabase status`): creates a throwaway user through `create-user.sh`, signs in through
+`POST /auth/v1/token?grant_type=password` with the anon key (expects an access token), checks a second run with
+the same email fails, checks `--production` with a bad `--db-url` exits non-zero before any connection, then
+deletes the user. Added as a step in the CI `decimal-transport` job so a Supabase upgrade that breaks the SQL
+turns CI red.
+
+#### 4b. Tools image
+
+**File**: `scripts/tools/Dockerfile`, `scripts/tools/run.sh` (new), `package.json`
+
+**Intent**: Provide `psql` 17, `shellcheck`, `jq` and `curl` without host installs (owner request).
+
+**Contract**: Image `investments-diary-tools` (`npm run tools:build`); `scripts/tools/run.sh <cmd>` runs it with the
+repo mounted read-only and a TTY only when stdin is one. Production `user:create` runs `psql` through it;
+`npm run lint:sh` runs `shellcheck` through it. Local mode and CI keep `docker exec` into the Supabase container.
+
+#### 5. Docs and policy
+
+**File**: `scripts/README.md`, `README.md`, `context/deployment/deploy-plan.md`
+
+**Intent**: Document the command, and change the production secret from the service-role key to the database
+password.
+
+**Contract**: `accounts/` row and usage section in `scripts/README.md`; README "Creating an account" points at
+the bash tool. deploy-plan "Production service-role key" subsection becomes "Production database password":
+owner-only, typed into `psql`'s hidden prompt at run time, never stored in any file, env var, shell history or
+Vercel; agents never run `user:create --production`; agents may run the local default.
 
 ### Success Criteria:
 
 #### Automated Verification:
 
-- `npm test` passes, including `scripts/accounts/__tests__/create-user.test.ts`
-- `npm run lint` passes
-- `npm run user:create -- --email owner-check@example.com` creates a confirmed user on local Supabase, and a
-  second run with the same email is refused
+- `npm run test:user-create-db` passes on local Supabase (create, sign in through Auth, duplicate refused, bad
+  production URL refused, cleanup)
+- `npm run lint:sh` (shellcheck in the `investments-diary-tools` image) passes
+- `npm test` and `npm run lint` pass
+- `grep -rn "service-role key" context/deployment/deploy-plan.md` no longer describes the account tool
 
 #### Manual Verification:
 
-- Signing in at `/auth/signin` with the script-created local account reaches `/dashboard`
-- Running with `--production --url https://example.supabase.co` asks for the key with hidden input and stops
-  at the ref confirmation when a wrong ref is typed (no request made)
+- Signing in at `/auth/signin` with a `user:create`-created local account reaches `/dashboard`
+- Running with `--production --db-url <pooler string>` stops at the ref confirmation when a wrong ref is typed
+  (no connection made)
 
 **Implementation Note**: After automated verification passes, pause for the owner's confirmation before phase 3.
 
@@ -337,8 +378,8 @@ deploy-plan gap 1 marked fixed with the date.
 - After the phase 3 deploy, `https://investments-diary.vercel.app/auth/signup` returns 404 and the owner signs
   in, opens `/dashboard` and signs out
 - Authentication → Users lists only accounts the owner recognises
-- (Optional) `npm run user:create -- --production --url https://<ref>.supabase.co --email <throwaway>` creates
-  a confirmed user, which the owner then deletes in the dashboard
+- (Optional) `npm run user:create -- --production --db-url <pooler string> --email <throwaway>` creates a
+  confirmed user that can sign in, which the owner then deletes in the dashboard
 
 ---
 
@@ -346,8 +387,8 @@ deploy-plan gap 1 marked fixed with the date.
 
 ### Unit Tests:
 
-- `scripts/accounts/__tests__/create-user.test.ts`: target guards (local and production lookalike hosts), flag
-  parsing, password length, existing-account refusal, `email_confirm: true`.
+- `npm run test:user-create-db`: create through `psql`, sign in through Auth, duplicate refused, bad production
+  URL refused before connecting.
 - `src/lib/observability/auth.test.ts`: still covers sign-in, sign-out and callback after the sign-up removal.
 
 ### Integration Tests:
@@ -380,25 +421,26 @@ switch back on; neither loses data.
 
 #### Automated
 
-- [x] 1.1 `grep -n "open registration" context/foundation/prd.md` shows only text marked superseded
-- [x] 1.2 `npx prettier --check context/foundation/prd.md context/deployment/deploy-plan.md` passes
+- [x] 1.1 `grep -n "open registration" context/foundation/prd.md` shows only text marked superseded — 53ce842
+- [x] 1.2 `npx prettier --check context/foundation/prd.md context/deployment/deploy-plan.md` passes — 53ce842
 
 #### Manual
 
-- [x] 1.3 Owner confirms the FR-001 and Access Control wording matches the decision
+- [x] 1.3 Owner confirms the FR-001 and Access Control wording matches the decision — 53ce842
 
 ### Phase 2: Owner account script
 
 #### Automated
 
-- [ ] 2.1 `npm test` passes, including `scripts/accounts/__tests__/create-user.test.ts`
-- [ ] 2.2 `npm run lint` passes
-- [ ] 2.3 `npm run user:create -- --email owner-check@example.com` creates a confirmed user on local Supabase, and a second run with the same email is refused
+- [x] 2.1 `npm run test:user-create-db` passes on local Supabase (create, sign in through Auth, duplicate refused, bad production URL refused, cleanup)
+- [x] 2.2 `npm run lint:sh` (shellcheck in the `investments-diary-tools` image) passes
+- [x] 2.3 `npm test` and `npm run lint` pass
+- [x] 2.4 `grep -rn "service-role key" context/deployment/deploy-plan.md` no longer describes the account tool
 
 #### Manual
 
-- [ ] 2.4 Signing in at `/auth/signin` with the script-created local account reaches `/dashboard`
-- [ ] 2.5 Running with `--production --url https://example.supabase.co` asks for the key with hidden input and stops at the ref confirmation when a wrong ref is typed (no request made)
+- [x] 2.5 Signing in at `/auth/signin` with a `user:create`-created local account reaches `/dashboard`
+- [x] 2.6 Running with `--production --db-url <pooler string>` stops at the ref confirmation when a wrong ref is typed (no connection made)
 
 ### Phase 3: Close sign-up in the app, local Auth and smoke
 
@@ -425,4 +467,4 @@ switch back on; neither loses data.
 - [ ] 4.1 A public sign-up request against the hosted project (anon key, `POST /auth/v1/signup`) returns `422 signup_disabled`
 - [ ] 4.2 After the phase 3 deploy, `https://investments-diary.vercel.app/auth/signup` returns 404 and the owner signs in, opens `/dashboard` and signs out
 - [ ] 4.3 Authentication → Users lists only accounts the owner recognises
-- [ ] 4.4 (Optional) `npm run user:create -- --production --url https://<ref>.supabase.co --email <throwaway>` creates a confirmed user, which the owner then deletes in the dashboard
+- [ ] 4.4 (Optional) `npm run user:create -- --production --db-url <pooler string> --email <throwaway>` creates a confirmed user that can sign in, which the owner then deletes in the dashboard

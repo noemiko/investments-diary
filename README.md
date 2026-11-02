@@ -126,6 +126,18 @@ SUPABASE_URL=https://<project-ref>.supabase.co
 SUPABASE_KEY=<anon-key>
 ```
 
+### Creating an account
+
+Public sign-up is closed; the owner creates each account from the terminal. With local Supabase running:
+
+```sh
+npm run user:create -- --email you@example.com
+```
+
+Type a password of at least 12 characters twice at the hidden prompt (it runs `psql` in the local database container, so nothing else is needed). The account is already confirmed, so you can sign in at [local sign-in](http://localhost:4321/auth/signin) straight away. An email that already has an account is refused.
+
+For the hosted project the owner needs Docker and the tools image (`npm run tools:build`, once) instead of a host `psql`, and adds `--production --db-url <connection string without the password>`. The script runs `psql` in that image, asks the owner to type the project ref to confirm, and `psql` asks for the database password at its own hidden prompt. The password is never stored in a file or environment variable, and agents never run this mode. See [Project scripts](scripts/README.md#accounts).
+
 ### Email confirmation in local development
 
 By default Supabase requires email confirmation before a user can sign in. To skip this during local development:

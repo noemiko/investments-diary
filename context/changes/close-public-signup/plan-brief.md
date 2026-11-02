@@ -18,8 +18,9 @@ page. `supabase/config.toml` allows sign-up, and the hosted project's "Allow new
 ## Desired End State
 
 A public sign-up request returns `422 signup_disabled` locally and in production, and `/auth/signup` is a 404.
-The owner runs `npm run user:create` to create a confirmed email/password account on local Supabase, or on the
-hosted project with `--production` after entering the service-role key in a hidden prompt. Smoke creates its
+The owner runs `npm run user:create` (bash + SQL through `psql`) to create a confirmed email/password account on
+local Supabase, or on the hosted project with `--production` after typing the project ref and the database
+password into `psql`'s hidden prompt. Smoke creates its
 accounts through the admin API and proves both refusals. Existing accounts sign in and out unchanged.
 
 ## Key Decisions Made
@@ -27,9 +28,11 @@ accounts through the admin API and proves both refusals. Existing accounts sign 
 | Decision | Choice | Why (1 sentence) | Source |
 | --- | --- | --- | --- |
 | Close at which layer | Auth layer (local config + hosted switch) and app UI | Removing the page alone leaves `/auth/v1/signup` open to anyone with the anon key | Roadmap S-10 |
-| Owner creation path | One script, local by default, `--production` on explicit request | One repeatable path for every environment | Plan |
-| Production key handling | Hidden TTY prompt only; never argv, env, file or Vercel; agents never run it | Keeps a new high-privilege secret out of history and dotfiles | Plan |
-| Production target guard | `https://<ref>.supabase.co` only, owner types `<ref>` to confirm | Stops a lookalike or mistyped URL before any request | Plan |
+| Owner creation path | One bash + SQL tool via `psql`, local by default, `--production` on explicit request | Owner prefers a CLI tool over calling an endpoint (re-planned during phase 2) | Plan |
+| How the account is written | Insert `auth.users` + `auth.identities` directly, bcrypt via pgcrypto | No Supabase CLI command creates users; accepted risk of writing GoTrue-owned tables | Plan |
+| Production secret | Database password, typed into `psql`'s hidden prompt only; agents never run it | Keeps a high-privilege secret out of argv, env, history and dotfiles | Plan |
+| Production target guard | Supabase host only, owner types the project ref before connecting | Stops a mistyped connection string before any connection | Plan |
+| Drift detection | `test:user-create-db` in CI signs in through the real Auth API | A Supabase upgrade that breaks the SQL turns CI red instead of failing silently | Plan |
 | First credential | Email + password with `email_confirm: true` | Matches the seeder and tests; needs no email delivery | Plan |
 | Script scope | Create only; refuses an existing email | No update/reset path to misuse | Plan |
 | Old `/auth/signup` URL | Plain 404 | Least code; nothing advertises how to get an account | Plan |
@@ -49,9 +52,10 @@ hosted project.
 
 ## Architecture / Approach
 
-`scripts/accounts/lib/create-user.mjs` holds the testable logic (argument parsing, target guard, password check,
-existing-account refusal, `admin.auth.admin.createUser`). `scripts/accounts/create-user.mjs` gets credentials
-from `supabase status` (local, as the demo seeder does) or from hidden prompts (production). Smoke reuses its
+`scripts/accounts/create-user.sh` collects the email and password (`read -s`, twice) and runs
+`scripts/accounts/create-user.sql` through `psql`: inside the local database container via `docker exec`, or on
+the hosted pooler with the owner's own `psql`. The SQL writes the account in the shape GoTrue writes it, in one
+transaction. Smoke reuses its
 existing local service-role helper to call `POST /auth/v1/admin/users`. Supabase's `enable_signup = false`
 blocks only the public sign-up endpoint, so admin creation keeps working everywhere.
 
@@ -60,7 +64,7 @@ blocks only the public sign-up endpoint, so admin creation keeps working everywh
 | Phase | What it delivers | Key risk |
 | --- | --- | --- |
 | 1. Record the decision | PRD and deploy-plan describe owner-created accounts and the key policy | Wording drifts from the decision |
-| 2. Owner account script | `npm run user:create`, local and guarded production modes, tested | A guard gap lets the script hit the wrong project |
+| 2. Owner account script | `npm run user:create` (bash + SQL), local and guarded production modes, CI sign-in check | GoTrue rejects hand-written rows after an upgrade |
 | 3. Close sign-up | Sign-up gone from app and local Auth; smoke reworked; docs updated | Smoke or a unit test left on the old flow turns CI red |
 | 4. Production gate | Hosted switch off, stray accounts removed, refusals verified (owner) | Switch forgotten, leaving the API open |
 
@@ -72,9 +76,11 @@ blocks only the public sign-up endpoint, so admin creation keeps working everywh
 
 - `enable_signup = false` returning `422 signup_disabled` and leaving `admin.createUser` working is Supabase
   behaviour from documentation knowledge; phase 3's smoke run is the first local proof.
-- The production mode is exercised only by the owner (optional phase 4 check); unit tests cover its guards.
-- The production key passes through the owner's terminal session; the hidden prompt keeps it out of history,
-  not out of memory of that process.
+- The production mode is exercised only by the owner (optional phase 4 check); the integration check covers its
+  URL guard.
+- Writing `auth.users`/`auth.identities` directly depends on GoTrue's table shape; the CI sign-in check is the
+  safety net, not a guarantee across every upgrade.
+- Production `psql` needs the pooler connection string (the direct `db.<ref>` host is IPv6-only on most plans).
 
 ## Success Criteria (Summary)
 

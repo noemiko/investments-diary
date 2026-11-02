@@ -2,13 +2,15 @@
 
 Run commands from the repository root using Node.js 24 and installed dependencies. Existing npm command names remain the supported shortcuts; folders describe purpose.
 
-| Folder           | What belongs here                                              |
-| ---------------- | -------------------------------------------------------------- |
-| `testing/`       | HTTP checks, mutation testing, and local database verification |
-| `demo/`          | Persistent local demo provisioning and its helper/tests        |
-| `observability/` | Sentry configuration, runtime and public-build checks          |
-| `automation/`    | Agent hooks, roadmap integration and database job registration |
-| `deployment/`    | Deployment decision helpers                                    |
+| Folder           | What belongs here                                                               |
+| ---------------- | ------------------------------------------------------------------------------- |
+| `testing/`       | HTTP checks, mutation testing, and local database verification                  |
+| `demo/`          | Persistent local demo provisioning and its helper/tests                         |
+| `accounts/`      | Owner-created sign-in accounts (local or hosted Supabase)                       |
+| `observability/` | Sentry configuration, runtime and public-build checks                           |
+| `automation/`    | Agent hooks, roadmap integration and database job registration                  |
+| `deployment/`    | Deployment decision helpers                                                     |
+| `tools/`         | Docker image with psql, shellcheck, jq and curl, so the host needs none of them |
 
 ## Testing
 
@@ -22,6 +24,7 @@ Database commands require Docker and the project's local Supabase stack (`npx su
 | [`testing/database/test-decimal-database.mjs`](testing/database/test-decimal-database.mjs)           | `npm run test:decimal-db`: runs `tests/database/` through `vitest.database.config.ts`, including exact snapshot pagination and ownership. CI decimal-transport job calls it.                                                                                                                                                                                                                   | Local CLI credential discovery; rejects remote Supabase. API, anonymous and service keys are passed privately to the child process.                                                             | Vitest results and exit status. Tests create temporary accounts/fixtures and clean them up; no database reset.                                                 |
 | [`testing/database/test-market-price-recovery.mjs`](testing/database/test-market-price-recovery.mjs) | `npm run test:recovery-db`: rehearses the operator manual-price recovery template and its re-enable; see [Manual price recovery verification](#manual-price-recovery-verification). CI decimal-transport job calls it.                                                                                                                                                                         | Local database container; reads migrations without cron infrastructure and the recovery template under `context/deployment/`.                                                                   | PASS/failure output. Creates and drops a disposable database; diary data is not used.                                                                          |
 | [`testing/database/test-wallet-cron.mjs`](testing/database/test-wallet-cron.mjs)                     | `npm run test:wallet-cron`: applies job registration twice and checks midnight UTC scheduling, singleton job and capture permissions. CI decimal-transport job calls it.                                                                                                                                                                                                                       | Local database container with snapshot storage/function already installed.                                                                                                                      | PASS/failure output. Uses a transaction in the local `postgres` database and rolls back scheduler changes. Does not execute capture or wait for midnight.      |
+| [`testing/database/test-user-create.sh`](testing/database/test-user-create.sh)                       | `npm run test:user-create-db`: creates a throwaway account through `accounts/create-user.sh`, signs in through the real Auth API (`/auth/v1/token`), checks the case-insensitive duplicate refusal and that bad `--production --db-url` values stop before psql or docker run. CI decimal-transport job calls it, so a Supabase Auth upgrade that breaks the SQL turns CI red.                 | Local CLI credential discovery; rejects non-local API URLs. Writes through `docker exec` into the local database container.                                                                     | PASS lines and exit status; never prints the password, keys or tokens. Deletes the throwaway account on exit, also on failure.                                 |
 
 ### Public market-data provider probe
 
@@ -51,6 +54,41 @@ For the password prompt and sign-in walkthrough, see the [project README](../REA
 Every demo holding needs a stock selection, so the loader creates them through owner/wallet-bound receipts for the owner's Apple (`AAPL` / `NMS`) target, like migrated drafts; the selection labels each holding `AAPL`. The open twelfth holding (in `Demo · Rising`) is also linked to an owner-scoped Yahoo `AAPL` / `NMS` / USD listing. The fresh fixture has no manual price; the listing contains metadata only, with no synthetic quote or refresh attempt. Click **Download prices** on Positions to request a real quote. Seeding makes no provider requests and preserves existing synthetic amounts and history.
 
 Normal reruns fill missing fixtures and upgrade that older demo holding's link only while it remains open, not deleted and unlinked in a compatible wallet. Edited labels, manual prices and user-selected listings are preserved. An already-existing canonical listing is reused without modifying any cache fields; a real quote already cached there may immediately become effective. Explicit reset restores recognised fixtures, removes the fixture wallets' selection receipts, clears any target's link to the deterministic fixture cache row and removes only that row, after refusing unrelated position or lookup-receipt references. Independently created cache rows are retained.
+
+## Accounts
+
+Public sign-up is closed: the owner creates each account with `npm run user:create`. The account gets an email and a password and is already confirmed; there is no invite or confirmation email.
+
+| File                                                   | Command / caller and purpose                                                                                                                                              | Inputs and prerequisites                                                                                                                                                                                                                                                                                                                                 | Output, data effects and cleanup                                                                                                                                                                   |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`accounts/create-user.sh`](accounts/create-user.sh)   | `npm run user:create -- --email <e>`: creates a confirmed account on local Supabase. `--production --db-url <connection string>` targets the hosted project (owner only). | Local: running local Supabase; runs `psql` inside the local database container with `docker exec`. Production: Docker and the tools image (`npm run tools:build`), an interactive terminal, a Supabase connection string without a password, then typing the project ref to confirm. Both: hidden password prompt entered twice, at least 12 characters. | Prints `Created <email> on <local\|project ref>`, never a password. Persistent account; refuses an email that already has an account (case-insensitive) and changes nothing. No automatic cleanup. |
+| [`accounts/create-user.sql`](accounts/create-user.sql) | Run only by `create-user.sh`; not a standalone command.                                                                                                                   | psql variables `email` and `pw_b64` (the password, base64-encoded, set over stdin).                                                                                                                                                                                                                                                                      | One transaction: inserts `auth.users` and the matching `auth.identities` row in the shape Supabase Auth writes, or raises and changes nothing.                                                     |
+
+Local default:
+
+```sh
+npm run user:create -- --email you@example.com
+```
+
+Without a terminal (local only), the password and its confirmation are read as two lines from standard input.
+
+Production (owner only):
+
+```sh
+npm run tools:build   # once
+npm run user:create -- --production --db-url 'postgresql://postgres.<ref>@<region>.pooler.supabase.com:5432/postgres' --email you@example.com
+```
+
+- Copy the connection string from the Supabase dashboard (Connect) **without** the password. The host must be `<region>.pooler.supabase.com` (user `postgres.<ref>`) or `db.<ref>.supabase.co`; a string that contains a password is refused.
+- The script then re-runs itself in the tools image on your terminal. You type the project ref to confirm, then the account password twice; nothing is sent before the ref matches. `psql` then asks for the database password at its own hidden prompt. `PGPASSWORD` and `~/.pgpass` are ignored, and the connection requires SSL.
+- The account password reaches SQL base64-encoded over stdin, never as a command-line argument.
+- Production is never inferred from the environment: without `--production` the command targets local Supabase only.
+- Writing `auth.users` directly is an accepted risk (the tables belong to Supabase Auth); `npm run test:user-create-db` in CI catches drift.
+- **Agents never run `--production`** and never ask for the database password; they may run the local default. See [Production database password](../context/deployment/deploy-plan.md#production-database-password).
+
+## Tools image
+
+[`tools/Dockerfile`](tools/Dockerfile) builds `investments-diary-tools` (Alpine with bash, curl, jq, shellcheck and the PostgreSQL 17 client), so the host needs none of them. Build it once with `npm run tools:build`. [`tools/run.sh`](tools/run.sh) runs a command in it with the repository mounted read-only at `/work`, interactive only when stdin is a terminal, and fails with a clear message if the image is not built. Production `user:create` and `npm run lint:sh` (shellcheck over the shell scripts) use it; local `user:create` and CI do not.
 
 ## Observability
 

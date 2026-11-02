@@ -60,6 +60,8 @@ jobs:
         run: npm run test:wallet-cron
       - name: Verify manual price recovery template
         run: npm run test:recovery-db
+      - name: Verify owner-created accounts sign in through Supabase Auth
+        run: npm run test:user-create-db
       - name: Verify every table is reachable only by its owner, and every policy is granted
         run: npm run test:contract-db
       - name: Stop local Supabase
