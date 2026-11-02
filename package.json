@@ -30,7 +30,8 @@
     "test:demo-db": "node --test scripts/demo/__tests__/demo-data.test.mjs",
     "test:wallet-cron": "node scripts/testing/database/test-wallet-cron.mjs",
     "probe:market-data": "node scripts/testing/market-data-probe.mjs",
-    "test:market-prices-db": "node scripts/testing/database/test-market-prices-database.mjs && node scripts/testing/database/test-market-price-recovery.mjs && node scripts/testing/database/test-required-selection-migration.mjs"
+    "test:market-prices-db": "node scripts/testing/database/test-market-prices-database.mjs && node scripts/testing/database/test-market-price-recovery.mjs && node scripts/testing/database/test-required-selection-migration.mjs",
+    "test:grants-db": "node scripts/testing/database/test-policy-grants.mjs"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.10",
