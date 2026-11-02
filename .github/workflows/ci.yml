@@ -56,14 +56,10 @@ jobs:
         run: npm run test:decimal-db
       - name: Verify versioned wallet cron infrastructure
         run: npm run test:wallet-cron
-      - name: Verify market migrations and manual recovery
-        run: npm run test:market-prices-db
-      - name: Verify every permanent database rule on the current schema
+      - name: Verify manual price recovery template
+        run: npm run test:recovery-db
+      - name: Verify every table is reachable only by its owner, and every policy is granted
         run: npm run test:contract-db
-      - name: Verify sale constraints and ownership
-        run: npm run test:close-db
-      - name: Verify snapshot capture, idempotency and immutable history
-        run: npm run test:snapshots-db
       - name: Stop local Supabase
         if: always()
         run: supabase stop --no-backup

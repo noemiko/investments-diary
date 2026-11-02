@@ -58,7 +58,7 @@ with your own past reasoning at the moment of deciding improves how you invest.
 | S-08 | evolve-reason-categories      | rename a reason category everywhere, or remove it while past positions keep it                               | S-01                                    | FR-005                         | proposed |
 | S-09 | named-wallets                 | group investments into named wallets and see totals with missing-data and price-date context                 | S-01, S-02, S-05                        | FR-013 (should-have)           | done     |
 | S-10 | close-public-signup           | have accounts created only by the owner's script/CLI; nobody can sign up from the app or the public Auth API | —                                       | FR-001 (amended 2026-11-02)    | proposed |
-| F-01 | consolidate-db-contract-tests | (technical) rely on one database contract test that checks every permanent rule on the current schema        | automatic-stock-prices Phase 6 accepted | NFR privacy; FR-013–FR-016     | in-progress |
+| F-01 | consolidate-db-contract-tests | (technical) one database contract test checks grants and owner-only access on every table                    | automatic-stock-prices Phase 6 accepted | NFR privacy; FR-013–FR-016     | in-progress |
 
 ## Baseline
 
@@ -82,17 +82,15 @@ which is exactly what this roadmap avoids.
 
 ### F-01: Consolidate the database contract tests
 
-- **Outcome:** (technical) one test replays the full migration chain once, with shared setup, and checks every permanent database rule on the current schema; migration-transition checks that can never run against real data again are removed.
+- **Outcome:** (technical) one test replays the full migration chain once, with shared setup, under production privileges, and checks the riskiest database rules: every RLS policy is backed by a grant, anon has no access, and every table in `public` is reachable only by its owner. All other database behaviour is left to `npm run smoke` and the Vitest suite (`tests/database/`); migration-transition checks that can never run against real data again are removed (re-planned 2026-11-02, owner decision).
 - **Change ID:** consolidate-db-contract-tests
 - **PRD refs:** NFR (no other account can read a position), FR-007, FR-013–FR-016
 - **Prerequisites:** `automatic-stock-prices` Phase 6 accepted (rows 6.1–6.3). Until then, the transition checks are the evidence for the 2026-11-02 production migration.
 - **Parallel with:** S-06, S-07, S-08, S-10
 - **Blockers:** —
 - **Scope notes (review 2026-11-02 of `scripts/testing/database/`):**
-  - Keep as they are: `test-decimal-database.mjs`, `test-wallet-cron.mjs`, `test-policy-grants.mjs`, `test-market-price-recovery.mjs` (while the recovery template exists).
-  - `test-wallet-database.mjs` applies only the first four migrations, so its wallet rules (unique name, non-negative, no delete, RLS, foreign assignment) are never checked on the current schema; move them to the full chain and drop the "Main" wallet backfill checks.
-  - `test-market-prices-database.mjs` (272 lines) mostly tests intermediate states (currency attestation, legacy moves, USD backfill, inherited denominations, obsolete metadata); keep its cache RLS, lease/cooldown, effective-selection, manual-override timing and move rules.
-  - `test-close-database.mjs` and `test-required-selection-migration.mjs`: keep the constraint, ownership, NOT NULL, guard and revoked-privilege checks; drop the existing-row and Apple backfill checks.
+  - Keep as they are: `test-decimal-database.mjs`, `test-wallet-cron.mjs`, `test-market-price-recovery.mjs` (while the recovery template exists; moved onto the shared setup).
+  - Re-planned 2026-11-02: the policy-grant check moves into the contract test, which also checks owner-only access on every table. The wallet, market-price, close, snapshot and required-selection rules are not ported; they are left to smoke and Vitest, and the six raw-SQL scripts that held them are removed.
   - Six files duplicate the create-database / fake `auth` / replay / drop scaffolding; share it.
   - Map every permanent assertion to its new home before deleting anything, and prove the mapping with deliberate breaks.
 - **Unknowns:** —

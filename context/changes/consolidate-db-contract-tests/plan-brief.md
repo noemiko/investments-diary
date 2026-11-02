@@ -21,7 +21,7 @@ Phase 1 is built:
 - a contract runner with a `grants` domain;
 - an assertion map of every old assertion.
 
-`test-wallet-database` and `test-policy-grants` are already deleted. Four other raw-SQL scripts remain: close, snapshots, market-prices and required-selection.
+`test-wallet-database` and `test-policy-grants` are already deleted. Four other raw-SQL scripts remained at the start (close, snapshots, market-prices and required-selection); Phase 3 deletes them.
 
 ## Desired End State
 
@@ -74,11 +74,11 @@ Each table's expected outcome comes from its privileges in the catalogue.
 
 ## Phases at a Glance
 
-| Phase                                          | What it delivers                                                    | Key risk                                             |
-| ---------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------- |
-| 1. Shared helper, runner and assertion map     | Harness, `grants` domain, assertion map (done; awaiting map review) | —                                                    |
-| 2. Owner-only access across every table        | `access` domain for 8 tables, 4 recorded breaks, re-pointed map     | A foreign UPDATE on a non-updatable column hides RLS |
-| 3. Remove remaining scripts, update references | 4 scripts deleted, recovery on the helper, CI and docs updated      | A stale reference to a removed command               |
+| Phase                                          | What it delivers                                                | Key risk                                             |
+| ---------------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------- |
+| 1. Shared helper, runner and assertion map     | Harness, `grants` domain, assertion map (done)                  | —                                                    |
+| 2. Owner-only access across every table        | `access` domain for 8 tables, 4 recorded breaks, re-pointed map | A foreign UPDATE on a non-updatable column hides RLS |
+| 3. Remove remaining scripts, update references | 4 scripts deleted, recovery on the helper, CI and docs updated  | A stale reference to a removed command               |
 
 **Prerequisites:** local Supabase running (`npx supabase start`).
 **Estimated effort:** about 2 sessions for Phases 2–3.

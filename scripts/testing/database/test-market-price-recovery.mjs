@@ -1,28 +1,15 @@
 // Exercise the operator recovery template only in a disposable local database.
 // No hosted connection, provider request or diary-database reset is involved.
+// The fixture is seeded part-way through the chain, before the price migration, so the later migrations run
+// over existing rows. Privileges come from the chain alone, as in production: no hand grants.
 import assert from "node:assert/strict";
-import { randomBytes } from "node:crypto";
-import { execFileSync } from "node:child_process";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
+import { assert as check, asPrivileged, asUser, disposableDatabase, migrationFiles } from "./lib/db-harness.mjs";
 
-const container = "supabase_db_investments-diary";
-const database = `market_recovery_${randomBytes(6).toString("hex")}`;
-const run = (args, input) =>
-  execFileSync("docker", ["exec", "-i", container, ...args], {
-    input,
-    encoding: "utf8",
-    stdio: ["pipe", "pipe", "pipe"],
-  });
-const sql = (input) => run(["psql", "-U", "postgres", "-d", database, "-v", "ON_ERROR_STOP=1", "-Atq"], input).trim();
-const check = (condition, message) =>
-  `do $$ begin if not (${condition}) then raise exception '${message}'; end if; end $$;`;
-const directory = new URL("../../../supabase/migrations/", import.meta.url);
-const files = readdirSync(directory)
-  .filter((name) => name.endsWith(".sql") && name !== "20261028170000_register_daily_wallet_snapshot_job.sql")
-  .sort();
-const split = files.indexOf("20261030110418_market_price_persistence.sql");
-if (split < 0) throw new Error("Price migration missing");
-const migration = (name) => readFileSync(new URL(name, directory), "utf8");
+const db = disposableDatabase("market_recovery");
+const { sql } = db;
+const beforePrices = migrationFiles({ until: "20261030110418_market_price_persistence.sql" });
+const afterPrices = migrationFiles().slice(beforePrices.length);
 const recovery = readFileSync(
   new URL("../../../context/deployment/automatic-stock-prices-manual-selection.sql", import.meta.url),
   "utf8",
@@ -48,16 +35,11 @@ const data = [
   ["market_selection_receipts", "id"],
   ["wallet_snapshots", "wallet_id,observation_day"],
 ];
-let created = false;
 try {
-  run(["createdb", "-U", "postgres", database]);
-  created = true;
-  sql(`create schema auth; create table auth.users(id uuid primary key);
-    create function auth.uid() returns uuid language sql stable as
-      'select nullif(current_setting(''request.jwt.claim.sub'',true),'''')::uuid';
-    grant usage on schema auth,public to authenticated,anon;
-    ${files.slice(0, split).map(migration).join("\n")}
-    insert into auth.users values('${owner}'),('${foreign}');
+  db.create();
+  db.installAuth();
+  db.replay(beforePrices);
+  sql(`insert into auth.users values('${owner}'),('${foreign}');
     insert into wallets(id,user_id,name,starting_value) values
       ('${wallet}','${owner}','Recovery',1000),('${foreignWallet}','${foreign}','Foreign',0);
     insert into reason_categories(id,user_id,name) values
@@ -68,9 +50,9 @@ try {
       ('${position(3)}','${owner}','${wallet}','${wallet}','Automatic only','2026-01-01',10,2,null,null,null,null),
       ('${position(4)}','${owner}','${wallet}','${wallet}','Manual only','2026-01-01',10,1,13,'2026-01-03',null,null),
       ('${position(6)}','${foreign}','${foreignWallet}','${foreignWallet}','Foreign','2026-01-01',10,1,null,null,null,null);
-    ${files.slice(split).map(migration).join("\n")}
-    grant select on public.positions,public.wallets,public.reason_categories to authenticated;
-    insert into market_quote_cache(id,user_id,provider,symbol,exchange,currency,timezone,listing_name,exchange_name,instrument_type,
+  `);
+  db.replay(afterPrices);
+  sql(`insert into market_quote_cache(id,user_id,provider,symbol,exchange,currency,timezone,listing_name,exchange_name,instrument_type,
       price,market_at,market_date,fetched_at,market_state,refresh_outcome)
       values('${cache}','${owner}','yahoo','AAPL','NMS','USD','America/New_York','Apple','Nasdaq','EQUITY',
         20.12345678,'2026-01-05T20:00:00Z','2026-01-05','2026-01-05T20:01:00Z','CLOSED','success');
@@ -106,9 +88,9 @@ try {
     ${check(`(select selected_price is null and selected_source='missing' from position_effective_prices where id='${position(3)}')`, "automatic-only quote still selected")}
     ${check(`(select selected_price=16 and selected_source='manual' from position_effective_prices where id='${position(5)}')`, "pending selection lost manual fallback")}
     ${check("not has_function_privilege('authenticated','public.capture_wallet_snapshots()','execute') and not has_function_privilege('anon','public.capture_wallet_snapshots()','execute') and has_function_privilege('service_role','public.capture_wallet_snapshots()','execute')", "capture permissions changed")}
-    set role authenticated; set request.jwt.claim.sub='${owner}';
+    ${asUser(owner)}
     ${check("(select count(*)=5 from public.position_effective_prices)", "recovery view lost owner isolation")}
-    reset role;
+    ${asPrivileged()}
     set role service_role; select public.capture_wallet_snapshots(); reset role;
     ${check(
       `exists(select 1 from wallet_snapshots where wallet_id='${wallet}' and observation_day=(now() at time zone 'UTC')::date
@@ -140,5 +122,5 @@ try {
     "PASS manual recovery/re-enable: unchanged data/view contract, owner isolation, exact sale/manual selection and future capture parity; capture definition/privileges unchanged (cron verified separately)",
   );
 } finally {
-  if (created) run(["dropdb", "-U", "postgres", database]);
+  db.drop();
 }

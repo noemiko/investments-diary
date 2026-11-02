@@ -386,29 +386,29 @@ No schema or data migration. Rollback means reverting the commits, which restore
 
 #### Automated
 
-- [x] 2.1 `npm run test:contract-db` passes with `grants` and `access`, and the access summary reports 8 tables
-- [x] 2.2 `npm run test:contract-db` passes twice in a row (fixtures don't collide)
-- [x] 2.3 The grant grep over `lib/`, `contract/` and the runner still returns no table grants
-- [x] 2.4 `git diff --stat supabase/migrations` is empty after the break runs
-- [x] 2.5 `npm run lint` passes
+- [x] 2.1 `npm run test:contract-db` passes with `grants` and `access`, and the access summary reports 8 tables — 8244548
+- [x] 2.2 `npm run test:contract-db` passes twice in a row (fixtures don't collide) — 8244548
+- [x] 2.3 The grant grep over `lib/`, `contract/` and the runner still returns no table grants — 8244548
+- [x] 2.4 `git diff --stat supabase/migrations` is empty after the break runs — 8244548
+- [x] 2.5 `npm run lint` passes — 8244548
 
 #### Manual
 
-- [x] 2.6 `verification.md` records the four access breaks, each with a failing message from the expected domain
-- [x] 2.7 Every **P** row in the assertion map has a re-planned destination (access, grants, smoke/Vitest reference, or "not covered (accepted)")
+- [x] 2.6 `verification.md` records the four access breaks, each with a failing message from the expected domain — 8244548
+- [x] 2.7 Every **P** row in the assertion map has a re-planned destination (access, grants, smoke/Vitest reference, or "not covered (accepted)") — 8244548
 
 ### Phase 3: Remove the remaining scripts and update references
 
 #### Automated
 
-- [ ] 3.1 `npm run test:contract-db` passes
-- [ ] 3.2 `npm run test:recovery-db` passes
-- [ ] 3.3 `npm run test:decimal-db` and `npm run test:wallet-cron` still pass
-- [ ] 3.4 `ls scripts/testing/database` lists only the kept files and folders
-- [ ] 3.5 Grep for removed script and command names returns only this change's own files
-- [ ] 3.6 `grep -nE "grant (all|select|insert|update|delete)" scripts/testing/database/test-market-price-recovery.mjs` returns nothing
-- [ ] 3.7 `npm run lint` passes
+- [x] 3.1 `npm run test:contract-db` passes
+- [x] 3.2 `npm run test:recovery-db` passes
+- [x] 3.3 `npm run test:decimal-db` and `npm run test:wallet-cron` still pass
+- [x] 3.4 `ls scripts/testing/database` lists only the kept files and folders
+- [x] 3.5 Grep for removed script and command names returns only this change's own files
+- [x] 3.6 `grep -nE "grant (all|select|insert|update|delete)" scripts/testing/database/test-market-price-recovery.mjs` returns nothing
+- [x] 3.7 `npm run lint` passes
 
 #### Manual
 
-- [ ] 3.8 The PR's CI run shows `decimal-transport` green with the renamed contract step and the recovery step, and no close/snapshots/market-prices steps
+- [x] 3.8 The PR's CI run shows `decimal-transport` green with the renamed contract step and the recovery step, and no close/snapshots/market-prices steps

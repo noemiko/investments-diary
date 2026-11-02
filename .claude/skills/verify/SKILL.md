@@ -13,8 +13,17 @@ arithmetic, formatting or Supabase numeric projections/writes change, also run
 creates disposable accounts, checks exact numeric round trips and cleans them up;
 it refuses a nonlocal API URL. It never resets the diary database.
 
-CI runs `npm test` in `ci` and the local transport test in `decimal-transport` on
-qualifying pull requests and master pushes. This describes workflow wiring, not
+If a migration, RLS policy or grant changes, or a table is added, also run
+`npm run test:contract-db`: it replays the migration chain in a disposable database under
+production privileges and checks that every policy is granted, anon has no access, and
+every table in `public` is reachable only by its owner (a new table needs an access
+fixture). If the operator recovery template
+(`context/deployment/automatic-stock-prices-manual-selection.sql`) or the price-selection
+view changes, also run `npm run test:recovery-db`. Both need only the local Supabase
+container and drop their database afterwards.
+
+CI runs `npm test` in `ci`, and the local transport, cron, recovery and contract tests in
+`decimal-transport`, on qualifying pull requests and master pushes. This describes workflow wiring, not
 GitHub branch-protection settings.
 
 Run these in order, from the repo root. **Do not reorder or skip steps** — each later step
