@@ -52,8 +52,8 @@ The code is the `10x-astro-starter` scaffold, renamed and migrated from Cloudfla
   an unrecognised major silently falls back to `nodejs24.x`. `engines.node` in `package.json` is
   what makes Vercel's builder run 24, and `.nvmrc` is what makes your shell and CI run 24. Bump all
   three together or prod drifts from local without an error.
-- **`npm run preview` does not work.** `@astrojs/vercel` ships no preview entrypoint, so
-  `astro preview` dies with "Preview server process exited before becoming ready." Use
+- **There is no preview server.** `@astrojs/vercel` ships no preview entrypoint, so
+  `astro preview` dies (the `preview` npm script was removed for this reason) with "Preview server process exited before becoming ready." Use
   `npm run dev`, or `npx vercel dev` for a runtime-faithful server. The `smoke` CI job serves the
   app with `npm run dev` for this reason, so it exercises the auth flow but not the built bundle.
 - **The verification bar is the `verify` skill** (@.claude/skills/verify/SKILL.md), not a single
@@ -83,7 +83,7 @@ Setup, troubleshooting and acceptance scenarios: @context/foundation/research-to
 
 Scripts are in @package.json; only the non-obvious ones are listed here.
 
-- `npm run build` — production SSR build into `.vercel/output/`. `npm run preview` is broken with
+- `npm run build` — production SSR build into `.vercel/output/`. There is no preview server with
   this adapter — see tripwires
 - `npx astro check` — type-checks `.astro` files; CI runs it, there is no npm script
 - `npm run smoke` — walks sign-up → sign-in → protected page → sign-out over HTTP against a

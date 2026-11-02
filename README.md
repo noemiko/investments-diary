@@ -51,7 +51,6 @@ for activation, connection checks, fallback behavior and acceptance scenarios.
 
 - `npm run dev` - Start development server
 - `npm run build` - Build for production into `.vercel/output/`
-- `npm run preview` - Not supported by the Vercel adapter; use `npm run dev` or `npx vercel dev`
 - `npm run lint` - Run ESLint with type-checked rules
 - `npm run lint:fix` - Auto-fix ESLint issues
 - `npm run format` - Run Prettier
@@ -241,7 +240,7 @@ npm run seed:demo -- --reset
 
 Reset affects recognised demo fixtures only and refuses unrelated references, including positions or lookup receipts referencing the fixture listing. It restores the fixture's metadata-only cache row; independently created canonical cache rows are preserved. See [wallet observations](context/deployment/deploy-plan.md#wallet-observations-and-cron) for daily capture, scheduler verification and further setup details.
 
-Run `npm run test:snapshots-db` and `npm run test:demo-db` against local Supabase. The versioned scheduler migration activates daily capture when applied. Verify it locally with `npm run test:wallet-cron`; production migration deployment remains a separate authorised step.
+Run `npm run test:decimal-db` (snapshot values and pagination) and `npm run test:demo-db` against local Supabase; `npm run test:contract-db` checks that snapshots, like every table, are readable only by their owner. The versioned scheduler migration activates daily capture when applied. Verify it locally with `npm run test:wallet-cron`; production migration deployment remains a separate authorised step.
 
 ## Script guide
 

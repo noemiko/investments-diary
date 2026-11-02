@@ -65,3 +65,10 @@ the misleading guard stays in the history.
 - **Problem**: An absolute path such as /Users/<name>/Documents/... reveals the user's personal username and machine layout to anyone the repo is shared with.
 - **Rule**: do not write in any documentation user local path to the project
 - **Applies to**: all
+
+## Give registered users access to only their own rows in new tables
+
+- **Context**: Any phase that adds a migration creating a new table in investments-diary
+- **Problem**: Registered users get empty results or permission errors on a new table.
+- **Rule**: Users should have access to only their own rows.
+- **Applies to**: implement, impl-review

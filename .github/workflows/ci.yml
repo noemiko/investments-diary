@@ -46,7 +46,9 @@ jobs:
           cache: npm
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Pinned: CLI v3 rejects [inbucket] in supabase/config.toml. Keep the major in step with the
+          # `supabase` devDependency in package.json, and migrate the config before moving to v3.
+          version: 2.122.0
       - run: npm ci
       - run: npx astro sync
       - name: Start local Supabase
@@ -56,10 +58,10 @@ jobs:
         run: npm run test:decimal-db
       - name: Verify versioned wallet cron infrastructure
         run: npm run test:wallet-cron
-      - name: Verify market migrations and manual recovery
-        run: npm run test:market-prices-db
-      - name: Verify every RLS policy is backed by a grant
-        run: npm run test:grants-db
+      - name: Verify manual price recovery template
+        run: npm run test:recovery-db
+      - name: Verify every table is reachable only by its owner, and every policy is granted
+        run: npm run test:contract-db
       - name: Stop local Supabase
         if: always()
         run: supabase stop --no-backup
@@ -76,13 +78,14 @@ jobs:
           cache: npm
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Pinned: CLI v3 rejects [inbucket] in supabase/config.toml. Keep the major in step with the
+          # `supabase` devDependency in package.json, and migrate the config before moving to v3.
+          version: 2.122.0
       - run: npm ci
       - name: Start local Supabase
         run: |
           supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,realtime,storage-api,postgres-meta,supavisor
           supabase status -o env | grep -E '^(API_URL|ANON_KEY)=' > supabase.env
-      - run: npm run test:wallet-db
       - name: Configure secrets
         run: |
           source supabase.env
