@@ -18,7 +18,7 @@ describe("position result", () => {
       amount: { units: 1_000_000_000_000_000_000n, scale: 16 },
       priceDate: "2026-10-01",
     });
-    expect(describeResult(priced)).toEqual({ percent: "+20.00%", asOf: "as of Oct 1, 2026" });
+    expect(describeResult(priced)).toEqual({ percent: "+20.00%", asOf: "as of Oct 1, 2026", direction: "up" });
   });
   it("computes a loss with independent expectations", () => {
     const input = { ...priced, buy_price: "100", current_price: "80", quantity: "2" };
@@ -83,12 +83,12 @@ describe("final sale results", () => {
       amount: { units: 1_000_000_000_000_000_000n, scale: 16 },
       priceDate: "2026-09-01",
     });
-    expect(describeResult(input)).toEqual({ percent: "Final +20.00%", asOf: "· sold Sep 1, 2026" });
+    expect(describeResult(input)).toEqual({ percent: "Final +20.00%", asOf: "· sold Sep 1, 2026", direction: "up" });
   });
   it("counts a zero sale as a total loss without any quote", () => {
     const input = { ...priced, current_price: null, price_date: null, sell_price: "0", sell_date: "2026-02-01" };
     expect(positionResult(input)?.amount).toEqual({ units: -5_000_000_000_000_000_000n, scale: 16 });
-    expect(describeResult(input)).toEqual({ percent: "Final -100.00%", asOf: "· sold Feb 1, 2026" });
+    expect(describeResult(input)).toEqual({ percent: "Final -100.00%", asOf: "· sold Feb 1, 2026", direction: "down" });
     expect(positionResult({ ...input, quantity: null })?.amount).toBeNull();
     expect(describeResult({ ...input, quantity: null })?.percent).toBe("Final -100.00%");
   });
@@ -99,5 +99,34 @@ describe("final sale results", () => {
     ["49.9975", "Final -0.01%"],
   ])("keeps exact final display at %s", (sell_price, expected) => {
     expect(describeResult({ ...priced, sell_price, sell_date: "2026-01-01" })?.percent).toBe(expected);
+  });
+});
+
+describe("result direction", () => {
+  const closed = { sell_date: "2026-09-01" };
+  it.each([
+    { kind: "open", fields: { current_price: "60" }, direction: "up", percent: "+20.00%" },
+    { kind: "open", fields: { current_price: "40" }, direction: "down", percent: "-20.00%" },
+    { kind: "open", fields: { current_price: "50" }, direction: "flat", percent: "0.00%" },
+    { kind: "closed", fields: { ...closed, sell_price: "60" }, direction: "up", percent: "Final +20.00%" },
+    { kind: "closed", fields: { ...closed, sell_price: "40" }, direction: "down", percent: "Final -20.00%" },
+    { kind: "closed", fields: { ...closed, sell_price: "50" }, direction: "flat", percent: "Final 0.00%" },
+  ])("is $direction for an $kind result of $percent", ({ fields, direction, percent }) => {
+    expect(describeResult({ ...priced, ...fields })).toMatchObject({ percent, direction });
+  });
+  it("uses the exact ratio, not the rounded text, so a tiny change is not flat", () => {
+    const input = { ...priced, buy_price: "100" };
+    expect(describeResult({ ...input, current_price: "100.004999" })).toMatchObject({
+      percent: "0.00%",
+      direction: "up",
+    });
+    expect(describeResult({ ...input, current_price: "99.995001" })).toMatchObject({
+      percent: "0.00%",
+      direction: "down",
+    });
+  });
+  it("has no direction without a result, open or closed", () => {
+    expect(describeResult({ ...priced, current_price: null, price_date: null })).toBeNull();
+    expect(describeResult({ ...priced, sell_price: "60", sell_date: null, current_price: null })).toBeNull();
   });
 });

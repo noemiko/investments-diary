@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { History } from "lucide-react";
+import { History, Minus, TrendingDown, TrendingUp } from "lucide-react";
 import type { ConfrontationState } from "@/lib/confrontation";
 import { formatDate } from "@/lib/format";
 import { describeResult, NO_PRICE } from "@/lib/result";
@@ -9,6 +9,9 @@ import type { ConfrontationPosition } from "@/types";
 import { marketTimestamp } from "@/components/market-prices/client";
 
 const CLAMP_LINES = 3;
+
+// Neutral direction cues, decorative only: the sign in the text carries the direction for screen readers.
+const DIRECTION_ICONS = { up: TrendingUp, down: TrendingDown, flat: Minus } as const;
 
 // Server HTML carries the full reason, so it reads without JS. Once mounted, a reason longer than
 // three lines is clamped behind a toggle; a shorter one never shows the toggle.
@@ -50,6 +53,7 @@ function ReasonText({ text }: { text: string }) {
 
 function EarlierPosition({ position }: { position: ConfrontationPosition }) {
   const result = describeResult(position);
+  const DirectionIcon = result ? DIRECTION_ICONS[result.direction] : null;
   return (
     <li data-confrontation-position-id={position.id} className="space-y-1 rounded-lg border border-white/10 p-3">
       <div className="flex items-baseline justify-between gap-2">
@@ -64,10 +68,11 @@ function EarlierPosition({ position }: { position: ConfrontationPosition }) {
         <p className="text-sm text-blue-100/50 italic">No reason written</p>
       )}
       {/* No gain/loss colour: the sign carries the direction, and the panel gives no verdict. */}
-      <p className="text-sm tabular-nums">
-        {result ? (
+      <p className="text-sm tabular-nums" data-result-direction={result?.direction}>
+        {result && DirectionIcon ? (
           <>
-            <span className="font-semibold">{result.percent}</span>
+            <DirectionIcon aria-hidden="true" className="mr-1 inline size-[1.1em] align-[-0.2em]" />
+            <span className="text-[1.05em] font-semibold">{result.percent}</span>
             <span className="text-blue-100/60"> {result.asOf}</span>
           </>
         ) : (

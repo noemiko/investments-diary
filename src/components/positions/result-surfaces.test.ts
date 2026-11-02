@@ -237,6 +237,72 @@ describe("rendered position surfaces", () => {
   });
 });
 
+/** The dashboard summary card of one wallet, selected by its own marker. */
+function walletCard(html: string, id: string): string {
+  const found = new RegExp(`<li\\b[^>]*data-wallet-summary="${id}"[^>]*>[\\s\\S]*?</li>`).exec(html)?.[0];
+  if (!found) throw new Error(`Missing wallet card for ${id}`);
+  return found;
+}
+
+describe("dashboard wallet summary", () => {
+  async function dashboard() {
+    return (await container()).renderToString(Dashboard, {
+      request: new Request("http://localhost/dashboard"),
+      locals,
+    });
+  }
+
+  it("renders one card per wallet, each in its own currency, and never a cross-wallet total", async () => {
+    vi.mocked(listWallets).mockResolvedValue([wallets[0], { ...wallets[1], currency: "PLN" }, wallets[2]]);
+    const html = await dashboard();
+    expect(html.match(/data-wallet-summary="/g)).toHaveLength(3);
+    expect(text(walletCard(html, wallets[0].id))).toBe(
+      "Long term USD 1,060.00 +60.00 (+6.00%) Open +60.00 Realised 0.00 Open prices as of Oct 1, 2026 2 not counted (no quantity or no current price for an open position)",
+    );
+    expect(text(walletCard(html, wallets[1].id))).toBe(
+      "Other PLN 90.00 -10.00 (-10.00%) Open -10.00 Realised 0.00 Open prices as of Sep 15, 2026",
+    );
+    // A wallet without positions still gets a card.
+    expect(text(walletCard(html, wallets[2].id))).toBe(
+      "Empty USD 0.00 0.00 Open 0.00 Realised 0.00 No counted results",
+    );
+    expect(walletCard(html, wallets[1].id)).toContain(`href="/dashboard/wallets/${wallets[1].id}"`);
+    // 1,060.00 + 90.00 + 0.00 and +60.00 − 10.00 would only appear as a combined total.
+    expect(text(html)).not.toContain("1,150.00");
+    expect(text(html)).not.toContain("+50.00 (");
+  });
+
+  it("puts the cards in the refreshed fragment, not in the Download prices island", async () => {
+    const html = await dashboard();
+    const fragment = /<div data-price-refresh="dashboard-positions">[\s\S]*$/.exec(html)?.[0] ?? "";
+    expect(fragment).toContain(`data-wallet-summary="${wallets[0].id}"`);
+    expect(fragment).not.toContain("<astro-island");
+  });
+
+  it("keeps the position list without cards when wallets cannot be read", async () => {
+    vi.mocked(listWallets).mockRejectedValue(new Error("wallets failed"));
+    const html = await dashboard();
+    expect(html).not.toContain("data-wallet-summary");
+    expect(text(row(html, `/dashboard/positions/${gain.id}`))).toContain("+20.00% as of Oct 10, 2026");
+  });
+
+  it("keeps the empty state without cards for an empty diary", async () => {
+    vi.mocked(listPositions).mockResolvedValue([]);
+    const html = await dashboard();
+    expect(html).not.toContain("data-wallet-summary");
+  });
+
+  it("marks each result's neutral direction without changing its text", async () => {
+    const html = await dashboard();
+    expect(row(html, `/dashboard/positions/${gain.id}`)).toContain('data-result-direction="up"');
+    expect(row(html, `/dashboard/positions/${loss.id}`)).toContain('data-result-direction="down"');
+    expect(row(html, `/dashboard/positions/${unpriced.id}`)).not.toContain("data-result-direction");
+    expect(row(html, `/dashboard/positions/${gain.id}`)).toMatch(
+      /<svg(?=[^>]*aria-hidden="true")[^>]*lucide-trending-up/,
+    );
+  });
+});
+
 describe("rendered wallet surfaces", () => {
   it("associates each total, signed change, exclusions and oldest counted date with its wallet", async () => {
     const html = await (
