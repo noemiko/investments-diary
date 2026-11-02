@@ -1,10 +1,10 @@
 ---
 change_id: exa-context7-integration
 title: Integrate Exa and Context7 for research and library adoption
-status: implementing
+status: archived
 created: 2026-10-29
-updated: 2026-10-29
-archived_at: null
+updated: 2026-11-02
+archived_at: 2026-11-02T11:51:15Z
 ---
 
 ## Notes
