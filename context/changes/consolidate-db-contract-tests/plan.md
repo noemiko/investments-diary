@@ -373,29 +373,29 @@ No schema or data migration. Rollback means reverting the commits, which restore
 
 #### Automated
 
-- [x] 1.1 `npm run test:contract-db` passes with only the `grants` domain enabled
-- [x] 1.2 `grep -nE "grant (all|select|insert|update|delete)" scripts/testing/database/lib scripts/testing/database/contract scripts/testing/database/test-contract-database.mjs` returns no table grants
-- [x] 1.3 Old suites still pass: `npm run test:grants-db`
-- [x] 1.4 `npm run lint` passes
+- [x] 1.1 `npm run test:contract-db` passes with only the `grants` domain enabled — 074f546
+- [x] 1.2 `grep -nE "grant (all|select|insert|update|delete)" scripts/testing/database/lib scripts/testing/database/contract scripts/testing/database/test-contract-database.mjs` returns no table grants — 074f546
+- [x] 1.3 Old suites still pass: `npm run test:grants-db` — 074f546
+- [x] 1.4 `npm run lint` passes — 074f546
 
 #### Manual
 
-- [x] 1.5 The assertion map covers every assertion line of the six in-scope scripts, and every **P** row has a destination
+- [x] 1.5 The assertion map covers every assertion line of the six in-scope scripts, and every **P** row has a destination — 074f546
 
 ### Phase 2: Owner-only access across every table
 
 #### Automated
 
-- [ ] 2.1 `npm run test:contract-db` passes with `grants` and `access`, and the access summary reports 8 tables
-- [ ] 2.2 `npm run test:contract-db` passes twice in a row (fixtures don't collide)
-- [ ] 2.3 The grant grep over `lib/`, `contract/` and the runner still returns no table grants
-- [ ] 2.4 `git diff --stat supabase/migrations` is empty after the break runs
-- [ ] 2.5 `npm run lint` passes
+- [x] 2.1 `npm run test:contract-db` passes with `grants` and `access`, and the access summary reports 8 tables
+- [x] 2.2 `npm run test:contract-db` passes twice in a row (fixtures don't collide)
+- [x] 2.3 The grant grep over `lib/`, `contract/` and the runner still returns no table grants
+- [x] 2.4 `git diff --stat supabase/migrations` is empty after the break runs
+- [x] 2.5 `npm run lint` passes
 
 #### Manual
 
-- [ ] 2.6 `verification.md` records the four access breaks, each with a failing message from the expected domain
-- [ ] 2.7 Every **P** row in the assertion map has a re-planned destination (access, grants, smoke/Vitest reference, or "not covered (accepted)")
+- [x] 2.6 `verification.md` records the four access breaks, each with a failing message from the expected domain
+- [x] 2.7 Every **P** row in the assertion map has a re-planned destination (access, grants, smoke/Vitest reference, or "not covered (accepted)")
 
 ### Phase 3: Remove the remaining scripts and update references
 

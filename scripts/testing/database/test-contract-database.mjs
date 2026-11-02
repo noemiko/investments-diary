@@ -4,9 +4,13 @@
 // Usage: node scripts/testing/database/test-contract-database.mjs [--only <domain>]
 import { disposableDatabase, migrationFiles } from "./lib/db-harness.mjs";
 import grants from "./contract/grants.mjs";
+import access from "./contract/access.mjs";
 
 // Fixed order; later domains are appended here as they are ported.
-const domains = [["grants", grants]];
+const domains = [
+  ["grants", grants],
+  ["access", access],
+];
 
 const onlyIndex = process.argv.indexOf("--only");
 const only = onlyIndex < 0 ? undefined : process.argv[onlyIndex + 1];

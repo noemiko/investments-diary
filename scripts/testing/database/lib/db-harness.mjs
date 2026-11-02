@@ -35,6 +35,7 @@ export const fixturePrefixes = Object.freeze({
   positions: "a2",
   "market-prices": "a3",
   snapshots: "a4",
+  access: "a5",
 });
 
 export function fixtureId(domain, kind, index) {
