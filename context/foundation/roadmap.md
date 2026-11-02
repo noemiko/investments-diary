@@ -58,7 +58,7 @@ with your own past reasoning at the moment of deciding improves how you invest.
 | S-08 | evolve-reason-categories      | rename a reason category everywhere, or remove it while past positions keep it                               | S-01                                    | FR-005                         | proposed |
 | S-09 | named-wallets                 | group investments into named wallets and see totals with missing-data and price-date context                 | S-01, S-02, S-05                        | FR-013 (should-have)           | done     |
 | S-10 | close-public-signup           | have accounts created only by the owner's script/CLI; nobody can sign up from the app or the public Auth API | —                                       | FR-001 (amended 2026-11-02)    | proposed |
-| F-01 | consolidate-db-contract-tests | (technical) one database contract test checks grants and owner-only access on every table                    | automatic-stock-prices Phase 6 accepted | NFR privacy; FR-013–FR-016     | in-progress |
+| F-01 | consolidate-db-contract-tests | (technical) one database contract test checks grants and owner-only access on every table                    | automatic-stock-prices Phase 6 accepted | NFR privacy; FR-013–FR-016     | done |
 
 ## Baseline
 
@@ -95,7 +95,7 @@ which is exactly what this roadmap avoids.
   - Map every permanent assertion to its new home before deleting anything, and prove the mapping with deliberate breaks.
 - **Unknowns:** —
 - **Risk:** Rewriting tests can silently drop a rule. The assertion map and break checks are part of done.
-- **Status:** in-progress
+- **Status:** done
 
 ## Slices
 
@@ -285,3 +285,4 @@ which is exactly what this roadmap avoids.
 - **S-02: user can open one position, read its full written reason, update its current price, and see its result together with the date that price was set — in the detail view and in the list.** — Archived 2026-10-16 → `context/archive/2026-10-15-position-detail-and-price/`. Lesson: —.
 - **S-05: user can delete a position, which disappears from the list and the confrontation, and restore it later.** — Archived 2026-10-16 → `context/archive/2026-10-15-recoverable-delete/`. Lesson: —.
 - **S-09: user can create several named wallets, edit each wallet's name and starting value, and assign every investment to exactly one wallet. Each wallet shows its starting value plus the sum of (current price − buy price) × quantity over its non-deleted investments, the number excluded for missing quantity or current price, and the oldest price date used in the total. Wallet deletion is excluded from the first version.** — Archived 2026-10-19 → `context/archive/2026-10-19-named-wallets/`. Lesson: —.
+- **F-01: (technical) one test replays the full migration chain once, with shared setup, under production privileges, and checks the riskiest database rules: every RLS policy is backed by a grant, anon has no access, and every table in `public` is reachable only by its owner. All other database behaviour is left to `npm run smoke` and the Vitest suite (`tests/database/`); migration-transition checks that can never run against real data again are removed (re-planned 2026-11-02, owner decision).** — Archived 2026-11-02 → `context/archive/2026-11-02-consolidate-db-contract-tests/`. Lesson: —.
