@@ -432,32 +432,32 @@ switch back on; neither loses data.
 
 #### Automated
 
-- [x] 2.1 `npm run test:user-create-db` passes on local Supabase (create, sign in through Auth, duplicate refused, bad production URL refused, cleanup)
-- [x] 2.2 `npm run lint:sh` (shellcheck in the `investments-diary-tools` image) passes
-- [x] 2.3 `npm test` and `npm run lint` pass
-- [x] 2.4 `grep -rn "service-role key" context/deployment/deploy-plan.md` no longer describes the account tool
+- [x] 2.1 `npm run test:user-create-db` passes on local Supabase (create, sign in through Auth, duplicate refused, bad production URL refused, cleanup) — 7feeeda
+- [x] 2.2 `npm run lint:sh` (shellcheck in the `investments-diary-tools` image) passes — 7feeeda
+- [x] 2.3 `npm test` and `npm run lint` pass — 7feeeda
+- [x] 2.4 `grep -rn "service-role key" context/deployment/deploy-plan.md` no longer describes the account tool — 7feeeda
 
 #### Manual
 
-- [x] 2.5 Signing in at `/auth/signin` with a `user:create`-created local account reaches `/dashboard`
-- [x] 2.6 Running with `--production --db-url <pooler string>` stops at the ref confirmation when a wrong ref is typed (no connection made)
+- [x] 2.5 Signing in at `/auth/signin` with a `user:create`-created local account reaches `/dashboard` — 7feeeda
+- [x] 2.6 Running with `--production --db-url <pooler string>` stops at the ref confirmation when a wrong ref is typed (no connection made) — 7feeeda
 
 ### Phase 3: Close sign-up in the app, local Auth and smoke
 
 #### Automated
 
-- [ ] 3.1 `npm test` passes
-- [ ] 3.2 `npx astro sync && npm run lint` passes
-- [ ] 3.3 `npx astro check` passes
-- [ ] 3.4 `npm run build` passes
-- [ ] 3.5 After `npx supabase stop && npx supabase start`, `npm run smoke` passes against `npm run dev`, including the `404` and `422 signup_disabled` checks
-- [ ] 3.6 `grep -rniE "signup|sign-up|sign up" src/` returns only `signup_disabled` and the callback/observability references that intentionally remain
-- [ ] 3.7 `npm run test:decimal-db` still passes (its users are admin-created)
+- [x] 3.1 `npm test` passes
+- [x] 3.2 `npx astro sync && npm run lint` passes
+- [x] 3.3 `npx astro check` passes
+- [x] 3.4 `npm run build` passes
+- [x] 3.5 After `npx supabase stop && npx supabase start`, `npm run smoke` passes against `npm run dev`, including the `404` and `422 signup_disabled` checks
+- [x] 3.6 `grep -rniE "signup|sign-up|sign up" src/` returns only `signup_disabled` and the callback/observability references that intentionally remain
+- [x] 3.7 `npm run test:decimal-db` still passes (its users are admin-created)
 
 #### Manual
 
-- [ ] 3.8 Home page and top bar show only "Sign in" when signed out
-- [ ] 3.9 An existing local account signs in, reaches `/dashboard` and signs out
+- [x] 3.8 Home page and top bar show only "Sign in" when signed out
+- [x] 3.9 An existing local account signs in, reaches `/dashboard` and signs out
 - [ ] 3.10 The PR's CI run is green for `ci` and `decimal-transport`; `smoke` is green after merge
 
 ### Phase 4: Production gate

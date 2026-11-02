@@ -46,19 +46,19 @@ with your own past reasoning at the moment of deciding improves how you invest.
 
 ## At a glance
 
-| ID   | Change ID                     | Outcome (user can …)                                                                                         | Prerequisites                           | PRD refs                       | Status   |
-| ---- | ----------------------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------- | ------------------------------ | -------- |
-| S-01 | record-first-investment       | record an investment with a reason category and optional reason, and see it listed                           | —                                       | FR-003, FR-004, FR-005, FR-010 | done     |
-| S-02 | position-detail-and-price     | open a position, read its full reason, update its price and see its dated result                             | S-01                                    | FR-006, FR-011                 | done     |
-| S-03 | reason-confrontation          | see earlier same-reason positions with their results before saving a new investment                          | S-01, S-02                              | US-01, FR-012                  | done     |
-| S-04 | close-position                | close a position with sell price and date and see its final result                                           | S-02                                    | FR-007                         | done     |
-| S-05 | recoverable-delete            | delete a position and restore it later                                                                       | S-01                                    | FR-009                         | done     |
-| S-06 | private-diary-access          | register and reach only their own diary, with every diary page gated behind sign-in                          | —                                       | FR-001, FR-002                 | ready    |
-| S-07 | reason-lock-editing           | correct an investment's facts and add a missing reason, after which the reason locks                         | S-01                                    | FR-008, FR-004                 | proposed |
-| S-08 | evolve-reason-categories      | rename a reason category everywhere, or remove it while past positions keep it                               | S-01                                    | FR-005                         | proposed |
-| S-09 | named-wallets                 | group investments into named wallets and see totals with missing-data and price-date context                 | S-01, S-02, S-05                        | FR-013 (should-have)           | done     |
+| ID   | Change ID                     | Outcome (user can …)                                                                                         | Prerequisites                           | PRD refs                       | Status      |
+| ---- | ----------------------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------- | ------------------------------ | ----------- |
+| S-01 | record-first-investment       | record an investment with a reason category and optional reason, and see it listed                           | —                                       | FR-003, FR-004, FR-005, FR-010 | done        |
+| S-02 | position-detail-and-price     | open a position, read its full reason, update its price and see its dated result                             | S-01                                    | FR-006, FR-011                 | done        |
+| S-03 | reason-confrontation          | see earlier same-reason positions with their results before saving a new investment                          | S-01, S-02                              | US-01, FR-012                  | done        |
+| S-04 | close-position                | close a position with sell price and date and see its final result                                           | S-02                                    | FR-007                         | done        |
+| S-05 | recoverable-delete            | delete a position and restore it later                                                                       | S-01                                    | FR-009                         | done        |
+| S-06 | private-diary-access          | register and reach only their own diary, with every diary page gated behind sign-in                          | —                                       | FR-001, FR-002                 | ready       |
+| S-07 | reason-lock-editing           | correct an investment's facts and add a missing reason, after which the reason locks                         | S-01                                    | FR-008, FR-004                 | proposed    |
+| S-08 | evolve-reason-categories      | rename a reason category everywhere, or remove it while past positions keep it                               | S-01                                    | FR-005                         | proposed    |
+| S-09 | named-wallets                 | group investments into named wallets and see totals with missing-data and price-date context                 | S-01, S-02, S-05                        | FR-013 (should-have)           | done        |
 | S-10 | close-public-signup           | have accounts created only by the owner's script/CLI; nobody can sign up from the app or the public Auth API | —                                       | FR-001 (amended 2026-11-02)    | in-progress |
-| F-01 | consolidate-db-contract-tests | (technical) one database contract test checks grants and owner-only access on every table                    | automatic-stock-prices Phase 6 accepted | NFR privacy; FR-013–FR-016     | done |
+| F-01 | consolidate-db-contract-tests | (technical) one database contract test checks grants and owner-only access on every table                    | automatic-stock-prices Phase 6 accepted | NFR privacy; FR-013–FR-016     | done        |
 
 ## Baseline
 
@@ -68,7 +68,7 @@ Slices below assume these are present and do NOT re-scaffold them.
 - **Frontend:** present — Astro 7 + React 19 + Tailwind 4 with shared layout and UI components (`src/layouts/Layout.astro`, `src/components/ui/`).
 - **Backend / API:** partial — server endpoints exist only for auth (`src/pages/api/auth/`); no diary endpoints.
 - **Data:** partial — database client wired (`src/lib/supabase.ts`) and local database config present (`supabase/config.toml`); no migrations and no diary tables.
-- **Auth:** present — sign-up, sign-in, sign-out and route protection for `/dashboard` (`src/middleware.ts`). Open registration is currently enabled (`supabase/config.toml` → `enable_signup = true`).
+- **Auth:** present — sign-in, sign-out and route protection for `/dashboard` (`src/middleware.ts`). Public sign-up is closed in the app and in local Auth (`supabase/config.toml` → `enable_signup = false`); the owner creates accounts with `npm run user:create` (S-10).
 - **Deploy / infra:** present — production live at `https://investments-diary.vercel.app`; CI runs lint, type check, build and a smoke test against a local database (`.github/workflows/ci.yml`). Remaining human gates are tracked in `context/deployment/deploy-plan.md`.
 - **Observability:** absent — no error tracking, logging library or analytics.
 

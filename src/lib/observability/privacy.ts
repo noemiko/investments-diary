@@ -23,7 +23,6 @@ const OPERATIONS = new Set([
   "updateWallet",
   "auth.getUser",
   "auth.signIn",
-  "auth.signUp",
   "auth.signOut",
   "auth.exchangeCode",
 ]);
@@ -77,11 +76,8 @@ const ROUTES = new Set([
   "/dashboard/positions/[id]/restore",
   "/dashboard/positions/not-found",
   "/auth/signin",
-  "/auth/signup",
   "/auth/callback",
-  "/auth/confirm-email",
   "/api/auth/signin",
-  "/api/auth/signup",
   "/api/auth/signout",
   "/dev/kitchen-sink",
 ]);
