@@ -27,29 +27,23 @@ async function submit(fields: Record<string, string>) {
     locals,
   });
 }
-it("requires explicit currency confirmation before creating a new wallet", async () => {
-  const response = await submit({ name: "My wallet", starting_value: "1000", currency: "EUR" });
+it("requires a currency selection for a new wallet", async () => {
+  const response = await submit({ name: "My wallet", starting_value: "1000", currency: "" });
   expect(response.status).toBe(200);
-  expect(await response.text()).toContain("Confirm that all recorded amounts use this currency");
+  expect(await response.text()).toContain("Choose USD, PLN or EUR");
   expect(createWallet).not.toHaveBeenCalled();
 });
-it("sends confirmed denomination and exact amounts, retaining selection after a failed save", async () => {
+it("sends denomination and exact amounts without an attestation, retaining selection after a failed save", async () => {
   vi.mocked(createWallet).mockResolvedValue({ ok: false, error: "name_taken" });
-  const response = await submit({
-    name: "My wallet",
-    starting_value: "1 000,12345678",
-    currency: "EUR",
-    currency_attested: "on",
-  });
+  const response = await submit({ name: "My wallet", starting_value: "1 000,12345678", currency: "EUR" });
   expect(createWallet).toHaveBeenCalledExactlyOnceWith({}, locals.user?.id, {
     name: "My wallet",
     starting_value: "1000.12345678",
     currency: "EUR",
-    currency_attested: true,
   });
   const html = await response.text();
   expect(html).toContain('value="1 000,12345678"');
   expect(html).toMatch(/<option[^>]*value="EUR"[^>]*selected/);
-  expect(/<input[^>]*name="currency_attested"[^>]*>/.exec(html)?.[0]).toContain("checked");
+  expect(html).not.toContain("currency_attested");
   expect(html).toContain("You already have a wallet with this name");
 });

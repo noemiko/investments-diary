@@ -1,0 +1,80 @@
+---
+import type { PositionValuation } from "@/types";
+import { actionMessage, marketTimestamp } from "./client";
+import { formatDate, formatNumber } from "@/lib/format";
+interface Props {
+  valuation?: PositionValuation;
+}
+const { valuation } = Astro.props;
+const sources = {
+  sale: "Recorded sale",
+  manual_override: "Temporary manual correction",
+  automatic: "Downloaded quote",
+  manual: "Manual price",
+  missing: "No price",
+};
+const outcome = valuation?.refreshOutcome;
+const failed = typeof outcome === "string" && !["never", "success"].includes(outcome);
+---
+
+{valuation && (
+  <div class="space-y-1 text-xs text-muted-foreground" data-price-context>
+    <p>
+      {sources[valuation.source]} · {valuation.currency}
+    </p>
+    {valuation.listing && (
+      <p>
+        {valuation.listing.symbol} · {valuation.listing.exchangeName}
+      </p>
+    )}
+    {!valuation.listing && valuation.pendingSelection && (
+      <div>
+        <p>
+          Selected: {valuation.pendingSelection.symbol} · {valuation.pendingSelection.exchangeName}
+        </p>
+        {valuation.pendingCurrency && valuation.pendingCurrency !== valuation.currency ? (
+          <p>
+            This listing trades in {valuation.pendingCurrency}, but the wallet uses {valuation.currency}. Its quote is
+            not applied. Choose a listing in the wallet's currency from the investment detail.
+          </p>
+        ) : (
+          <p>
+            Trading currency is not checked yet. Click Download prices on the dashboard to check it and download a
+            quote.
+          </p>
+        )}
+      </div>
+    )}
+    {valuation.source === "manual_override" && (
+      <p>Applies until a downloaded market timestamp is strictly later than the manual save time.</p>
+    )}
+    {valuation.source === "manual_override" && valuation.manualSavedAt && (
+      <p>Manual correction saved: {marketTimestamp(valuation.manualSavedAt)}</p>
+    )}
+    {valuation.source === "automatic" && valuation.manualPrice !== null && valuation.manualPriceDate && (
+      <p>
+        Saved manual entry: {formatNumber(valuation.manualPrice)} as of {formatDate(valuation.manualPriceDate)}
+      </p>
+    )}
+    {valuation.source !== "sale" && valuation.marketAt && (
+      <p>
+        Saved quote market time: {marketTimestamp(valuation.marketAt)}
+        {valuation.marketState ? ` · ${valuation.marketState}` : ""}
+        {valuation.delayMinutes !== null ? ` · Provider-reported delay ${valuation.delayMinutes} min` : ""}
+      </p>
+    )}
+    {valuation.source !== "sale" && failed && (
+      <p>
+        {valuation.refreshOutcome === "older_quote"
+          ? "An older quote was ignored. The last usable saved price is retained."
+          : `Latest download failed. ${actionMessage(valuation.refreshOutcome ?? "unavailable")}`}
+      </p>
+    )}
+    {valuation.source !== "sale" && valuation.quoteState === "refreshing" && (
+      <p>A download is in progress; saved values are shown.</p>
+    )}
+    {valuation.source !== "sale" && valuation.cooldownUntil && (
+      <p>Retry after {marketTimestamp(valuation.cooldownUntil)} by clicking Download prices.</p>
+    )}
+  </div>
+)}

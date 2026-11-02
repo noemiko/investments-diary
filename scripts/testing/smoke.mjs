@@ -6,14 +6,86 @@
 // Creates two accounts per run — never point it at production.
 
 import { randomBytes, randomUUID } from "node:crypto";
+import { execFileSync } from "node:child_process";
 
 const smokeUrl = new URL(process.env.BASE_URL ?? "http://localhost:4321");
 if (smokeUrl.protocol !== "http:" || !["localhost", "127.0.0.1", "[::1]"].includes(smokeUrl.hostname)) {
   throw new Error("Account-creating smoke tests require a local HTTP server");
 }
 const BASE_URL = smokeUrl.origin;
-const runId = `${Date.now()}-${randomBytes(3).toString("hex")}`;
+const runId = `${Date.now()}-${randomBytes(3).toString("hex").toUpperCase()}`;
 const password = "Smoke-Test-Passw0rd!";
+
+// Only the provider metadata boundary is a fixture; native Save and all reads/writes use the app.
+// Discover local credentials privately, and never call Yahoo during this integrity walk.
+const fixtureStatus = JSON.parse(
+  execFileSync("npx", ["supabase", "status", "-o", "json"], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  }),
+);
+const fixtureUrl = new URL(fixtureStatus.API_URL);
+if (fixtureUrl.protocol !== "http:" || !["localhost", "127.0.0.1", "[::1]"].includes(fixtureUrl.hostname)) {
+  throw new Error("Smoke listing fixtures require local Supabase");
+}
+const fixtureTargets = new Map();
+async function fixtureJson(path, { method = "GET", body, key = fixtureStatus.SERVICE_ROLE_KEY } = {}) {
+  const response = await fetch(fixtureUrl.origin + path, {
+    method,
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (!response.ok) throw new Error(`Local smoke fixture failed (${response.status})`);
+  return response.json();
+}
+async function fixtureSelection(who, walletId, symbol) {
+  if (!who.owner) {
+    const login = await fixtureJson("/auth/v1/token?grant_type=password", {
+      method: "POST",
+      body: { email: who.email, password },
+      key: fixtureStatus.ANON_KEY,
+    });
+    who.owner = login.user.id;
+  }
+  const wallets = await fixtureJson(
+    "/rest/v1/wallets?" +
+      new URLSearchParams({
+        select: "id",
+        id: `eq.${walletId}`,
+        user_id: `eq.${who.owner}`,
+        deleted_at: "is.null",
+      }),
+  );
+  // Foreign-wallet attempts carry a genuine own-wallet receipt: the app must reject its binding.
+  const boundWallet = wallets[0]?.id ?? (who === a ? ids.wallet : ids.bWallet);
+  if (!boundWallet) throw new Error("Smoke fixture requires an owned wallet");
+  const targetKey = `${who.owner}:${symbol}`;
+  if (!fixtureTargets.has(targetKey)) {
+    const targets = await fixtureJson("/rest/v1/market_listing_targets", {
+      method: "POST",
+      body: {
+        user_id: who.owner,
+        provider: "yahoo",
+        symbol,
+        exchange: "NMS",
+        listing_name: symbol,
+        exchange_name: "Nasdaq fixture",
+        instrument_type: "EQUITY",
+      },
+    });
+    fixtureTargets.set(targetKey, targets[0].id);
+  }
+  const receipts = await fixtureJson("/rest/v1/market_selection_receipts", {
+    method: "POST",
+    body: { user_id: who.owner, wallet_id: boundWallet, target_id: fixtureTargets.get(targetKey) },
+  });
+  return receipts[0].id;
+}
 
 // Each account has its own cookie jar, so sessions never leak between them.
 function account(label) {
@@ -70,6 +142,16 @@ function storeCookies(jar, response) {
 }
 
 async function request(who, path, { method = "GET", form } = {}) {
+  if (
+    method === "POST" &&
+    path === "/dashboard/new" &&
+    who !== anonymous &&
+    form?.instrument?.trim() &&
+    form.wallet_id &&
+    !Object.hasOwn(form, "listing_receipt_id")
+  ) {
+    form = { ...form, listing_receipt_id: await fixtureSelection(who, form.wallet_id, form.instrument) };
+  }
   const response = await fetch(BASE_URL + path, {
     method,
     redirect: "manual",
@@ -159,8 +241,8 @@ const CONFRONTATION_HISTORY = 'data-confrontation="history"';
 const CONFRONTATION_EMPTY = "data-confrontation-empty";
 const CONFRONTATION_ITEM = "data-confrontation-position-id";
 const confronts = (key) => () => `${CONFRONTATION_ITEM}="${ids[key]}"`;
-// An empty instrument is rejected, so the form re-renders (no JS) with the submitted category kept.
-const rejectedEntry = (overrides) => position({ instrument: "", ...overrides });
+// An absent stock selection is rejected, preserving the category for the native re-render.
+const rejectedEntry = (overrides) => position({ instrument: "", listing_receipt_id: "", ...overrides });
 const pricedPath = () => `/dashboard/positions/${ids.pricedPosition}`;
 const closeForm = (overrides = {}) => ({
   action: "close",
@@ -192,7 +274,7 @@ const steps = [
       () =>
         request(anonymous, path, {
           method: "POST",
-          form: { currency: "USD", currency_attested: "on", name: "Forbidden", starting_value: "0" },
+          form: { currency: "USD", name: "Forbidden", starting_value: "0" },
         }),
       { status: 302, location: "/auth/signin" },
     ],
@@ -223,7 +305,7 @@ const steps = [
     () =>
       request(a, "/dashboard/wallets/new", {
         method: "POST",
-        form: { currency: "USD", currency_attested: "on", name: walletName, starting_value: "1 000,50" },
+        form: { currency: "USD", name: walletName, starting_value: "1 000,50" },
       }),
     { status: 302, location: "/dashboard/wallets", exactLocation: true },
   ],
@@ -333,7 +415,7 @@ const steps = [
     () => request(a, "/dashboard/new", { method: "POST", form: rejectedEntry({ category_id: ids.category }) }),
     {
       status: 200,
-      includes: ["Enter the instrument", CONFRONTATION_HISTORY, confronts("mainPosition")],
+      includes: ["Search and select", CONFRONTATION_HISTORY, confronts("mainPosition")],
       excludes: [CONFRONTATION_EMPTY, confronts("delPosition"), deletedReasonText],
       requiresIds: ["category", "mainPosition", "delPosition"],
     },
@@ -481,7 +563,7 @@ const steps = [
     () =>
       request(b, `/dashboard/wallets/${ids.wallet}`, {
         method: "POST",
-        form: { currency: "USD", currency_attested: "on", name: "Taken", starting_value: "0" },
+        form: { currency: "USD", name: "Taken", starting_value: "0" },
       }),
     { status: 404, includes: ["Wallet not found"], requiresIds: ["wallet"] },
   ],
@@ -490,7 +572,7 @@ const steps = [
     async () => {
       const result = await request(b, "/dashboard/wallets/new", {
         method: "POST",
-        form: { currency: "USD", currency_attested: "on", name: `B ${walletName}`, starting_value: "0" },
+        form: { currency: "USD", name: `B ${walletName}`, starting_value: "0" },
       });
       ids.bWallet = walletIdFor((await request(b, "/dashboard/wallets")).body, `B ${walletName}`);
       return result;
@@ -504,7 +586,7 @@ const steps = [
         method: "POST",
         form: position({ wallet_id: ids.wallet, new_category_name: `B ${categoryName}` }),
       }),
-    { status: 200, includes: ["Choose a wallet from your list"], excludesIds: ["wallet"] },
+    { status: 200, includes: ["Search and select"], excludesIds: ["wallet"] },
   ],
   [
     // Every reason the author wrote is serialised into this page's island props, so this is the privacy line.
@@ -648,7 +730,7 @@ const steps = [
     () =>
       request(a, "/dashboard/wallets/new", {
         method: "POST",
-        form: { currency: "USD", currency_attested: "on", name: walletName.toUpperCase(), starting_value: "25" },
+        form: { currency: "USD", name: walletName.toUpperCase(), starting_value: "25" },
       }),
     { status: 200, includes: ["You already have a wallet with this name", walletName.toUpperCase(), 'value="25"'] },
   ],
@@ -657,7 +739,7 @@ const steps = [
     async () => {
       const result = await request(a, "/dashboard/wallets/new", {
         method: "POST",
-        form: { currency: "USD", currency_attested: "on", name: `Second ${walletName}`, starting_value: "1000" },
+        form: { currency: "USD", name: `Second ${walletName}`, starting_value: "1000" },
       });
       ids.secondWallet = walletIdFor((await request(a, "/dashboard/wallets")).body, `Second ${walletName}`);
       return result;
@@ -727,7 +809,7 @@ const steps = [
     () =>
       request(a, `/dashboard/wallets/${ids.secondWallet}`, {
         method: "POST",
-        form: { currency: "USD", currency_attested: "on", name: "Pending rename", starting_value: "-1" },
+        form: { currency: "USD", name: "Pending rename", starting_value: "-1" },
       }),
     {
       status: 200,
@@ -739,7 +821,7 @@ const steps = [
     () =>
       request(a, `/dashboard/wallets/${ids.secondWallet}`, {
         method: "POST",
-        form: { currency: "USD", currency_attested: "on", name: `Renamed ${walletName}`, starting_value: "2000" },
+        form: { currency: "USD", name: `Renamed ${walletName}`, starting_value: "2000" },
       }),
     { status: 302, location: "/dashboard/wallets", exactLocation: true },
   ],

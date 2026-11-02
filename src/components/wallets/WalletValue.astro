@@ -1,15 +1,18 @@
 ---
 import { formatAmount, formatPercent, formatSignedAmount } from "@/lib/format";
 import { describeWalletResults, type WalletValueResult } from "@/lib/wallet";
+import type { MarketCurrency } from "@/types";
 
 interface Props {
   startingValue: string;
   result: WalletValueResult;
+  currency: MarketCurrency;
 }
-const { startingValue, result } = Astro.props;
+const { startingValue, result, currency } = Astro.props;
 ---
 
 <div class="flex flex-col gap-2" data-wallet-value={formatAmount(result.value)}>
+  <p class="text-sm text-muted-foreground">Currency: {currency}</p>
   <dl class="grid grid-cols-1 gap-4 sm:grid-cols-3">
     <div>
       <dt class="text-sm text-muted-foreground">Starting value</dt>
@@ -27,7 +30,9 @@ const { startingValue, result } = Astro.props;
       </dd>
     </div>
   </dl>
-  <p class="text-sm text-muted-foreground">Live total from your latest recorded prices</p>
+  <p class="text-sm text-muted-foreground">
+    Live total from your latest recorded prices selected from saved manual entries and downloaded quotes
+  </p>
   <dl class="grid grid-cols-2 gap-4">
     <div>
       <dt class="text-sm text-muted-foreground">Realised gain/loss</dt>

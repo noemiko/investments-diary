@@ -30,7 +30,6 @@ it("transports exact quote decimals through owner-authenticated RPCs and the eff
       name: "Quote transport",
       starting_value: "0",
       currency: "EUR",
-      currency_attested: true,
     });
     if (!wallet.ok) throw new Error("Wallet fixture failed");
     const category = await author

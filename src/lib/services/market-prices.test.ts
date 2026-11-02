@@ -3,6 +3,7 @@ import type { createClient } from "@/lib/supabase";
 import type { MarketQuote, MarketQuoteOutcome } from "@/types";
 import { createMarketPriceService, type MarketDataProvider } from "./market-prices";
 import type { LookupReceipt, PriceCache, PriceRepository } from "./market-price-repository";
+import type { PendingTarget, TargetRepository } from "./market-target-repository";
 import { reportUnexpected } from "@/lib/observability/reporter";
 vi.mock("@/lib/observability/reporter", () => ({
   reportUnexpected: vi.fn(),
@@ -54,7 +55,7 @@ function quote(row = listing()): MarketQuote {
     sourceName: null,
   };
 }
-function fixture(rows = [listing()]) {
+function fixture(rows = [listing()], targetRows: PendingTarget[] = []) {
   const caches = new Map(rows.map((r) => [r.id, { ...r }]));
   let receipt: LookupReceipt = {
     id: "receipt",
@@ -108,14 +109,90 @@ function fixture(rows = [listing()]) {
       }),
     ),
   };
-  const service = createMarketPriceService(client, "owner", { repository, provider, now: () => NOW });
-  return { service, repository, provider, caches };
+  const targets: TargetRepository = {
+    list: vi.fn<TargetRepository["list"]>(() => Promise.resolve(targetRows)),
+    read: vi.fn<TargetRepository["read"]>((id) => Promise.resolve(targetRows.find((r) => r.id === id) ?? null)),
+    canonical: vi.fn<TargetRepository["canonical"]>((target) => Promise.resolve(target.cacheId)),
+    claim: vi.fn<TargetRepository["claim"]>(() => Promise.resolve("target-token")),
+    finish: vi.fn<TargetRepository["finish"]>(() => Promise.resolve(0)),
+    release: vi.fn<TargetRepository["release"]>(() => Promise.resolve()),
+  };
+  const service = createMarketPriceService(client, "owner", { repository, provider, targets, now: () => NOW });
+  return { service, repository, provider, caches, targets };
+}
+function pending(n = 0): PendingTarget {
+  return { ...listing(n), id: `target-${n}`, cacheId: null };
 }
 afterEach(() => {
   vi.useRealTimers();
   vi.clearAllMocks();
 });
 describe("explicit quote download orchestration", () => {
+  it("resolves unknown durable selections only on download and reports mixed-wallet currency rejection", async () => {
+    const { service, provider, repository, targets } = fixture([], [pending()]);
+    vi.mocked(targets.finish).mockResolvedValue(1);
+    expect(provider.confirmListing).not.toHaveBeenCalled();
+    expect(await service.download()).toMatchObject({
+      ok: true,
+      results: [{ symbol: "STOCK0", outcome: "incompatible_currency", incompatibleCount: 1 }],
+    });
+    expect(provider.confirmListing).toHaveBeenCalledOnce();
+    expect(provider.fetchQuotes).not.toHaveBeenCalled();
+    expect(repository.ensureCache).toHaveBeenCalledWith(quote());
+    expect(targets.finish).toHaveBeenCalledWith(
+      "target-0",
+      "target-token",
+      expect.objectContaining({ ok: true }),
+      "cache-0",
+    );
+  });
+  it("shares one canonical cache outcome between mapped and pending holdings", async () => {
+    const { service, provider, repository, targets } = fixture([listing()], [{ ...pending(), cacheId: "cache-0" }]);
+    expect(await service.download()).toMatchObject({
+      ok: true,
+      results: [
+        { listingId: "cache-0", outcome: "success" },
+        { listingId: "target-0", outcome: "success" },
+      ],
+    });
+    expect(provider.fetchQuotes).toHaveBeenCalledOnce();
+    expect(provider.confirmListing).not.toHaveBeenCalled();
+    expect(repository.claim).toHaveBeenCalledOnce();
+    expect(targets.claim).toHaveBeenCalledOnce();
+  });
+  it("honors target and canonical leases, failing closed on ambiguous identity", async () => {
+    const { service, provider, repository, targets } = fixture([], [pending()]);
+    vi.mocked(targets.claim).mockResolvedValueOnce(null);
+    expect(await service.download()).toMatchObject({ ok: true, results: [{ outcome: "refreshing" }] });
+    vi.mocked(targets.canonical).mockResolvedValueOnce(false);
+    expect(await service.download()).toMatchObject({ ok: true, results: [{ outcome: "invalid_quote" }] });
+    vi.mocked(targets.canonical).mockResolvedValue("cache-0");
+    vi.mocked(repository.cache).mockResolvedValue(listing());
+    vi.mocked(repository.claim).mockResolvedValue(null);
+    expect(await service.download()).toMatchObject({ ok: true, results: [{ outcome: "refreshing" }] });
+    expect(targets.release).toHaveBeenCalledWith("target-0", "target-token");
+    expect(provider.confirmListing).not.toHaveBeenCalled();
+    expect(provider.fetchQuotes).not.toHaveBeenCalled();
+  });
+  it("rejects a search/quote identity mismatch without inventing verified metadata", async () => {
+    const { service, provider, repository, targets } = fixture([], [pending()]);
+    vi.mocked(provider.confirmListing).mockResolvedValue({
+      ok: true,
+      quote: { ...quote(), listing: { ...quote().listing, exchange: "NYQ" } },
+    });
+    expect(await service.download()).toMatchObject({ ok: true, results: [{ outcome: "invalid_quote" }] });
+    expect(repository.ensureCache).not.toHaveBeenCalled();
+    expect(targets.finish).toHaveBeenCalledWith("target-0", "target-token", { ok: false, reason: "invalid_quote" });
+  });
+  it("uses the same bounded deadline for unknown targets and leaves later targets due", async () => {
+    vi.useFakeTimers();
+    const { service, provider } = fixture([], [pending(0), pending(1)]);
+    vi.mocked(provider.confirmListing).mockImplementation(() => new Promise(() => undefined));
+    const result = service.download();
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(await result).toMatchObject({ ok: true, results: [{ outcome: "timeout" }, { outcome: "due" }] });
+    expect(provider.confirmListing).toHaveBeenCalledOnce();
+  });
   it("deduplicates mapped identities, batches at 50 and allows another click immediately after success", async () => {
     const rows = Array.from({ length: 103 }, (_, i) => listing(i));
     const { service, provider, repository } = fixture([...rows, rows[0]]);
@@ -287,11 +364,10 @@ describe("search and validated listing receipts", () => {
     expect(repository.receipt).not.toHaveBeenCalled();
     expect(reportUnexpected).toHaveBeenCalledWith(expect.any(Error), { operation: "marketPrices" });
   });
-  it("requires owned open position and confirmed currency before candidate quotes", async () => {
+  it("requires an owned open position before candidate quotes", async () => {
     const { service, provider, repository } = fixture();
-    vi.mocked(repository.position).mockResolvedValueOnce(null).mockResolvedValueOnce({ currency: null });
+    vi.mocked(repository.position).mockResolvedValueOnce(null);
     expect(await service.lookup("foreign", "STOCK0")).toEqual({ ok: false, reason: "not_found" });
-    expect(await service.lookup("legacy", "STOCK0")).toEqual({ ok: false, reason: "currency_required" });
     expect(provider.confirmListing).not.toHaveBeenCalled();
   });
   it("persists normalized lookup data and confirms through a position-bound receipt without another quote", async () => {

@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { parsePositionForm } from "@/lib/validation/position";
+import { parsePositionForm, readPositionForm } from "@/lib/validation/position";
 import { parsePriceForm } from "@/lib/validation/price";
 import type { PositionFormValues } from "@/types";
 
 const valid: PositionFormValues = {
   instrument: "Exact",
+  listing_receipt_id: "00000000-0000-4000-8000-000000000003",
+  listing_query: "Exact",
   buy_price: "50",
   buy_date: "2026-10-01",
   quantity: "",
@@ -20,6 +22,31 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.useRealTimers();
+});
+
+describe("required stock selection", () => {
+  it.each(["", "AAPL", "not-an-id"])("rejects a typed label without a valid receipt %j", (listing_receipt_id) => {
+    expect(parsePositionForm({ ...valid, listing_receipt_id })).toMatchObject({
+      success: false,
+      errors: { listing_receipt_id: "Search and select a stock listing" },
+    });
+  });
+  it("retains raw search and reasoning on POST but excludes the search query from the write input", () => {
+    const form = new FormData();
+    for (const [key, value] of Object.entries({
+      ...valid,
+      listing_query: "  Apple  ",
+      reason_text: "Private reason",
+    })) {
+      form.set(key, value);
+    }
+    const values = readPositionForm(form);
+    expect(values.listing_query).toBe("  Apple  ");
+    expect(values.reason_text).toBe("Private reason");
+    const result = parsePositionForm(values);
+    expect(result).toMatchObject({ success: true, data: { listing_receipt_id: valid.listing_receipt_id } });
+    if (result.success) expect(result.data).not.toHaveProperty("listing_query");
+  });
 });
 
 describe("numeric form contracts", () => {

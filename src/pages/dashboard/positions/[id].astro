@@ -6,6 +6,10 @@ import { reportUnexpected } from "@/lib/observability/reporter";
 import Layout from "@/layouts/Layout.astro";
 import DeletePositionControl from "@/components/positions/DeletePositionControl.astro";
 import PositionResult from "@/components/positions/PositionResult.astro";
+import PriceContext from "@/components/market-prices/PriceContext.astro";
+import { ListingControl } from "@/components/market-prices/ListingControl";
+import { MovePositionControl } from "@/components/market-prices/MovePositionControl";
+import { listWallets } from "@/lib/services/wallets";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -16,7 +20,7 @@ import { todayUtc } from "@/lib/validation/position";
 import { parsePriceForm, readPriceForm } from "@/lib/validation/price";
 import { emptyClosePositionForm, parseClosePositionForm, readClosePositionForm } from "@/lib/validation/close-position";
 import { isUuid } from "@/lib/validation/uuid";
-import type { ClosePositionFormErrors, PositionDetail, PriceFormErrors, PriceFormValues } from "@/types";
+import type { ClosePositionFormErrors, PositionDetail, PriceFormErrors, PriceFormValues, Wallet } from "@/types";
 
 // Handles its own POST and re-renders on error, as /dashboard/new does.
 
@@ -98,6 +102,15 @@ if (position && form) {
   }
 }
 
+let wallets: Wallet[] | null = null;
+if (position) {
+  try {
+    wallets = await listWallets(supabase);
+  } catch (error) {
+    reportUnexpected(error, { operation: "listWallets" });
+  }
+}
+
 if (state === "not_found") {
   Astro.response.status = 404;
 }
@@ -130,7 +143,7 @@ const inputClass =
 
       {position && (
         <>
-          <div class="flex flex-col gap-2">
+          <div class="flex flex-col gap-2" data-price-refresh="position-result">
             <div class="flex flex-wrap items-center gap-3">
               <h1 class="text-gradient-heading min-w-0 text-3xl font-bold break-words">{position.instrument}</h1>
               <Badge variant="secondary">{position.category_name}</Badge>
@@ -146,9 +159,10 @@ const inputClass =
                 sell_date={position.sell_date}
               />
             </p>
+            <PriceContext valuation={position.valuation} />
           </div>
 
-          <p class="text-sm text-muted-foreground">
+          <p class="text-sm text-muted-foreground" data-price-refresh="position-wallet">
             Wallet:{" "}
             <a href={`/dashboard/wallets/${position.wallet_id}`} class="text-primary underline underline-offset-4">
               {position.wallet_name}
@@ -203,17 +217,32 @@ const inputClass =
             </section>
           ) : (
             <>
+              {position.valuation && (
+                <ListingControl
+                  positionId={position.id}
+                  currency={position.valuation.currency}
+                  initialListing={position.valuation.listing}
+                  initialSelection={position.valuation.pendingSelection}
+                  client:load
+                />
+              )}
               <section class="flex flex-col gap-4">
                 <h2 class="text-lg font-semibold">Current price</h2>
-                {position.current_price !== null && position.price_date !== null && (
-                  <p class="text-sm text-muted-foreground">
-                    Currently{" "}
-                    <span class="font-semibold text-foreground tabular-nums">
-                      {formatNumber(position.current_price)}
-                    </span>{" "}
-                    as of {formatDate(position.price_date)}
-                  </p>
-                )}
+                <p class="text-sm text-muted-foreground">
+                  Manual corrections remain effective until a downloaded market timestamp is strictly later than their
+                  save time.
+                </p>
+                <div data-price-refresh="position-current-price">
+                  {position.current_price !== null && position.price_date !== null && (
+                    <p class="text-sm text-muted-foreground">
+                      Currently{" "}
+                      <span class="font-semibold text-foreground tabular-nums">
+                        {formatNumber(position.current_price)}
+                      </span>{" "}
+                      as of {formatDate(position.price_date)}
+                    </p>
+                  )}
+                </div>
                 <form method="POST" class="flex flex-col gap-4" novalidate>
                   <input type="hidden" name="action" value="price" />
                   <div class="grid gap-4 sm:grid-cols-2">
@@ -353,6 +382,22 @@ const inputClass =
                 </form>
               </section>
             </>
+          )}
+
+          {wallets === null ? (
+            <p class="text-sm text-muted-foreground">
+              Target wallets could not be loaded. Reload after saving other edits to try moving this position.
+            </p>
+          ) : (
+            position.valuation && (
+              <MovePositionControl
+                positionId={position.id}
+                walletId={position.wallet_id}
+                sourceCurrency={position.valuation.currency}
+                wallets={wallets}
+                client:load
+              />
+            )
           )}
 
           <section class="flex flex-col gap-2">

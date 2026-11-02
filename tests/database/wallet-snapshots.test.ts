@@ -26,7 +26,6 @@ it("reads exact signed aggregates through real PostgREST with pagination and own
       .from("wallets")
       .insert({
         currency: "USD",
-        currency_attested: true,
         user_id: owners[0],
         name: "Snapshot proof",
         starting_value: "0",
@@ -38,6 +37,7 @@ it("reads exact signed aggregates through real PostgREST with pagination and own
       const day = new Date(Date.UTC(2020, 0, 1 + i)).toISOString().slice(0, 10);
       return {
         wallet_id: w.data.id,
+        currency: "USD",
         user_id: owners[0],
         observation_day: day,
         captured_at: `${day}T00:00:00Z`,

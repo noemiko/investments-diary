@@ -92,6 +92,62 @@ export type Database = {
           },
         ]
       }
+      market_listing_targets: {
+        Row: {
+          cache_id: string | null
+          cooldown_until: string | null
+          exchange: string
+          exchange_name: string
+          id: string
+          instrument_type: string
+          lease_token: string | null
+          lease_until: string | null
+          listing_name: string
+          provider: string
+          refresh_outcome: string
+          symbol: string
+          user_id: string
+        }
+        Insert: {
+          cache_id?: string | null
+          cooldown_until?: string | null
+          exchange: string
+          exchange_name: string
+          id?: string
+          instrument_type: string
+          lease_token?: string | null
+          lease_until?: string | null
+          listing_name: string
+          provider: string
+          refresh_outcome?: string
+          symbol: string
+          user_id: string
+        }
+        Update: {
+          cache_id?: string | null
+          cooldown_until?: string | null
+          exchange?: string
+          exchange_name?: string
+          id?: string
+          instrument_type?: string
+          lease_token?: string | null
+          lease_until?: string | null
+          listing_name?: string
+          provider?: string
+          refresh_outcome?: string
+          symbol?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "market_listing_targets_cache_id_user_id_fkey"
+            columns: ["cache_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "market_quote_cache"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
       market_quote_cache: {
         Row: {
           attempted_at: string | null
@@ -173,6 +229,45 @@ export type Database = {
         }
         Relationships: []
       }
+      market_selection_receipts: {
+        Row: {
+          id: string
+          target_id: string
+          user_id: string
+          valid_until: string
+          wallet_id: string
+        }
+        Insert: {
+          id?: string
+          target_id: string
+          user_id: string
+          valid_until?: string
+          wallet_id: string
+        }
+        Update: {
+          id?: string
+          target_id?: string
+          user_id?: string
+          valid_until?: string
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "market_selection_receipts_target_id_user_id_fkey"
+            columns: ["target_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "market_listing_targets"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "market_selection_receipts_wallet_id_user_id_fkey"
+            columns: ["wallet_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
       positions: {
         Row: {
           broker_label: string | null
@@ -187,6 +282,8 @@ export type Database = {
           listing_confirmed_at: string | null
           manual_price_saved_at: string | null
           market_listing_id: string | null
+          market_selection_receipt_id: string | null
+          market_target_id: string | null
           price_date: string | null
           quantity: number | null
           reason_text: string | null
@@ -208,6 +305,8 @@ export type Database = {
           listing_confirmed_at?: string | null
           manual_price_saved_at?: string | null
           market_listing_id?: string | null
+          market_selection_receipt_id?: string | null
+          market_target_id?: string | null
           price_date?: string | null
           quantity?: number | null
           reason_text?: string | null
@@ -229,6 +328,8 @@ export type Database = {
           listing_confirmed_at?: string | null
           manual_price_saved_at?: string | null
           market_listing_id?: string | null
+          market_selection_receipt_id?: string | null
+          market_target_id?: string | null
           price_date?: string | null
           quantity?: number | null
           reason_text?: string | null
@@ -250,6 +351,20 @@ export type Database = {
             columns: ["market_listing_id", "user_id"]
             isOneToOne: false
             referencedRelation: "market_quote_cache"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "positions_selection_owner_fkey"
+            columns: ["market_selection_receipt_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "market_selection_receipts"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "positions_target_owner_fkey"
+            columns: ["market_target_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "market_listing_targets"
             referencedColumns: ["id", "user_id"]
           },
           {
@@ -288,9 +403,13 @@ export type Database = {
       wallet_snapshots: {
         Row: {
           as_of: string | null
+          automatic_count: number | null
           captured_at: string
+          currency: string
+          manual_count: number | null
           not_counted: number
           observation_day: string
+          oldest_market_at: string | null
           open_change: number
           open_count: number
           realised_change: number
@@ -302,9 +421,13 @@ export type Database = {
         }
         Insert: {
           as_of?: string | null
+          automatic_count?: number | null
           captured_at?: string
+          currency: string
+          manual_count?: number | null
           not_counted: number
           observation_day: string
+          oldest_market_at?: string | null
           open_change: number
           open_count: number
           realised_change: number
@@ -316,9 +439,13 @@ export type Database = {
         }
         Update: {
           as_of?: string | null
+          automatic_count?: number | null
           captured_at?: string
+          currency?: string
+          manual_count?: number | null
           not_counted?: number
           observation_day?: string
+          oldest_market_at?: string | null
           open_change?: number
           open_count?: number
           realised_change?: number
@@ -341,9 +468,7 @@ export type Database = {
       wallets: {
         Row: {
           created_at: string
-          currency: string | null
-          currency_attested: boolean
-          currency_confirmed_at: string | null
+          currency: string
           deleted_at: string | null
           id: string
           name: string
@@ -352,9 +477,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          currency?: string | null
-          currency_attested?: boolean
-          currency_confirmed_at?: string | null
+          currency?: string
           deleted_at?: string | null
           id?: string
           name: string
@@ -363,9 +486,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          currency?: string | null
-          currency_attested?: boolean
-          currency_confirmed_at?: string | null
+          currency?: string
           deleted_at?: string | null
           id?: string
           name?: string
@@ -397,6 +518,16 @@ export type Database = {
           manual_price_saved_at: string | null
           market_listing_id: string | null
           market_state: string | null
+          market_target_id: string | null
+          pending_cooldown_until: string | null
+          pending_currency: string | null
+          pending_exchange: string | null
+          pending_exchange_name: string | null
+          pending_instrument_type: string | null
+          pending_lease_until: string | null
+          pending_name: string | null
+          pending_outcome: string | null
+          pending_symbol: string | null
           price_date: string | null
           quantity: number | null
           quote_currency: string | null
@@ -438,6 +569,13 @@ export type Database = {
             referencedColumns: ["id", "user_id"]
           },
           {
+            foreignKeyName: "positions_target_owner_fkey"
+            columns: ["market_target_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "market_listing_targets"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
             foreignKeyName: "positions_wallet_fkey"
             columns: ["wallet_id", "user_id"]
             isOneToOne: false
@@ -454,6 +592,7 @@ export type Database = {
         Args: { in_cache_id: string }
         Returns: string
       }
+      claim_market_target: { Args: { in_target_id: string }; Returns: string }
       confirm_listing_lookup: {
         Args: { in_lookup_id: string; in_position_id: string }
         Returns: boolean
@@ -484,6 +623,21 @@ export type Database = {
           in_token: string
         }
         Returns: boolean
+      }
+      finish_market_target: {
+        Args: {
+          in_cache_id?: string
+          in_outcome: string
+          in_release?: boolean
+          in_retry_after?: string
+          in_target_id: string
+          in_token: string
+        }
+        Returns: number
+      }
+      move_position_to_wallet: {
+        Args: { in_position_id: string; in_wallet_id: string }
+        Returns: string
       }
       release_market_quote_refresh: {
         Args: { in_cache_id: string; in_token: string }

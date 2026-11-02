@@ -6,7 +6,7 @@ and do not search or download. Browser calls send the normal same-origin session
 cookie; no service-role key is involved. Opening a page or waiting does not download.
 
 Use the local app at `http://127.0.0.1:4321`, sign in and open an owned, open position.
-Confirm its wallet currency first. Use synthetic USD and PLN wallets/positions for
+Existing wallets without a previous denomination use USD; new wallets choose USD, PLN or EUR. Use synthetic USD and PLN wallets/positions for
 this walkthrough if the existing diary does not contain both denominations.
 
 In browser developer tools, define this helper. Each invocation below is an explicit
@@ -65,7 +65,7 @@ async function priceAction(path, body) {
    unknown request fields are rejected, and confirmation resolves all metadata on the
    server.
 
-4. **Explicit Download prices for mapped holdings.** All owned mapped open holdings:
+4. **Explicit Download prices for selected holdings.** All owned mapped or pending-selection open holdings:
 
    ```js
    await priceAction("download", {});
@@ -83,6 +83,13 @@ async function priceAction(path, body) {
    reports `refreshing`; a failed attempt reports its retry cooldown. Unattempted
    symbols report `due` and are left eligible for a later explicit click.
 
+   A newly saved search selection is resolved on this click, without a second
+   confirmation action. Returned symbol/exchange/type and verified currency/timezone
+   must match the selected identity and wallet before a price is applied. A shared
+   selection is fetched once; matching wallets can receive its price while mismatched
+   wallets retain their manual values and report `incompatible_currency`. Search metadata
+   is never used to invent a quote denomination.
+
 5. **Unavailable/recoverable behavior.** A controlled provider timeout/HTTP failure
    is covered by deterministic service/SDK fixtures; do not force a real Yahoo rate
    limit. If the provider is unavailable during this manual walkthrough, expect safe
@@ -92,6 +99,15 @@ async function priceAction(path, body) {
    instructions are respected. Wait until the reported instant and explicitly retry;
    waiting alone never makes a request. Search itself can be retried explicitly.
 
-Ordinary app result displays and the snapshot effective-price integration arrive in
-Phase 4; this API walkthrough verifies listing choice, explicit download, confirmation
-and recoverable errors without claiming those later views are complete.
+## New-investment creation
+
+Phase 4's native `POST /dashboard/new` supports `action=search_listing`, a
+`select_listing=<opaque receipt UUID>` button, and `action=save`. These actions use
+the signed-in same-origin session and preserve the other entry fields. Search sends
+only the explicit company/symbol query to Yahoo; Select and Save read persisted
+owner/wallet-bound metadata without provider calls. Save derives the instrument
+from that selection and rejects missing, foreign, expired or wallet-mismatched
+choices before creating a category or position. Unsaved choices expire after
+30 minutes; saved holdings retain their durable target afterward. A later dashboard
+**Download prices** resolves the verified quote as described above. Opening the form,
+searching, selecting, saving, reloading and snapshot capture never download quotes.

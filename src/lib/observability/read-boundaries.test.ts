@@ -10,6 +10,7 @@ import Wallet from "@/pages/dashboard/wallets/[id].astro";
 import * as positions from "@/lib/services/positions";
 import * as wallets from "@/lib/services/wallets";
 import { listWalletSnapshots } from "@/lib/services/wallet-snapshots";
+import { readMarketSelection } from "@/lib/services/market-selections";
 import { reportUnexpected } from "@/lib/observability/reporter";
 
 vi.mock("@/lib/supabase", () => ({ createClient: vi.fn(() => ({})) }));
@@ -31,6 +32,7 @@ vi.mock("@/lib/services/wallets", () => ({
   updateWallet: vi.fn(),
 }));
 vi.mock("@/lib/services/wallet-snapshots", () => ({ listWalletSnapshots: vi.fn() }));
+vi.mock("@/lib/services/market-selections", () => ({ readMarketSelection: vi.fn(), searchMarketSelections: vi.fn() }));
 const id = "10000000-0000-4000-8000-000000000001";
 const locals: App.Locals = {
   user: {
@@ -44,6 +46,7 @@ const locals: App.Locals = {
 };
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.mocked(readMarketSelection).mockResolvedValue(null);
   vi.mocked(listWalletSnapshots).mockResolvedValue([]);
   vi.mocked(positions.listPositions).mockResolvedValue([]);
   vi.mocked(positions.listCategories).mockResolvedValue([]);
@@ -55,8 +58,7 @@ beforeEach(() => {
     id,
     name: "Wallet",
     starting_value: "0",
-    currency: null,
-    currency_confirmed_at: null,
+    currency: "USD",
   });
 });
 const cases = [
@@ -144,8 +146,9 @@ it.each(cases)(
         page === NewPosition
           ? {
               method: "POST",
+              headers: { origin: "http://localhost" },
               body: new URLSearchParams({
-                instrument: "Private instrument",
+                listing_query: "Private search",
                 reason_text: "Preserved private reasoning",
                 category_id: id,
               }),
@@ -160,7 +163,7 @@ it.each(cases)(
     expect(html).toContain(fallback);
     if (page === NewPosition) {
       expect(html).toContain("Preserved private reasoning");
-      expect(html).toContain("Private instrument");
+      expect(html).toContain("Private search");
     }
     expect(reportUnexpected).toHaveBeenCalledExactlyOnceWith(error, { operation });
   },
@@ -173,11 +176,23 @@ it("can save after a failed confrontation read", async () => {
   await container.renderToResponse(NewPosition, { request: new Request("http://localhost/dashboard/new"), locals });
   expect(reportUnexpected).toHaveBeenCalledOnce();
   vi.mocked(positions.createPosition).mockResolvedValue({ ok: true, id });
+  vi.mocked(readMarketSelection).mockResolvedValue({
+    receiptId: id,
+    targetId: id,
+    symbol: "Saved",
+    name: "Saved",
+    exchange: "NMS",
+    exchangeName: "Nasdaq",
+    instrumentType: "EQUITY",
+    validUntil: "2099-01-01T00:00:00Z",
+  });
   const response = await container.renderToResponse(NewPosition, {
     request: new Request("http://localhost/dashboard/new", {
       method: "POST",
+      headers: { origin: "http://localhost" },
       body: new URLSearchParams({
         instrument: "Saved",
+        listing_receipt_id: id,
         reason_text: "Private reason",
         category_id: id,
         wallet_id: id,

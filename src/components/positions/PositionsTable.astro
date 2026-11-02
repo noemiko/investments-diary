@@ -3,6 +3,7 @@ import DeletePositionControl from "@/components/positions/DeletePositionControl.
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import PositionResult from "@/components/positions/PositionResult.astro";
+import PriceContext from "@/components/market-prices/PriceContext.astro";
 import { formatDate, formatNumber } from "@/lib/format";
 import type { PositionListItem } from "@/types";
 
@@ -60,6 +61,15 @@ const { positions, showWallet = true } = Astro.props;
               Closed
             </Badge>
           )}
+          {position.sell_date === null && !position.valuation?.listing && !position.valuation?.pendingSelection && (
+            <a
+              href={`/dashboard/positions/${position.id}#stock-listing`}
+              aria-label={`Link stock listing for ${position.instrument}`}
+              class="mt-2 block text-xs font-normal underline underline-offset-4 hover:text-primary"
+            >
+              Link stock listing
+            </a>
+          )}
         </TableCell>
         <TableCell className="text-muted-foreground">{formatDate(position.buy_date)}</TableCell>
         <TableCell className="text-right tabular-nums">{formatNumber(position.buy_price)}</TableCell>
@@ -72,6 +82,9 @@ const { positions, showWallet = true } = Astro.props;
             sell_price={position.sell_price}
             sell_date={position.sell_date}
           />
+          <div class="min-w-48 max-w-64 whitespace-normal">
+            <PriceContext valuation={position.valuation} />
+          </div>
         </TableCell>
         <TableCell className="text-right text-muted-foreground tabular-nums">
           {position.quantity === null ? "—" : formatNumber(position.quantity)}

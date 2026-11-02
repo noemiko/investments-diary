@@ -10,7 +10,7 @@ Prices are currently entered manually. Position results and wallet totals use ap
 
 ## Desired End State
 
-The user searches for a listing, explicitly downloads its quote and confirms the returned identity. Later **Download prices** clicks update saved prices; page opening and reloading only display saved data. Results consistently use the selected price, show its source and time, and remain available during provider outages.
+The user must choose a Yahoo stock/ETF when creating an investment, then save without downloading a quote. A later explicit **Download prices** verifies the selected listing's trading currency/timezone and saves its price. Existing unlinked holdings still support explicit quote lookup and confirmation. Page opening and reloading only display saved data. Results consistently use the selected price, show its source and time, and remain available during provider outages.
 
 ## Key Decisions Made
 
@@ -19,8 +19,8 @@ The user searches for a listing, explicitly downloads its quote and confirms the
 | Provider          | Yahoo through pinned `yahoo-finance2@4.0.5`, subject to feasibility gate                         | Research / Plan |
 | Price use         | Position results, wallet totals, and future observations                                         | User            |
 | Refresh           | Explicit **Download prices** click only; no successful-download age restriction                  | User (revised)  |
-| Listing identity  | Search, inspect exchange/currency, confirm                                                       | User            |
-| Currency          | One currency per wallet; USD, PLN or EUR; no conversion                                          | User            |
+| Listing identity  | Required Yahoo selection at creation; quote and currency verification on explicit download       | User (revised)  |
+| Currency          | One currency per wallet; USD, PLN or EUR; unset existing wallets become USD; no conversion       | User            |
 | Manual correction | Temporary override until a quote’s market time is strictly later than the correction’s save time | User            |
 | Provider failure  | Retain valid automatic quote; manual fallback if none exists                                     | User            |
 | Existing holdings | Allow reassignment between owned wallets; preserve past observations                             | User            |
@@ -28,9 +28,9 @@ The user searches for a listing, explicitly downloads its quote and confirms the
 
 ## Scope
 
-**Included:** listing search, quote caching, valuation integration, currency confirmation, wallet reassignment, source/freshness display, and future snapshot metadata.
+**Included:** listing search, quote caching, valuation integration, wallet denomination, wallet reassignment, source/freshness display, and future snapshot metadata.
 
-**Excluded:** FX conversion, streaming, page-load/reload downloads, automatic retries, unattended downloads, active-page polling, historical quote imports, and rewriting past observations.
+**Excluded:** FX conversion, streaming, page-load/reload downloads, automatic retries, unattended downloads, active-page polling, historical quote imports, and rewriting recorded amounts or dates. Unlabelled observations inherit wallet currency by explicit owner decision.
 
 ## Architecture / Approach
 

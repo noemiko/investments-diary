@@ -26,9 +26,9 @@ try {
  create function auth.uid() returns uuid language sql stable as 'select nullif(current_setting(''request.jwt.claim.sub'',true),'''')::uuid';
  grant usage on schema auth,public to authenticated,anon; ${chain}
  insert into auth.users values ('00000000-0000-4000-8000-000000000001'),('00000000-0000-4000-8000-000000000002');
- insert into wallets(id,user_id,name,starting_value,currency,currency_attested) values
- ('10000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000001','Mixed',1000,'USD',true),
- ('10000000-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000002','Empty',0,'USD',true);
+ insert into wallets(id,user_id,name,starting_value,currency) values
+ ('10000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000001','Mixed',1000,'USD'),
+ ('10000000-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000002','Empty',0,'USD');
  insert into reason_categories(id,user_id,name) values('20000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000001','Reason');
  insert into positions(user_id,wallet_id,category_id,instrument,buy_date,buy_price,quantity,current_price,price_date,sell_price,sell_date) values
  ('00000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','Closed','2026-01-01',50,10,999,'2026-10-01',60,'2026-02-01'),

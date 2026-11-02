@@ -54,13 +54,13 @@ if (isUuid(id)) {
 }
 
 let values: WalletFormValues = wallet
-  ? { name: wallet.name, starting_value: wallet.starting_value, currency: wallet.currency ?? "", currency_attested: "" }
-  : { name: "", starting_value: "", currency: "", currency_attested: "" };
+  ? { name: wallet.name, starting_value: wallet.starting_value, currency: wallet.currency }
+  : { name: "", starting_value: "", currency: "" };
 let errors: WalletFormErrors = {};
 
 if (wallet && Astro.request.method === "POST") {
   values = readWalletForm(await Astro.request.formData());
-  const parsed = parseWalletForm(values, { editing: true, confirmedCurrency: wallet.currency });
+  const parsed = parseWalletForm(values, { fixedCurrency: wallet.currency });
   if (parsed.success) {
     const result = await updateWallet(supabase, wallet.id, parsed.data);
     if (result.ok) {
@@ -128,7 +128,7 @@ if (state === "not_found") {
       {wallet && (
         <>
           <h1 class="text-gradient-heading min-w-0 text-3xl font-bold break-words">{wallet.name}</h1>
-          {result && <WalletValue startingValue={wallet.starting_value} result={result} />}
+          {result && <WalletValue startingValue={wallet.starting_value} result={result} currency={wallet.currency} />}
           {snapshots === null ? (
             <p role="alert" class="text-destructive">
               Daily wallet observations could not be loaded. Please try again.
@@ -151,7 +151,7 @@ if (state === "not_found") {
             )}
           </section>
           <h2 class="text-lg font-semibold">Edit wallet</h2>
-          <WalletForm values={values} errors={errors} confirmedCurrency={wallet.currency} submitLabel="Save changes" />
+          <WalletForm values={values} errors={errors} fixedCurrency={wallet.currency} submitLabel="Save changes" />
         </>
       )}
 

@@ -25,7 +25,7 @@ const SAVE_ERRORS: Record<Exclude<CreateWalletResult, { ok: true }>["error"], Wa
   unexpected: { form: "Your wallet could not be saved. Please try again." },
 };
 
-let values: WalletFormValues = { name: "", starting_value: "", currency: "", currency_attested: "" };
+let values: WalletFormValues = { name: "", starting_value: "", currency: "" };
 let errors: WalletFormErrors = {};
 
 if (Astro.request.method === "POST") {

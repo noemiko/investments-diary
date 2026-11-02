@@ -3,6 +3,7 @@ import { createYahooMarketData } from "@/lib/market-data/yahoo";
 import { providerBudget, quoteBatches } from "@/lib/market-data/refresh-policy";
 import { reportUnexpected } from "@/lib/observability/reporter";
 import { createPriceRepository, type PriceCache, type PriceRepository } from "./market-price-repository";
+import { createTargetRepository, type TargetRepository } from "./market-target-repository";
 import type {
   MarketDataFailure,
   MarketListing,
@@ -16,6 +17,7 @@ export type MarketDataProvider = ReturnType<typeof createYahooMarketData>;
 interface ServiceOptions {
   provider?: MarketDataProvider;
   repository?: PriceRepository;
+  targets?: TargetRepository;
   now?: () => number;
   budgetMs?: number;
 }
@@ -62,6 +64,7 @@ export function createMarketPriceService(
   options: ServiceOptions = {},
 ) {
   const repository = options.repository ?? createPriceRepository(client, userId);
+  const targets = options.targets ?? createTargetRepository(client, userId);
   const now = options.now ?? Date.now;
   let provider = options.provider;
   const api = () => (provider ??= createYahooMarketData());
@@ -85,14 +88,17 @@ export function createMarketPriceService(
   ): Promise<{ ok: true; results: MarketPriceDownloadItem[] } | MarketPriceServiceFailure> {
     const listings = await repository.downloadListings(positionIds);
     if (listings === null) return { ok: false, reason: "not_found" };
+    const pendingTargets = await targets.list(positionIds);
     const unique = [...new Map(listings.map((row) => [row.id, row])).values()];
     const results: MarketPriceDownloadItem[] = [];
+    const completed = new Map<string, { item: MarketPriceDownloadItem; quote: MarketQuoteOutcome | null }>();
     const budget = providerBudget(signal, options.budgetMs);
+    const isStopped = () => budget.stopped;
     try {
       for (const batch of quoteBatches(unique)) {
         const claimed: { row: PriceCache; token: string }[] = [];
         for (const row of batch) {
-          if (budget.stopped) {
+          if (isStopped()) {
             results.push({ listingId: row.id, symbol: row.symbol, outcome: "due", retryAfter: null });
             continue;
           }
@@ -108,7 +114,7 @@ export function createMarketPriceService(
             });
           }
         }
-        if (budget.stopped) {
+        if (isStopped()) {
           for (const { row, token } of claimed) {
             await repository.release(row.id, token);
             results.push({ listingId: row.id, symbol: row.symbol, outcome: "due", retryAfter: null });
@@ -131,12 +137,120 @@ export function createMarketPriceService(
           if (!member.ok && outcome.ok) report(member);
           const accepted = await repository.finish(row.id, token, member);
           const persisted = !member.ok || !accepted ? await repository.cache(row.id) : null;
-          results.push({
+          const item: MarketPriceDownloadItem = {
             listingId: row.id,
             symbol: row.symbol,
             outcome: member.ok ? (accepted ? "success" : "older_quote") : member.reason,
             retryAfter: persisted?.cooldownUntil ?? null,
+          };
+          results.push(item);
+          const saved = member.ok ? await repository.cache(row.id) : null;
+          const selected = saved ? cachedQuote(saved) : null;
+          completed.set(row.id, {
+            item,
+            quote: member.ok ? (selected ? { ok: true, quote: selected } : null) : member,
           });
+        }
+      }
+      for (const target of pendingTargets) {
+        const item = (
+          outcome: MarketPriceDownloadItem["outcome"],
+          retryAfter: string | null = null,
+        ): MarketPriceDownloadItem => ({ listingId: target.id, symbol: target.symbol, outcome, retryAfter });
+        if (isStopped()) {
+          results.push(item("due"));
+          continue;
+        }
+        const token = await targets.claim(target.id);
+        if (!token) {
+          const state = blocked(await targets.read(target.id));
+          results.push(item(state.reason, state.retryAfter));
+          continue;
+        }
+        const canonicalId = await targets.canonical(target);
+        if (canonicalId === false) {
+          await targets.finish(target.id, token, { ok: false, reason: "invalid_quote" });
+          const state = await targets.read(target.id);
+          results.push(item("invalid_quote", state?.cooldownUntil ?? null));
+          continue;
+        }
+        let cached = canonicalId ? await repository.cache(canonicalId) : null;
+        let cacheToken: string | null = null;
+        let outcome = canonicalId ? completed.get(canonicalId) : undefined;
+        if (!outcome) {
+          if (cached) {
+            cacheToken = await repository.claim(cached.id);
+            if (!cacheToken) {
+              await targets.release(target.id, token);
+              const state = blocked(await repository.cache(cached.id));
+              results.push(item(state.reason, state.retryAfter));
+              continue;
+            }
+          }
+          if (isStopped()) {
+            if (cached && cacheToken) await repository.release(cached.id, cacheToken);
+            await targets.release(target.id, token);
+            results.push(item("due"));
+            continue;
+          }
+          const response = await budget.run(async (operationSignal): Promise<MarketQuoteOutcome> => {
+            if (!cached) return api().confirmListing(target.symbol, { signal: operationSignal });
+            const batch = await api().fetchQuotes([identity(cached)], { signal: operationSignal });
+            return batch.ok ? (batch.quotes[target.symbol] ?? { ok: false, reason: "not_found" }) : batch;
+          });
+          let member: MarketQuoteOutcome = response.ok ? response.value : response;
+          if (
+            member.ok &&
+            (member.quote.listing.symbol !== target.symbol ||
+              member.quote.listing.exchange !== target.exchange ||
+              member.quote.listing.instrumentType !== target.instrumentType)
+          )
+            member = { ok: false, reason: "invalid_quote" };
+          if (!member.ok) {
+            member = quoteFailure(member);
+            report(member);
+          }
+          if (member.ok) {
+            cached ??= await repository.ensureCache(member.quote);
+            cacheToken ??= await repository.claim(cached.id);
+            if (!cacheToken) {
+              await targets.release(target.id, token);
+              const state = blocked(await repository.cache(cached.id));
+              results.push(item(state.reason, state.retryAfter));
+              continue;
+            }
+          }
+          let accepted = true;
+          if (cached && cacheToken) accepted = await repository.finish(cached.id, cacheToken, member);
+          const saved = cached && member.ok ? await repository.cache(cached.id) : null;
+          const selected = saved ? cachedQuote(saved) : null;
+          const persisted = cached && (!member.ok || !accepted) ? await repository.cache(cached.id) : null;
+          outcome = {
+            item: item(
+              member.ok ? (accepted ? "success" : "older_quote") : member.reason,
+              persisted?.cooldownUntil ?? (!member.ok ? (member.retryAfter ?? null) : null),
+            ),
+            quote: member.ok ? (selected ? { ok: true, quote: selected } : null) : member,
+          };
+          if (cached) completed.set(cached.id, outcome);
+        }
+        if (outcome.quote?.ok && cached) {
+          const mismatches = await targets.finish(target.id, token, outcome.quote, cached.id);
+          if (mismatches < 0) {
+            results.push(item("due"));
+            continue;
+          }
+          results.push({
+            ...item(mismatches > 0 ? "incompatible_currency" : outcome.item.outcome, outcome.item.retryAfter),
+            ...(mismatches > 0 ? { incompatibleCount: mismatches } : {}),
+          });
+        } else if (outcome.quote && !outcome.quote.ok) {
+          await targets.finish(target.id, token, outcome.quote);
+          const state = await targets.read(target.id);
+          results.push(item(outcome.quote.reason, state?.cooldownUntil ?? outcome.quote.retryAfter ?? null));
+        } else {
+          await targets.release(target.id, token);
+          results.push(item(outcome.item.outcome, outcome.item.retryAfter));
         }
       }
       return { ok: true, results };
@@ -147,7 +261,6 @@ export function createMarketPriceService(
   async function lookup(positionId: string, symbol: string, signal?: AbortSignal): Promise<MarketListingLookupResult> {
     const position = await repository.position(positionId);
     if (!position) return { ok: false, reason: "not_found" };
-    if (!position.currency) return { ok: false, reason: "currency_required" };
     const receipt = await repository.receipt(positionId, symbol);
     const token = await repository.claimLookup(receipt.id);
     if (!token) return { ok: false, ...blocked(await repository.readReceipt(positionId, receipt.id)) };
@@ -206,7 +319,6 @@ export function createMarketPriceService(
   async function confirm(positionId: string, receiptId: string): Promise<{ ok: true } | MarketPriceServiceFailure> {
     const position = await repository.position(positionId);
     if (!position) return { ok: false, reason: "not_found" };
-    if (!position.currency) return { ok: false, reason: "currency_required" };
     const receipt = await repository.readReceipt(positionId, receiptId);
     if (!receipt) return { ok: false, reason: "not_found" };
     if (!receipt.cacheId || !receipt.validUntil || Date.parse(receipt.validUntil) <= now())

@@ -37,7 +37,7 @@ function status(reason: string) {
   if (reason === "not_found") return 404;
   if (reason === "invalid_request") return 400;
   if (reason === "cooldown" || reason === "refreshing") return 429;
-  if (["currency_required", "incompatible_currency", "lookup_expired"].includes(reason)) return 409;
+  if (["incompatible_currency", "lookup_expired"].includes(reason)) return 409;
   return 503;
 }
 /** A JSON POST contract for the Phase 4 buttons; no GET handler can invoke provider work. */

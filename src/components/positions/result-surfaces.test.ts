@@ -34,22 +34,19 @@ const wallets: Wallet[] = [
     id: "10000000-0000-4000-8000-000000000001",
     name: "Long term",
     starting_value: "1000",
-    currency: null,
-    currency_confirmed_at: null,
+    currency: "USD",
   },
   {
     id: "10000000-0000-4000-8000-000000000002",
     name: "Other",
     starting_value: "100",
-    currency: null,
-    currency_confirmed_at: null,
+    currency: "USD",
   },
   {
     id: "10000000-0000-4000-8000-000000000003",
     name: "Empty",
     starting_value: "0",
-    currency: null,
-    currency_confirmed_at: null,
+    currency: "USD",
   },
 ];
 const gain: PositionDetail = {
@@ -248,11 +245,11 @@ describe("rendered wallet surfaces", () => {
     const first = text(row(html, `/dashboard/wallets/${wallets[0].id}`));
     const second = text(row(html, `/dashboard/wallets/${wallets[1].id}`));
     expect(first).toBe(
-      "Long term 1,000.00 1,060.00 +60.00 (+6.00%) Open prices as of Oct 1, 2026 2 not counted (no quantity or no current price for an open position)",
+      "Long term USD 1,000.00 1,060.00 +60.00 (+6.00%) Open prices as of Oct 1, 2026 2 not counted (no quantity or no current price for an open position)",
     );
-    expect(second).toBe("Other 100.00 90.00 -10.00 (-10.00%) Open prices as of Sep 15, 2026");
+    expect(second).toBe("Other USD 100.00 90.00 -10.00 (-10.00%) Open prices as of Sep 15, 2026");
     expect(first).not.toContain("as of Jan 1, 2026");
-    expect(text(row(html, `/dashboard/wallets/${wallets[2].id}`))).toBe("Empty 0.00 0.00 0.00 No counted results");
+    expect(text(row(html, `/dashboard/wallets/${wallets[2].id}`))).toBe("Empty USD 0.00 0.00 0.00 No counted results");
   });
 
   it("renders the same exact total and its member results on wallet detail", async () => {
@@ -266,7 +263,7 @@ describe("rendered wallet surfaces", () => {
     // Everything before Investments is the actual WalletValue output, not member dates below it.
     const summary = text(html.split("<section")[0]);
     expect(summary).toContain(
-      "Starting value 1,000.00 Current value 1,060.00 Change +60.00 (+6.00%) Live total from your latest recorded prices Realised gain/loss 0.00 Open gain/loss +60.00 Open prices as of Oct 1, 2026 2 not counted (no quantity or no current price for an open position)",
+      "Starting value 1,000.00 Current value 1,060.00 Change +60.00 (+6.00%) Live total from your latest recorded prices selected from saved manual entries and downloaded quotes Realised gain/loss 0.00 Open gain/loss +60.00 Open prices as of Oct 1, 2026 2 not counted (no quantity or no current price for an open position)",
     );
     expect(summary).not.toContain("as of Jan 1, 2026");
     expect(text(row(html, `/dashboard/positions/${gain.id}`))).toContain("+20.00% as of Oct 10, 2026");
@@ -285,7 +282,7 @@ describe("rendered wallet surfaces", () => {
     });
     const summary = text(html.split("<section")[0]);
     expect(summary).toContain(
-      "Starting value 0.00 Current value 0.00 Change 0.00 Live total from your latest recorded prices Realised gain/loss 0.00 Open gain/loss 0.00 No counted results",
+      "Starting value 0.00 Current value 0.00 Change 0.00 Live total from your latest recorded prices selected from saved manual entries and downloaded quotes Realised gain/loss 0.00 Open gain/loss 0.00 No counted results",
     );
     expect(summary).not.toContain("%");
     expect(summary).not.toContain("as of");

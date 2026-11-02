@@ -169,4 +169,97 @@ Progress 2.1–2.3 are verified. The owner confirmed manual check 2.3 passed on 
 
 ### Manual handoff
 
-Progress 3.1–3.4 are verified. The owner confirmed manual check 3.3 passed on 2026-10-30 using the API walkthrough. Phase 3 is staged and awaits commit-message approval. No production migration or deployment occurred.
+Progress 3.1–3.4 are verified. The owner confirmed manual check 3.3 passed on 2026-10-30 using the API walkthrough. Phase 3 was committed as `0201301` after owner approval of the message. No production migration or deployment occurred.
+
+## Phase 4 preflight — 2026-10-30
+
+- Owner chose delegated application integration after Phase 3 commit `0201301`; parent retains verification, staging, manual confirmation, Progress and commit.
+- Local Supabase, Node 24 tooling, Playwright 1.64.1 and local E2E credentials are available. Configuration presence was checked without printing credential values.
+- Phase 4 must compose saved effective prices across position/confrontation/wallet reads and future capture, while keeping manual inputs separate. The existing midnight UTC job must not perform provider work.
+- Browser checks will exercise explicit controls, retained form input, errors and legacy-history separation against local fixtures. No production data or deployment is part of this phase.
+
+## Phase 4 results — 2026-10-30
+
+### Implemented and adaptations
+
+- Position list/detail, confrontation and wallet reads now use the security-invoker effective-price view through one strict decimal-text decoder. Raw manual values remain separate. Closed positions preserve valid zero-sale semantics. Confrontation uses the existing paginated read helper with stable ordering.
+- Dashboard and listing controls issue provider actions only on explicit clicks. Search, candidate download and confirmation remain separate. Read-only SSR fragments refresh after actions without replacing manual/sale/move forms. Source, currency, actual quote time, market state, provider-reported delay, override and recoverable failure context are visible.
+- Added an owner-checked wallet-move RPC/endpoint and compatible-target control, including explicit legacy amount attestation. Direct authenticated wallet_id updates are denied; manual saves, closing, soft deletion and restoration remain available.
+- Applied local additive migrations `20261030122155_effective_snapshots_and_wallet_moves.sql` and `20261030123038_order_wallet_move_locks.sql`. The second corrects wallet lock ordering without editing an applied migration. Generated database types came from the CLI.
+- Future captures select cached effective prices and record denomination, open automatic/manual coverage and oldest automatic market time. Existing observations remain unchanged with nullable unknown context and display separately from denominated charts. Signature, restricted capture permissions, daily idempotency and midnight UTC scheduling remain unchanged; capture performs no provider requests.
+- Screenshot review led to wrapping source context within result cells and waiting for the dashboard's completed state before its screenshot. Test screenshots hide only the development toolbar.
+
+### Automated evidence
+
+- Gate 4.1: `npm run test:decimal-db` PASS, 4 files / 13 tests, including real PostgREST cross-surface parity, strict decimals, zero sale, manual correction, owner/currency move boundaries, unchanged position facts and retained ordinary write permissions.
+- Focused read/decoder/move-endpoint/result/control/history tests PASS, 8 files / 55 tests.
+- Gate 4.2: `npm run test:market-prices-db` PASS, including full-chain legacy preservation, denied direct reassignment, legacy attestation, automatic/manual capture coverage, excluded holdings, moved zero-sale capture and unchanged prior observations.
+- `npm run test:snapshots-db`: PASS, exact totals, concurrent idempotency, RLS/write restrictions, gaps and immutable history.
+- `npm run test:wallet-cron`: PASS, midnight UTC schedule, idempotent registration and restricted capture permissions; its metadata transaction was rolled back.
+- Deliberate break: substituted raw manual current_price for selected open price in the decoder's worktree. The selection test failed (15 instead of 12.12345678), while the zero-sale and numeric-boundary tests passed. Unconditionally restored the staged decoder using `git checkout --`; the restored full suite passed.
+- Actual applied privilege checks returned `f|t` for authenticated wallet_id/current_price UPDATE, and `f|t` for authenticated/service-role capture EXECUTE.
+- Astro sync, lint, Astro check and build: final PASS. Lint's initial two PriceContext style findings were corrected without changing rules or assertions. Final type check: 160 files, zero errors/warnings/hints.
+- `npm test`: final PASS, 33 files / 383 tests.
+- Local HTTP smoke: all steps PASS after the read-contract switch.
+- Chromium fixtures: final PASS, 2 tests in 6.1 seconds. They cover no download on load/reload/focus, duplicate prevention, lookup confirmation without another quote, retained manual/sale inputs, actual wallet move and read-only refresh, completed dashboard state, retained failure prices, history ranges/reload, keyboard/mobile/no-JS and dense point selection. No Yahoo request is used by these browser fixtures.
+- Initial browser run found client `_jsxDEV is not a function` errors despite correct server-rendered HTML. Restarting the assistant-owned long-lived development server in development mode resolved both tests without application changes. After the final build, verification used a fresh development server again.
+- Reviewed final desktop dashboard/detail and mobile history screenshots under `test-results/market-price-controls-pric-9b4b9--unsaved-manual-sale-values-chromium/` and `test-results/wallet-dashboard-daily-wal-e2f19-d-keyboard-mobile-and-no-JS-chromium/`. These are ignored local test artifacts, not committed diary data.
+
+### Manual handoff
+
+Progress 4.1 and 4.2 are verified. Item 4.3 remains unchecked pending owner confirmation of the [UI walkthrough](ui-verification.md). The local app is running at `http://127.0.0.1:4321` for that check. Phase 4 is staged but not committed pending manual confirmation and commit-message approval. No production migration or deployment occurred.
+
+## Phase 4 owner revision — 2026-10-30
+
+Manual check 4.3 was not approved. The owner reported the dashboard download button unavailable, then requested a simpler currency policy: wallets with unset currency become USD, and all deferred currency confirmation/attestation UI and branches are removed. The owner separately approved inheriting wallet denomination for observations with unset currency and removing the separate legacy-history UI. Recorded numeric amounts, dates and results remain unchanged; historical source coverage and save times are not fabricated.
+
+Phase 4 automated Progress rows 4.1/4.2 were reopened for verification of this revised implementation. Earlier Phase 4 gate results above describe the superseded version and are not claimed as verification of the new policy. No Phase 4 commit has been made.
+
+### Revised implementation and verification
+
+- Applied local additive migration `20261030140619_set_wallet_denominations.sql`: unset wallet currencies become USD; unset observation currencies inherit their owning wallet. Both columns are non-null. Removed wallet confirmation metadata and the attestation move argument. Existing denominations remain frozen; moves still require ownership and matching currency. Recorded amounts, dates, source coverage and manual save times are unchanged.
+- Removed currency-attestation forms, unconfirmed-wallet runtime branches and separate legacy-history presentation. Ordinary new-wallet USD/PLN/EUR choices remain. Historical source coverage stays unknown when it was not recorded.
+- The owner could not find the linking controls, so unlinked open investments now have a direct **Link stock listing** action that jumps to **Stock listing** on detail. The disabled dashboard download control explains the steps. Navigation performs no provider request.
+- `npm run test:decimal-db`: PASS, 4 files / 13 tests against local PostgREST. Focused cross-surface contracts: PASS, 8 files / 54 tests. Wallet validation/currency/history and listing/move controls: PASS, 6 files / 42 tests.
+- `npm run test:market-prices-db`: PASS, including USD backfill, inherited observation denominations, unchanged monetary/date/coverage facts, removal of obsolete metadata/API, frozen currency, ownership, matching-currency moves and retained price-selection/lease/cooldown rules.
+- `npm run test:snapshots-db`: PASS, exact totals, concurrent idempotency, write restrictions, gaps and immutable historical values.
+- Deliberately changed the worktree-only USD backfill to PLN. The disposable migration test failed with `existing unspecified wallet did not become USD`. Unconditionally restored the staged migration with `git checkout --`; the restored test passed. The broken migration was never applied to the diary database.
+- Deliberately changed the dashboard listing-link destination to a missing fragment. The browser regression failed on the incorrect destination. Unconditionally restored the staged component with `git checkout --`; the final browser run passed.
+- Final application static sequence: Astro sync, lint, Astro check and build PASS; 160 files, zero errors/warnings/hints. `npm test`: PASS, 33 files / 383 tests.
+- Local HTTP smoke: all steps PASS. Final Chromium checks: PASS, 2 tests in 6.2 seconds, including direct dashboard-to-linking navigation without provider work, explicit downloads, retained inputs, moves and unified history. Reviewed mobile history and detail screenshots; the local dev server was refreshed after the build.
+
+Progress 4.1/4.2 are verified for the revised application. Manual 4.3 remains pending; the owner has not approved the revised UI walkthrough. No production migration, deployment or Phase 4 commit occurred.
+
+### Linked demo follow-up
+
+- Owner requested a demo investment that is already linked. Fresh/reset fixtures now label the twelfth position `AAPL · Demo` and link it to owner-scoped AAPL/NMS/USD metadata. It is open, active, has quantity and has no manual price. Fresh listing rows contain no quote or refresh attempt; the loader never calls Yahoo.
+- Normal reruns link only the intended older fixture while it remains open, active, unlinked and in a compatible wallet. Existing labels, manual values/save times and selected listings remain unchanged. Existing canonical listing rows are reused without overwriting saved quotes. Reset preflights unrelated position and lookup-receipt references before deleting fixture data.
+- `npm run test:demo-db`: PASS, 2 tests, including real local lifecycle coverage for fresh setup, old-demo upgrade, manual facts, chosen listing, closed/deleted exclusion, cached-quote reuse, historical preservation and reset refusal. Deliberately disabled the repair branch in the worktree: the upgrade assertion failed because its link remained null. Unconditionally restored the staged loader with `git checkout --`; the restored suite passed.
+- Upgraded the existing marked local demo through a normal rerun, without reset or password change. Before/after position facts matched, and the saved effective-price view verified its AAPL link on an open, non-deleted holding. No unmarked account was adopted or new persistent demo account created.
+- After the demo edits, Astro sync, lint, Astro check and build passed again; the full unit suite remained 33 files / 383 tests. The local development server was refreshed after the final build.
+
+## Phase 4 creation-flow revision — 2026-10-30
+
+The owner did not approve manual 4.3; instead, they required Yahoo stock selection during new-investment creation and explicitly chose selecting/saving first with price downloads later from the dashboard. The plan and FR-003/FR-014 now require this flow. Phase 4 automated rows 4.1/4.2 were reopened and 4.4 added; previous checks above remain evidence for the earlier implementation only. Delegated implementation adds durable owner-scoped search targets, expiring wallet-bound choices, native search/select/save and explicit first-download verification without guessing currency/timezone.
+
+Reviewed and applied additive migration `20261030162000_pending_stock_selections.sql` to local Supabase; generated database types came from the CLI. Existing effective-view output columns are preserved in order, with pending-selection context appended. No reset, production migration or provider quote request occurred. Creation-flow implementation and its gates are still in progress.
+
+### Creation-flow results — 2026-11-02
+
+- New investments require an owner/wallet-bound Yahoo search choice. Native Search and Select retain incomplete prices, dates, quantity, category, reason and broker; Save derives the canonical symbol from the stored receipt. Missing/foreign/expired/wallet-mismatched choices fail before category creation or insertion. Existing holdings retain their labels and manual support.
+- Durable pending targets are separate from expiring form receipts. Search/Select/Save/read composition never request a quote. The first explicit dashboard download verifies symbol/exchange/type and actual trading currency/timezone, shares cache work across mapped/pending holdings, attaches only compatible wallets and retains incompatible manual values with persistent mismatch context.
+- Applied `20261030162500_pending_listing_currency_context.sql` to expose only a verified cache denomination for pending mismatch context. Applied `20261102080240_validate_selection_without_update_privilege.sql` after the first real-transport run found that the invoker trigger's receipt `FOR SHARE` required UPDATE permission. Removing that unnecessary lock preserves caller RLS and insert-time expiry checks; receipt UPDATE grants remain denied. Applied migrations were not edited.
+- Plan gates: focused contracts PASS, 9 files / 112 tests; local PostgREST/decimal/selection contracts PASS, 5 files / 14 tests. Real DB coverage includes receipt ownership/wallet/expiry, no category side effect for invalid choices, canonical symbol derivation, exclusive/expired lease recovery and late-token rejection, receipt expiry after Save, shared first-download resolution, incompatible manual preservation, cache reuse and ambiguous-identity rejection.
+- `test:market-prices-db`, `test:snapshots-db`, `test:close-db`, `test:wallet-db`, `test:wallet-cron` and `test:demo-db`: PASS. Full-chain migration preservation, exact arithmetic, prior observations, ownership, source coverage, sale facts, daily scheduling and demo edits/reset safeguards remain covered. The cron metadata transaction rolled back.
+- Deliberate break: removed the receipt wallet filter only in the worktree. The real DB selection test went red because a USD-wallet receipt was returned for a PLN wallet; the other 13 tests passed. Unconditionally restored the staged service using `git checkout --`; the restored full DB suite passed.
+- Initial focused expectations omitted the new nullable selection fields. Added the fields to strict DTO expectations, corrected an internal target-ID fixture assumption, and retained exact equality and numeric assertions. No assertion or lint rule was disabled. Lint's volatile deadline-read and null-coalescing findings were corrected while retaining the post-await deadline check.
+- Final static sequence PASS: Astro sync, lint, Astro check (164 files, zero errors/warnings/hints), Vercel build. Full unit suite PASS: 34 files / 408 tests.
+- Final Chromium run PASS: setup plus four browser cases, 5 tests in 10.1 seconds. Hydrated and no-JavaScript creation use actual native Select/Save and database/SSR reads with deterministic provider-metadata receipts. They preserve draft values, retain the saved selection after reload, enable explicit download and prove no download POST on Save. Existing explicit controls/input preservation/moves and keyboard/mobile/no-JS history also passed. Provider search/page action behavior is separately covered by native-page and real DB/service tests; these checks do not claim a live Yahoo probe.
+- HTTP smoke PASS, all steps, using local owner-bound metadata receipts without Yahoo requests. Authentication, native Save, exact totals, sale/delete/restore and cross-account privacy remain real.
+- Reviewed selected-form, pending-dashboard and history screenshots. Added a minimum width for price context so long labels cannot squeeze it into an unreadable strip; static/unit/browser gates passed after that adjustment. Test screenshots are ignored local artifacts.
+
+Progress 4.1, 4.2 and 4.4 are verified for the new creation flow. Manual 4.3 remains unapproved. The local app is running at `http://127.0.0.1:4321`; Phase 4 is staged but not committed. No production migration or deployment occurred.
+
+### Manual confirmation — 2026-11-02
+
+The owner confirmed **Manual check passed** for the revised new-investment selection/save/dashboard-download flow and Phase 4 item 4.3, including retained input, corrections, wallet moves, recoverable errors and history. All Phase 4 Progress rows are now verified. The commit is awaiting approval of its message; no production migration or deployment occurred.

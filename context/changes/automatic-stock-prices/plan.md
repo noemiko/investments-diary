@@ -4,6 +4,31 @@
 
 Introduce downloaded market quotes as valuation inputs while retaining manual entries separately. Download prices only after an explicit click on **Download prices**. Use database-defined price selection so application views and daily observations agree.
 
+## Approved currency simplification — 2026-10-30
+
+The owner replaced deferred legacy currency confirmation during Phase 4 manual verification:
+
+- Assign USD to every wallet whose currency is unset; all wallets have a denomination thereafter.
+- Retain ordinary USD/PLN/EUR selection for new wallets and the frozen-currency/no-FX rule.
+- Remove currency attestation, deferred confirmation, unconfirmed-wallet UI and legacy move branches.
+- Give every observation with unset currency its wallet’s denomination, then remove the separate legacy-history UI. Preserve every recorded numeric amount, date and result; this is a denomination metadata update, not conversion or recalculation.
+- Do not invent missing historical source coverage or manual-save timestamps.
+
+These decisions supersede the earlier nullable-wallet/attestation and unspecified-history requirements below. Completed Phase 2/3 Progress rows record the checks performed for those earlier commits; Phase 4 verification must cover the revised policy before completion.
+
+## Approved creation-flow revision — 2026-10-30
+
+The owner requires choosing a matching Yahoo stock/ETF while creating an investment, rather than saving a free-text instrument and discovering linking later. The owner explicitly chose **select and save first; download prices later from the dashboard**.
+
+- Require a server-validated provider search selection for every newly created investment. Do not accept a typed name or browser-supplied listing metadata as verification.
+- Keep selected search metadata separate from the fully verified quote-cache identity: Yahoo search does not establish trading currency or exchange timezone. Do not guess either value.
+- Search and select explicitly; saving, navigation and page reads perform no quote request. The first explicit **Download prices** verifies the selected identity, currency and timezone before applying a price.
+- Include selected open holdings in dashboard download eligibility even before their first quote. Show their selected company/symbol/exchange and first-download state without claiming verified quote metadata.
+- Preserve native form submission and entered values through search, selection, validation errors and provider outages. Show wallet denominations so the author can choose the intended trading currency. Reject incompatible downloaded currency without conversion or valuation contamination.
+- Existing positions retain labels and manual support. They do not acquire guessed selections or become invalid when edited, moved, closed or restored.
+
+This supersedes the Phase 4 allowance for newly created unlinked holdings. Existing-position quote confirmation remains supported. Phase 4 automated rows are reopened for the revised creation/download flow; the previous checks remain historical evidence, not proof of this new behavior.
+
 ## Current State Analysis
 
 - Position services load decimal values as text and enforce owner access through the request-scoped client.
@@ -141,26 +166,32 @@ Fetch quotes within bounded requests and provide confirmed listing selection.
 
 ### Overview
 
-Use the shared values throughout the diary and support legacy wallet separation.
+Use the shared values throughout the diary, with matching-currency wallet moves and unified history.
 
 ### Changes Required
 
-**Files:** position/wallet services and pages, listing-search island, result components, snapshot capture and timeline.
+**Files:** position/wallet services and pages, new-investment form and validation, listing-search controls, additive selection migrations and generated types, result components, snapshot capture and timeline.
 
 **Intent:** Make automatic pricing useful without inconsistent calculations or historical rewrites.
 
 **Contract:**
 
 - Compose effective values into position list/detail, confrontation, wallet summary, and wallet detail reads. Keep arithmetic helpers free of I/O.
-- Link holdings from position detail through search and confirmation. New/unlinked holdings remain usable manually.
+- Require choosing a provider stock/ETF from search on the new-investment form before saving. Persist an owner/wallet-bound server selection, retain fields on failures and keep the native form path. New selections have no fabricated currency/timezone or market quote.
+- Keep durable owner-scoped pending targets, unique by provider/symbol/exchange/instrument type, separate from expiring owner/wallet-bound search-choice receipts. A saved position references its durable target; receipt expiry affects unsaved forms only. Enable granular per-operation RLS and preserve the existing verified-cache schema.
+- Native search/select/save POST actions retain all entry fields. Save validates the stored receipt before category creation or position insertion and derives the instrument label from stored provider metadata; missing, foreign, expired or wallet-mismatched receipts are recoverable errors. Wallet changes invalidate selection rather than rebinding it.
+- Resolve the selected listing and validate its identity and wallet currency on the first explicit dashboard download, then attach the verified canonical cache identity. Preserve bounded requests, deduplication, leases, failure cooldowns and retained values. A failed first download leaves the selection and manual forms recoverable.
+- Deduplicate pending targets across owned open holdings under the same five-second provider budget. Claim each target's refresh lease; claim an existing canonical cache lease before fetching when identity is already known. Reuse each in-click provider outcome across pending and mapped holdings. The initial unknown-identity lookup is protected by the target lease. Attach verified prices only to compatible owned wallets; incompatible holdings retain their selection and manual values with an explicit error.
+- Continue linking existing unlinked holdings from position detail through explicit quote download and confirmation. Existing holdings remain usable manually.
+- Make linking discoverable through a direct **Link stock listing** action beside unlinked open investments. Seed a recognizable linked US stock in the local demo without provider calls; reruns preserve existing edits and selected listings.
 - Add **Download prices** on the positions dashboard for the owner's mapped open holdings and in listing setup for the selected candidate. Show an in-progress state, prevent duplicate submissions, and report per-listing success/failure and any retry cooldown. No click means no new quote download, including when saved data is old or missing.
 - Show selected source, currency, actual market time, temporary override, and failed-refresh state.
 - Preserve existing manual forms. A correction stays effective until a provider market timestamp is **strictly later** than its database save timestamp.
 - Include moving non-deleted open or closed positions between owned wallets. Preserve position facts and past observations; affect current/future wallet totals.
-- Require a confirmed target currency. Reject moves between conflicting confirmed denominations. Moving from an unconfirmed legacy wallet requires explicit confirmation that recorded amounts use the target currency.
+- Require the target wallet currency to match the source. No currency attestation or unconfirmed-wallet move path remains; unset existing wallets are migrated to USD under the approved simplification.
 - Replace snapshot capture’s raw-price selection with the shared view. Keep its midnight UTC schedule, idempotency, restricted execution, and immutable observations.
 - New observations record currency, selected manual/automatic coverage, and automatic quote-time context.
-- Preserve legacy observations with unspecified currency. Display them separately from the denominated chart rather than implying confirmed currency retroactively.
+- Assign observations with unset currency their wallet denomination under the approved simplification. Display them in the ordinary currency chart and remove the separate legacy-history section; recorded amounts and dates remain unchanged.
 - No provider downloads occur during snapshot capture or while the app is unused.
 
 ### Success Criteria
@@ -169,10 +200,11 @@ Use the shared values throughout the diary and support legacy wallet separation.
 
 - Cross-surface and database tests prove effective-price parity, reassignment boundaries, and unchanged historical observations.
 - Snapshot tests prove future observations use cached effective values with correct currency and source coverage.
+- Creation tests prove a Yahoo selection is required, foreign/invalid selections are rejected, search/select/save never download quotes, form values survive errors, and the first explicit download verifies and prices the saved selection.
 
 #### Manual Verification
 
-- Search, linking, correction, reassignment, outage display, and wallet history work through the UI without losing form input.
+- New-investment selection, search, linking, correction, reassignment, outage display, and wallet history work through the UI without losing form input.
 
 ## Phase 5: Verification and release preparation
 
@@ -218,7 +250,7 @@ There is no automatic download interval. The user controls downloads through **D
 
 ## Migration Notes
 
-Use additive migrations. Do not guess currencies, listing identities, or historical manual-save times. Keep existing numerical observations intact. Mixed legacy holdings must be reassigned before their wallets can truthfully be confirmed as single-currency wallets.
+Use additive migrations. The owner explicitly authorized assigning USD to wallets without currency and inheriting wallet currency for observations without a label. Keep recorded numeric amounts, dates and results intact. Do not guess listing identities, historical manual-save times or missing source coverage. New wallets still choose USD/PLN/EUR; conflicting wallet denominations remain incompatible.
 
 ## References
 
@@ -257,24 +289,25 @@ Use additive migrations. Do not guess currencies, listing identities, or histori
 
 #### Automated
 
-- [x] 3.1 Service tests prove batching, deduplication, deadlines, cooldown, partial results, and retained-cache behavior.
-- [x] 3.2 Endpoint tests reject unauthenticated, foreign-position, incompatible-currency, and malformed requests.
-- [x] 3.4 Trigger tests prove quote downloads require the button POST and never run on page reads, reloads, listing confirmation, timers or snapshot capture.
+- [x] 3.1 Service tests prove batching, deduplication, deadlines, cooldown, partial results, and retained-cache behavior. — `0201301`
+- [x] 3.2 Endpoint tests reject unauthenticated, foreign-position, incompatible-currency, and malformed requests. — `0201301`
+- [x] 3.4 Trigger tests prove quote downloads require the button POST and never run on page reads, reloads, listing confirmation, timers or snapshot capture. — `0201301`
 
 #### Manual
 
-- [x] 3.3 Listing search distinguishes exchange/currency choices and provides a recoverable unavailable state.
+- [x] 3.3 Listing search distinguishes exchange/currency choices and provides a recoverable unavailable state. — `0201301`
 
 ### Phase 4: Application integration and future observations
 
 #### Automated
 
-- [ ] 4.1 Cross-surface and database tests prove effective-price parity, reassignment boundaries, and unchanged historical observations.
-- [ ] 4.2 Snapshot tests prove future observations use cached effective values with correct currency and source coverage.
+- [x] 4.1 Cross-surface and database tests prove effective-price parity, reassignment boundaries, and unchanged historical observations.
+- [x] 4.2 Snapshot tests prove future observations use cached effective values with correct currency and source coverage.
+- [x] 4.4 Creation tests prove a Yahoo selection is required, foreign/invalid selections are rejected, search/select/save never download quotes, form values survive errors, and the first explicit download verifies and prices the saved selection.
 
 #### Manual
 
-- [ ] 4.3 Search, linking, correction, reassignment, outage display, and wallet history work through the UI without losing form input.
+- [x] 4.3 New-investment selection, search, linking, correction, reassignment, outage display, and wallet history work through the UI without losing form input.
 
 ### Phase 5: Verification and release preparation
 

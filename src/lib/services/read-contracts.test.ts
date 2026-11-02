@@ -59,6 +59,55 @@ const position = {
   wallet_id: "wallet-a",
   broker_label: null,
 };
+const effective = {
+  selected_price: position.current_price,
+  selected_date: position.price_date,
+  selected_at: null,
+  selected_source: "manual",
+  wallet_currency: "USD",
+  quote_state: "unlinked",
+  refresh_outcome: null,
+  cooldown_until: null,
+  manual_price_saved_at: null,
+  quote_market_at: null,
+  quote_fetched_at: null,
+  quote_symbol: null,
+  quote_exchange: null,
+  quote_currency: null,
+  quote_timezone: null,
+  listing_name: null,
+  exchange_name: null,
+  instrument_type: null,
+  market_state: null,
+  delay_minutes: null,
+  pending_symbol: null,
+  pending_name: null,
+  pending_exchange: null,
+  pending_exchange_name: null,
+  pending_instrument_type: null,
+  pending_outcome: null,
+  pending_cooldown_until: null,
+  pending_lease_until: null,
+  pending_currency: null,
+};
+const valuation = {
+  source: "manual",
+  currency: "USD",
+  selectedAt: null,
+  marketAt: null,
+  fetchedAt: null,
+  quoteState: "unlinked",
+  refreshOutcome: null,
+  cooldownUntil: null,
+  manualSavedAt: null,
+  manualPrice: position.current_price,
+  manualPriceDate: position.price_date,
+  listing: null,
+  marketState: null,
+  delayMinutes: null,
+  pendingSelection: null,
+  pendingCurrency: null,
+};
 const positionColumns = [
   "id",
   "instrument",
@@ -73,31 +122,38 @@ const positionColumns = [
   "wallet_id",
   "wallets!positions_wallet_fkey(name)",
   "reason_categories(name)",
+  "pending_symbol",
+  "pending_currency",
 ];
-const joined = { ...position, wallets: { name: "Long term" }, reason_categories: { name: "Growth" } };
-const mapped = { ...position, wallet_name: "Long term", category_name: "Growth" };
+const joined = { ...position, ...effective, wallets: { name: "Long term" }, reason_categories: { name: "Growth" } };
+const mapped = { ...position, valuation, wallet_name: "Long term", category_name: "Growth" };
 const wallet = {
   id: "wallet-a",
   name: "Long term",
   starting_value: "0.00000000",
-  currency: null,
-  currency_confirmed_at: null,
+  currency: "USD",
 };
-const walletColumns = ["id", "name", "starting_value::text", "currency", "currency_confirmed_at"];
+const walletColumns = ["id", "name", "starting_value::text", "currency"];
 
 describe("financial read contracts", () => {
   it.each([undefined, "wallet-a"])("returns complete active list records for wallet %s", async (walletId) => {
     const client = transport(
-      { table: "positions", columns: positionColumns, walletId, order: "buy_date.desc,created_at.desc,id.desc" },
+      {
+        table: "position_effective_prices",
+        columns: positionColumns,
+        walletId,
+        order: "buy_date.desc,created_at.desc,id.desc",
+      },
       [joined],
     );
     expect(await listPositions(client, walletId)).toEqual([mapped]);
   });
 
   it("returns the requested active detail with its reason and joined names", async () => {
-    const client = transport({ table: "positions", columns: [...positionColumns, "reason_text"], id: position.id }, [
-      { ...joined, reason_text: "Keep the full reasoning" },
-    ]);
+    const client = transport(
+      { table: "position_effective_prices", columns: [...positionColumns, "reason_text"], id: position.id },
+      [{ ...joined, reason_text: "Keep the full reasoning" }],
+    );
     expect(await getPosition(client, position.id)).toEqual({ ...mapped, reason_text: "Keep the full reasoning" });
   });
 
@@ -105,7 +161,7 @@ describe("financial read contracts", () => {
     const row = { ...position, category_id: "category-a", reason_text: "Earlier reasoning" };
     const client = transport(
       {
-        table: "positions",
+        table: "position_effective_prices",
         columns: [
           "id",
           "category_id",
@@ -119,11 +175,11 @@ describe("financial read contracts", () => {
           "price_date",
           "reason_text",
         ],
-        order: "buy_date.desc,created_at.desc",
+        order: "buy_date.desc,created_at.desc,id.desc",
       },
-      [row],
+      [{ ...row, ...effective }],
     );
-    expect(await listConfrontationPositions(client)).toEqual([row]);
+    expect(await listConfrontationPositions(client)).toEqual([{ ...row, valuation }]);
   });
 
   it("returns active wallets in name order and accepts a zero starting value", async () => {
@@ -140,7 +196,7 @@ describe("financial read contracts", () => {
   it("reads all wallet members in stable id order", async () => {
     const client = transport(
       {
-        table: "positions",
+        table: "position_effective_prices",
         columns: [
           "wallet_id",
           "buy_price::text",
@@ -152,14 +208,17 @@ describe("financial read contracts", () => {
         ],
         order: "id.asc",
       },
-      [position],
+      [{ ...position, ...effective }],
     );
-    expect(await listWalletPositions(client)).toEqual([position]);
+    expect(await listWalletPositions(client)).toEqual([{ ...position, valuation }]);
   });
 
   it("returns null for unavailable position and wallet details", async () => {
     expect(
-      await getPosition(transport({ table: "positions", columns: positionColumns, id: "missing" }, []), "missing"),
+      await getPosition(
+        transport({ table: "position_effective_prices", columns: positionColumns, id: "missing" }, []),
+        "missing",
+      ),
     ).toBeNull();
     expect(
       await getWallet(transport({ table: "wallets", columns: walletColumns, id: "missing" }, []), "missing"),
@@ -174,11 +233,22 @@ describe("financial read contracts", () => {
       getWallet(transport({ table: "wallets", columns: walletColumns, id: wallet.id }, [], true), wallet.id),
     ).rejects.toHaveProperty("cause.message", "upstream read failed");
     await expect(
-      getPosition(transport({ table: "positions", columns: positionColumns, id: position.id }, [], true), position.id),
+      getPosition(
+        transport({ table: "position_effective_prices", columns: positionColumns, id: position.id }, [], true),
+        position.id,
+      ),
     ).rejects.toHaveProperty("cause.message", "upstream read failed");
     await expect(
       listConfrontationPositions(
-        transport({ table: "positions", columns: ["reason_text"], order: "buy_date.desc,created_at.desc" }, [], true),
+        transport(
+          {
+            table: "position_effective_prices",
+            columns: ["reason_text"],
+            order: "buy_date.desc,created_at.desc,id.desc",
+          },
+          [],
+          true,
+        ),
       ),
     ).rejects.toHaveProperty("cause.message", "upstream read failed");
   });

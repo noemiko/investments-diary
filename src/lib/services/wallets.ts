@@ -1,6 +1,10 @@
 import { serviceError } from "@/lib/observability/reporter";
 import { readDecimal } from "@/lib/decimal";
-import { decodePosition } from "@/lib/services/decimal";
+import {
+  composeEffectivePrice,
+  EFFECTIVE_PRICE_COLUMNS,
+  type EffectivePriceTransport,
+} from "@/lib/services/effective-price";
 import type { PostgrestError } from "@supabase/supabase-js";
 import type { createClient } from "@/lib/supabase";
 import { readAll } from "@/lib/services/read-all";
@@ -30,7 +34,7 @@ function failure(
 export async function listWallets(client: Client): Promise<Wallet[]> {
   const { data, error } = await client
     .from("wallets")
-    .select("id, name, starting_value::text, currency, currency_confirmed_at")
+    .select("id, name, starting_value::text, currency")
     .is("deleted_at", null)
     .order("name", { ascending: true });
   if (error) throw serviceError("listWallets", error);
@@ -48,7 +52,7 @@ export async function listWallets(client: Client): Promise<Wallet[]> {
 export async function getWallet(client: Client, id: string): Promise<Wallet | null> {
   const { data, error } = await client
     .from("wallets")
-    .select("id, name, starting_value::text, currency, currency_confirmed_at")
+    .select("id, name, starting_value::text, currency")
     .eq("id", id)
     .is("deleted_at", null)
     .maybeSingle();
@@ -62,16 +66,16 @@ export async function getWallet(client: Client, id: string): Promise<Wallet | nu
 export async function listWalletPositions(client: Client): Promise<WalletPosition[]> {
   const rows = await readAll("listWalletPositions", (from, to) =>
     client
-      .from("positions")
+      .from("position_effective_prices")
       .select(
-        "wallet_id, buy_price::text, quantity::text, current_price::text, price_date, sell_price::text, sell_date",
+        `wallet_id, buy_price::text, quantity::text, current_price::text, price_date, sell_price::text, sell_date,${EFFECTIVE_PRICE_COLUMNS}`,
       )
       .is("deleted_at", null)
       .order("id", { ascending: true })
       .range(from, to)
-      .overrideTypes<WalletPosition[], { merge: false }>(),
+      .overrideTypes<(WalletPosition & EffectivePriceTransport)[], { merge: false }>(),
   );
-  return rows.map(decodePosition);
+  return rows.map(composeEffectivePrice);
 }
 
 /** Creates a wallet for the author (FR-013). */
@@ -83,7 +87,6 @@ export async function createWallet(client: Client, userId: string, input: Wallet
       name: input.name,
       starting_value: input.starting_value,
       currency: input.currency,
-      currency_attested: input.currency_attested,
     })
     .select("id")
     .single();
@@ -99,7 +102,6 @@ export async function updateWallet(client: Client, id: string, input: WalletInpu
       name: input.name,
       starting_value: input.starting_value,
       currency: input.currency,
-      currency_attested: input.currency_attested,
     })
     .eq("id", id)
     .is("deleted_at", null)
@@ -110,8 +112,7 @@ export async function updateWallet(client: Client, id: string, input: WalletInpu
   return { ok: true };
 }
 
-function walletCurrency(value: string | null): MarketCurrency | null {
-  if (value === null) return null;
+function walletCurrency(value: string): MarketCurrency {
   if (!(MARKET_CURRENCIES as readonly string[]).includes(value)) throw new Error("Invalid wallet currency");
   return value as MarketCurrency;
 }

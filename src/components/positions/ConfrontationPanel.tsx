@@ -6,6 +6,7 @@ import { formatDate } from "@/lib/format";
 import { describeResult, NO_PRICE } from "@/lib/result";
 import { cn } from "@/lib/utils";
 import type { ConfrontationPosition } from "@/types";
+import { marketTimestamp } from "@/components/market-prices/client";
 
 const CLAMP_LINES = 3;
 
@@ -73,6 +74,29 @@ function EarlierPosition({ position }: { position: ConfrontationPosition }) {
           <span className="text-blue-100/60">{NO_PRICE}</span>
         )}
       </p>
+      {position.valuation && (
+        <p className="text-xs text-blue-100/60">
+          {position.valuation.source === "automatic"
+            ? "Downloaded quote"
+            : position.valuation.source === "manual_override"
+              ? "Temporary manual correction"
+              : position.valuation.source === "sale"
+                ? "Recorded sale"
+                : position.valuation.source === "missing"
+                  ? "No price"
+                  : "Manual price"}{" "}
+          · {position.valuation.currency}
+          {position.valuation.source !== "sale" && position.valuation.marketAt
+            ? ` · Market time ${marketTimestamp(position.valuation.marketAt)}`
+            : ""}
+        </p>
+      )}
+      {position.valuation &&
+        position.valuation.source !== "sale" &&
+        position.valuation.refreshOutcome &&
+        !["never", "success"].includes(position.valuation.refreshOutcome) && (
+          <p className="text-xs text-blue-100/60">Latest download failed. The last usable saved price is retained.</p>
+        )}
     </li>
   );
 }

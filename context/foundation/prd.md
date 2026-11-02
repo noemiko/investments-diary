@@ -107,7 +107,7 @@ already own and why they bought it.
 
 ### Recording
 
-- FR-003: User can record an investment with instrument, buy price and buy date required, and quantity and broker label optional. Priority: must-have
+- FR-003: User can record an investment with a supported Yahoo stock/ETF selected from search, buy price and buy date required, and quantity and broker label optional. New entries must have a server-validated listing selection when saved; a typed name alone is insufficient. Search, selection and saving do not download quotes. The first explicit **Download prices** action verifies trading currency/timezone before applying a price. Existing entries retain their labels and manual-price support. This creation-flow revision was approved on 2026-10-30. Priority: must-have
   > Socrates: Counter-argument considered: "five fields plus prose is too slow for the
   > moment of buying, and slow entry kills the habit." Resolution: revised — the three
   > fields needed to compute a result are required, the rest can be completed later.
@@ -162,7 +162,7 @@ already own and why they bought it.
 ### Wallets
 
 - FR-013: User can keep several named wallets, each with an editable starting value, and assign every investment to one wallet. Live value is starting value plus realised results from closed positions and unrealised results from open positions, excluding deleted records. Missing quantity or an open position's missing quote is explicitly counted as excluded. Freshness uses the oldest counted open quote only. Wallets can be created and edited but not deleted.
-  A wallet dashboard shows current realised/open results and immutable daily wallet-value observations captured at midnight UTC. Future observations use the same effective manual/automatic price selection as the application, retaining currency, source coverage and quote-time context. Capture uses the cached values available then and performs no provider downloads; prices may be old when the user has not downloaded prices recently. Users can inspect 30/90/365-day or all-time ranges and point details. Earlier unavailable values and missed days are not backfilled; later edits, sales, delete/restore and reassignment do not rewrite saved observations. Legacy observations keep unspecified currency and are displayed separately from denominated history. These are observations of recorded diary value, not reconstructed market-price or cash-balance history. Priority: should-have
+  A wallet dashboard shows current realised/open results and immutable daily wallet-value observations captured at midnight UTC. Future observations use the same effective manual/automatic price selection as the application, retaining currency, source coverage and quote-time context. Capture uses the cached values available then and performs no provider downloads; prices may be old when the user has not downloaded prices recently. Users can inspect 30/90/365-day or all-time ranges and point details. Earlier unavailable values and missed days are not backfilled; later edits, sales, delete/restore and reassignment do not rewrite saved observations. Observations without a denomination inherit their wallet currency by explicit owner decision; their recorded amounts, dates and results remain unchanged and use the ordinary denominated history view. These are observations of recorded diary value, not reconstructed market-price or cash-balance history. Priority: should-have
 
 ### Automatic prices and denomination
 
@@ -176,8 +176,11 @@ already own and why they bought it.
   same owned listing. A click can request newer prices regardless of the last successful
   download's age. Page loads, navigation, reloads, timers and snapshot capture do not
   fetch quotes, and investment-save POSTs do not wait for market downloads. Listing
-  setup also requires this explicit button click for its quote lookup; confirmation
-  reuses that validated result without another provider request. Search submission may
+  setup on an existing position requires this explicit button click for its quote lookup; confirmation
+  reuses that validated result without another provider request. New investments instead
+  select provider listing metadata before saving; quote verification occurs on their
+  first dashboard download. No currency or timezone is inferred from search metadata.
+  Search submission may
   retrieve listing metadata but does not download quotes or change valuation data.
   Failed-attempt cooldown remains 15 minutes, or longer when required by the provider;
   another download requires a later button click rather than an automatic retry. Closed results use
@@ -189,17 +192,17 @@ already own and why they bought it.
   Failure of that gate stops integration rather than silently changing provider.
   Priority: should-have
 - FR-015: New wallets require USD, PLN or EUR, with no FX conversion or mixed-currency
-  aggregation. Existing wallets retain unknown currency until their owner explicitly
-  confirms the denomination of the starting value and recorded prices. Confirmed wallet
-  currency is frozen. A linked position's quote currency must match its wallet currency;
-  automatic linking is unavailable before currency confirmation. Migration does not
-  guess denomination or relabel old observations. Priority: should-have
+  aggregation. Existing wallets without a currency are assigned USD. Wallet currency
+  is frozen after creation; no deferred confirmation or attestation flow remains.
+  A linked position's quote currency must match its wallet currency. Observations
+  without a currency label inherit their wallet denomination; recorded amounts and
+  dates are preserved without conversion or recalculation. This simplification was
+  explicitly approved on 2026-10-30. Priority: should-have
 - FR-016: User can reassign a non-deleted open or closed position between their own
-  wallets, preserving its factual fields and past observations. The destination currency
-  must be confirmed. Conflicting confirmed denominations are rejected; moving from an
-  unconfirmed legacy wallet requires explicit acknowledgement that the recorded amounts
-  use the destination currency. Reassignment changes current/future wallet membership
-  and observations; it does not convert historical amounts. Priority: should-have
+  wallets with matching currencies, preserving its factual fields and past recorded
+  amounts and dates. Conflicting denominations are rejected. Reassignment changes
+  current/future wallet membership and observations; it does not convert historical
+  amounts or require a legacy currency attestation. Priority: should-have
 
 ## Non-Functional Requirements
 
@@ -272,4 +275,4 @@ existing route protection does — to be confirmed when that work is planned.
 3. ~~**Sign-up behaviour and unauthenticated-visitor handling**~~ — **Resolved 2026-09-25:** open registration. A signed-out visitor on a gated view is assumed to be redirected to sign-in (to confirm when planned).
 4. **User stories for the remaining paths** — only the confrontation path has acceptance criteria. Back-filling an existing holding, updating a price and closing a position do not. Owner: user. Resolve before implementation.
 5. ~~**Live price source as a later addition**~~ — **Resolved for `automatic-stock-prices`, 2026-10-30:** FR-014 defines the agreed delayed-data integration, subject to the provider-validation gate. It supersedes the earlier first-version exclusion for this change.
-6. ~~**Wallets and the remaining position paths**~~ — **Resolved for `automatic-stock-prices`, 2026-10-30:** FR-016 permits owned-wallet reassignment with denomination confirmation; FR-013 preserves past observations, and wallets remain non-deletable.
+6. ~~**Wallets and the remaining position paths**~~ — **Resolved for `automatic-stock-prices`, 2026-10-30:** FR-016 permits owned-wallet reassignment with matching denominations; FR-013 preserves past observations, and wallets remain non-deletable.

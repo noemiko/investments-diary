@@ -4,6 +4,7 @@ import { formatAmount } from "./format";
 import type { WalletSnapshot } from "@/types";
 const point = (observation_day: string, value = "1140"): WalletSnapshot => ({
   wallet_id: "w",
+  currency: "USD",
   observation_day,
   captured_at: `${observation_day}T00:00:00Z`,
   value,

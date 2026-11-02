@@ -13,8 +13,16 @@ import {
   type CreatePositionError,
 } from "@/lib/services/positions";
 import { listWallets } from "@/lib/services/wallets";
+import { readMarketSelection, searchMarketSelections } from "@/lib/services/market-selections";
 import { parsePositionForm, readPositionForm, todayUtc } from "@/lib/validation/position";
-import type { ConfrontationPosition, PositionFormErrors, PositionFormValues, Wallet } from "@/types";
+import { NEW_CATEGORY_CHOICE } from "@/types";
+import type {
+  ConfrontationPosition,
+  MarketSelectionChoice,
+  PositionFormErrors,
+  PositionFormValues,
+  Wallet,
+} from "@/types";
 
 // Handles its own POST and re-renders on error: redirecting with `?error=` would put the
 // submitted values, reason text included, into the URL and the request logs.
@@ -27,6 +35,9 @@ if (!user) {
 const supabase = createClient(Astro.request.headers, Astro.cookies);
 
 const SAVE_ERRORS: Record<CreatePositionError, PositionFormErrors> = {
+  selection_invalid: {
+    listing_receipt_id: "Search and select the stock listing again. The previous selection is unavailable.",
+  },
   category_not_found: { category_id: "Choose a category from your list" },
   wallet_not_found: { wallet_id: "Choose a wallet from your list" },
   validation: { form: "Some values could not be saved. Check them and try again." },
@@ -35,6 +46,8 @@ const SAVE_ERRORS: Record<CreatePositionError, PositionFormErrors> = {
 
 let values: PositionFormValues = {
   instrument: "",
+  listing_receipt_id: "",
+  listing_query: "",
   buy_price: "",
   buy_date: todayUtc(),
   wallet_id: "",
@@ -46,24 +59,86 @@ let values: PositionFormValues = {
 };
 let errors: PositionFormErrors = {};
 
+let listingChoices: MarketSelectionChoice[] = [];
+let selectedListing: MarketSelectionChoice | null = null;
+let listingSearched = false;
+
 if (Astro.request.method === "POST") {
-  values = readPositionForm(await Astro.request.formData());
-  const parsed = parsePositionForm(values);
-  if (parsed.success) {
-    const result = await createPosition(supabase, user.id, parsed.data);
-    if (result.ok) {
-      return Astro.redirect("/dashboard");
+  const form = await Astro.request.formData();
+  values = readPositionForm(form);
+  const selectedReceipt = form.get("select_listing");
+  const action = selectedReceipt !== null ? "select_listing" : (form.get("action") ?? "save");
+  // Browser native POSTs carry Origin, including when JavaScript is disabled.
+  if (
+    Astro.request.headers.get("origin") !== Astro.url.origin ||
+    Astro.request.headers.get("sec-fetch-site") === "cross-site"
+  ) {
+    Astro.response.status = 403;
+    errors = { form: "This submission could not be verified. Please try again from this page." };
+  } else if (action === "search_listing") {
+    values = { ...values, instrument: "", listing_receipt_id: "" };
+    try {
+      const result = await searchMarketSelections(
+        supabase,
+        user.id,
+        values.wallet_id,
+        values.listing_query,
+        Astro.request.signal,
+      );
+      if (result.ok) {
+        listingChoices = result.choices;
+        listingSearched = true;
+      } else if (result.reason === "not_found") {
+        errors = { wallet_id: "Choose a wallet from your list" };
+      } else if (result.reason === "invalid_request") {
+        errors = { listing_query: "Choose a wallet and enter 2–100 characters to search" };
+      } else {
+        errors = { listing_query: "Stock search is unavailable. Your entries are preserved; try searching again." };
+      }
+    } catch (error) {
+      reportUnexpected(error, { operation: "marketPrices", route: "/dashboard/new" });
+      errors = { listing_query: "Stock search could not be loaded. Your entries are preserved; try again." };
     }
-    errors = SAVE_ERRORS[result.error];
-    if (result.error === "category_not_found") {
-      // Do not echo an id that is not the author's back into the page.
-      values = { ...values, category_id: "" };
-    }
-    if (result.error === "wallet_not_found") {
-      values = { ...values, wallet_id: "" };
+  } else if (action === "select_listing" || action === "save") {
+    const receiptId = action === "select_listing" ? selectedReceipt : values.listing_receipt_id;
+    try {
+      selectedListing =
+        typeof receiptId === "string"
+          ? await readMarketSelection(supabase, user.id, values.wallet_id, receiptId)
+          : null;
+      // Always derive the label from the owner/wallet-bound server selection, never the posted instrument.
+      values = {
+        ...values,
+        listing_receipt_id: selectedListing?.receiptId ?? "",
+        instrument: selectedListing?.symbol ?? "",
+      };
+      if (!selectedListing) {
+        errors = {
+          listing_receipt_id: "Search and select the stock listing again. The previous selection is unavailable.",
+        };
+      }
+      if (action === "save") {
+        const parsed = parsePositionForm(values);
+        if (parsed.success) {
+          const result = await createPosition(supabase, user.id, parsed.data);
+          if (result.ok) return Astro.redirect("/dashboard");
+          errors = SAVE_ERRORS[result.error];
+          if (result.error === "selection_invalid") {
+            selectedListing = null;
+            values = { ...values, listing_receipt_id: "", instrument: "" };
+          }
+          if (result.error === "category_not_found") values = { ...values, category_id: "" };
+          if (result.error === "wallet_not_found") values = { ...values, wallet_id: "" };
+        } else {
+          errors = { ...parsed.errors, ...errors };
+        }
+      }
+    } catch (error) {
+      reportUnexpected(error, { operation: "marketPrices", route: "/dashboard/new" });
+      errors = { form: "Your stock selection could not be checked. Your entries are preserved; please try again." };
     }
   } else {
-    errors = parsed.errors;
+    errors = { form: "This submission was not recognised. Your entries are preserved." };
   }
 }
 
@@ -71,6 +146,13 @@ if (Astro.request.method === "POST") {
 let categories: Awaited<ReturnType<typeof listCategories>> = [];
 try {
   categories = await listCategories(supabase);
+  if (
+    values.category_id &&
+    values.category_id !== NEW_CATEGORY_CHOICE &&
+    !categories.some((category) => category.id === values.category_id)
+  ) {
+    values = { ...values, category_id: "" };
+  }
 } catch (error) {
   reportUnexpected(error, { operation: "listCategories" });
   errors = { ...errors, form: "Your categories could not be loaded. Please try again." };
@@ -79,6 +161,12 @@ try {
 let wallets: Wallet[] = [];
 try {
   wallets = await listWallets(supabase);
+  // A receipt can be rejected before createPosition checks the foreign key. Do not echo
+  // a posted wallet belonging to someone else in HTML or serialized island properties.
+  if (values.wallet_id && !wallets.some((wallet) => wallet.id === values.wallet_id)) {
+    values = { ...values, wallet_id: "", listing_receipt_id: "", instrument: "" };
+    selectedListing = null;
+  }
 } catch (error) {
   reportUnexpected(error, { operation: "listWallets" });
   errors = { ...errors, form: "Your wallets could not be loaded. Please try again." };
@@ -111,6 +199,9 @@ try {
         values={values}
         errors={errors}
         earlierPositions={earlierPositions}
+        listingChoices={listingChoices}
+        selectedListing={selectedListing}
+        listingSearched={listingSearched}
         client:load
       />
       <p class="mt-4 text-center text-sm text-blue-100/60">

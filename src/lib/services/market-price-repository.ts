@@ -26,7 +26,7 @@ export interface LookupReceipt {
 }
 export interface PriceRepository {
   downloadListings: (positionIds?: string[]) => Promise<PriceCache[] | null>;
-  position: (id: string) => Promise<{ currency: MarketCurrency | null } | null>;
+  position: (id: string) => Promise<{ currency: MarketCurrency } | null>;
   cache: (id: string) => Promise<PriceCache | null>;
   candidate: (symbol: string, currency: MarketCurrency) => Promise<PriceCache | null>;
   ensureCache: (quote: MarketQuote) => Promise<PriceCache>;
@@ -84,14 +84,13 @@ function receiptRow(row: {
     leaseUntil: row.lease_until,
   };
 }
-function currency(value: string | null): MarketCurrency | null {
-  if (value === null || value === "USD" || value === "PLN" || value === "EUR") return value;
+function currency(value: string): MarketCurrency {
+  if (value === "USD" || value === "PLN" || value === "EUR") return value;
   throw new Error("Invalid persisted currency");
 }
 function cacheRow(row: CacheRow): PriceCache {
   const denomination = currency(row.currency);
-  if (!denomination || (row.instrument_type !== "EQUITY" && row.instrument_type !== "ETF"))
-    throw new Error("Invalid persisted listing");
+  if (row.instrument_type !== "EQUITY" && row.instrument_type !== "ETF") throw new Error("Invalid persisted listing");
   return {
     id: row.id,
     symbol: row.symbol,
@@ -139,7 +138,7 @@ export function createPriceRepository(client: ReturnType<typeof createClient>, u
           .is("deleted_at", null)
           .is("sell_price", null)
           .is("sell_date", null)
-          .not("market_listing_id", "is", null)
+          .or("market_listing_id.not.is.null,market_target_id.not.is.null")
           .order("id");
         if (positionIds) query = query.in("id", positionIds);
         return query.range(from, to);
