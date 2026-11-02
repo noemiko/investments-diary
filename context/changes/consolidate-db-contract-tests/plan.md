@@ -401,13 +401,13 @@ No schema or data migration. Rollback means reverting the commits, which restore
 
 #### Automated
 
-- [x] 3.1 `npm run test:contract-db` passes
-- [x] 3.2 `npm run test:recovery-db` passes
-- [x] 3.3 `npm run test:decimal-db` and `npm run test:wallet-cron` still pass
-- [x] 3.4 `ls scripts/testing/database` lists only the kept files and folders
-- [x] 3.5 Grep for removed script and command names returns only this change's own files
-- [x] 3.6 `grep -nE "grant (all|select|insert|update|delete)" scripts/testing/database/test-market-price-recovery.mjs` returns nothing
-- [x] 3.7 `npm run lint` passes
+- [x] 3.1 `npm run test:contract-db` passes — 458d17d
+- [x] 3.2 `npm run test:recovery-db` passes — 458d17d
+- [x] 3.3 `npm run test:decimal-db` and `npm run test:wallet-cron` still pass — 458d17d
+- [x] 3.4 `ls scripts/testing/database` lists only the kept files and folders — 458d17d
+- [x] 3.5 Grep for removed script and command names returns only this change's own files — 458d17d
+- [x] 3.6 `grep -nE "grant (all|select|insert|update|delete)" scripts/testing/database/test-market-price-recovery.mjs` returns nothing — 458d17d
+- [x] 3.7 `npm run lint` passes — 458d17d
 
 #### Manual
 

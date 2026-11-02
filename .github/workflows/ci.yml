@@ -46,7 +46,9 @@ jobs:
           cache: npm
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Pinned: CLI v3 rejects [inbucket] in supabase/config.toml. Keep the major in step with the
+          # `supabase` devDependency in package.json, and migrate the config before moving to v3.
+          version: 2.122.0
       - run: npm ci
       - run: npx astro sync
       - name: Start local Supabase
@@ -76,7 +78,9 @@ jobs:
           cache: npm
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Pinned: CLI v3 rejects [inbucket] in supabase/config.toml. Keep the major in step with the
+          # `supabase` devDependency in package.json, and migrate the config before moving to v3.
+          version: 2.122.0
       - run: npm ci
       - name: Start local Supabase
         run: |
