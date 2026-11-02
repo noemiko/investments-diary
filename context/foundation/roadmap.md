@@ -46,18 +46,19 @@ with your own past reasoning at the moment of deciding improves how you invest.
 
 ## At a glance
 
-| ID   | Change ID                 | Outcome (user can …)                                                                                         | Prerequisites    | PRD refs                       | Status   |
-| ---- | ------------------------- | ------------------------------------------------------------------------------------------------------------ | ---------------- | ------------------------------ | -------- |
-| S-01 | record-first-investment   | record an investment with a reason category and optional reason, and see it listed                           | —                | FR-003, FR-004, FR-005, FR-010 | done     |
-| S-02 | position-detail-and-price | open a position, read its full reason, update its price and see its dated result                             | S-01             | FR-006, FR-011                 | done     |
-| S-03 | reason-confrontation      | see earlier same-reason positions with their results before saving a new investment                          | S-01, S-02       | US-01, FR-012                  | done     |
-| S-04 | close-position            | close a position with sell price and date and see its final result                                           | S-02             | FR-007                         | done     |
-| S-05 | recoverable-delete        | delete a position and restore it later                                                                       | S-01             | FR-009                         | done     |
-| S-06 | private-diary-access      | register and reach only their own diary, with every diary page gated behind sign-in                          | —                | FR-001, FR-002                 | ready    |
-| S-07 | reason-lock-editing       | correct an investment's facts and add a missing reason, after which the reason locks                         | S-01             | FR-008, FR-004                 | proposed |
-| S-08 | evolve-reason-categories  | rename a reason category everywhere, or remove it while past positions keep it                               | S-01             | FR-005                         | proposed |
-| S-09 | named-wallets             | group investments into named wallets and see totals with missing-data and price-date context                 | S-01, S-02, S-05 | FR-013 (should-have)           | done     |
-| S-10 | close-public-signup       | have accounts created only by the owner's script/CLI; nobody can sign up from the app or the public Auth API | —                | FR-001 (amended 2026-11-02)    | proposed |
+| ID   | Change ID                     | Outcome (user can …)                                                                                         | Prerequisites                           | PRD refs                       | Status   |
+| ---- | ----------------------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------- | ------------------------------ | -------- |
+| S-01 | record-first-investment       | record an investment with a reason category and optional reason, and see it listed                           | —                                       | FR-003, FR-004, FR-005, FR-010 | done     |
+| S-02 | position-detail-and-price     | open a position, read its full reason, update its price and see its dated result                             | S-01                                    | FR-006, FR-011                 | done     |
+| S-03 | reason-confrontation          | see earlier same-reason positions with their results before saving a new investment                          | S-01, S-02                              | US-01, FR-012                  | done     |
+| S-04 | close-position                | close a position with sell price and date and see its final result                                           | S-02                                    | FR-007                         | done     |
+| S-05 | recoverable-delete            | delete a position and restore it later                                                                       | S-01                                    | FR-009                         | done     |
+| S-06 | private-diary-access          | register and reach only their own diary, with every diary page gated behind sign-in                          | —                                       | FR-001, FR-002                 | ready    |
+| S-07 | reason-lock-editing           | correct an investment's facts and add a missing reason, after which the reason locks                         | S-01                                    | FR-008, FR-004                 | proposed |
+| S-08 | evolve-reason-categories      | rename a reason category everywhere, or remove it while past positions keep it                               | S-01                                    | FR-005                         | proposed |
+| S-09 | named-wallets                 | group investments into named wallets and see totals with missing-data and price-date context                 | S-01, S-02, S-05                        | FR-013 (should-have)           | done     |
+| S-10 | close-public-signup           | have accounts created only by the owner's script/CLI; nobody can sign up from the app or the public Auth API | —                                       | FR-001 (amended 2026-11-02)    | proposed |
+| F-01 | consolidate-db-contract-tests | (technical) rely on one database contract test that checks every permanent rule on the current schema        | automatic-stock-prices Phase 6 accepted | NFR privacy; FR-013–FR-016     | in-progress |
 
 ## Baseline
 
@@ -73,11 +74,30 @@ Slices below assume these are present and do NOT re-scaffold them.
 
 ## Foundations
 
-None for this milestone. Frontend, auth and deploy are present in the Baseline. The one
+No product foundations for this milestone; F-01 below is a technical test cleanup added 2026-11-02. Frontend, auth and deploy are present in the Baseline. The one
 partial layer that matters — diary data and its owner-only access rules — is introduced
 inside S-01, the first slice that stores anything, and extended by each later slice that
 needs more. A separate data foundation would build tables ahead of any user-visible use,
 which is exactly what this roadmap avoids.
+
+### F-01: Consolidate the database contract tests
+
+- **Outcome:** (technical) one test replays the full migration chain once, with shared setup, and checks every permanent database rule on the current schema; migration-transition checks that can never run against real data again are removed.
+- **Change ID:** consolidate-db-contract-tests
+- **PRD refs:** NFR (no other account can read a position), FR-007, FR-013–FR-016
+- **Prerequisites:** `automatic-stock-prices` Phase 6 accepted (rows 6.1–6.3). Until then, the transition checks are the evidence for the 2026-11-02 production migration.
+- **Parallel with:** S-06, S-07, S-08, S-10
+- **Blockers:** —
+- **Scope notes (review 2026-11-02 of `scripts/testing/database/`):**
+  - Keep as they are: `test-decimal-database.mjs`, `test-wallet-cron.mjs`, `test-policy-grants.mjs`, `test-market-price-recovery.mjs` (while the recovery template exists).
+  - `test-wallet-database.mjs` applies only the first four migrations, so its wallet rules (unique name, non-negative, no delete, RLS, foreign assignment) are never checked on the current schema; move them to the full chain and drop the "Main" wallet backfill checks.
+  - `test-market-prices-database.mjs` (272 lines) mostly tests intermediate states (currency attestation, legacy moves, USD backfill, inherited denominations, obsolete metadata); keep its cache RLS, lease/cooldown, effective-selection, manual-override timing and move rules.
+  - `test-close-database.mjs` and `test-required-selection-migration.mjs`: keep the constraint, ownership, NOT NULL, guard and revoked-privilege checks; drop the existing-row and Apple backfill checks.
+  - Six files duplicate the create-database / fake `auth` / replay / drop scaffolding; share it.
+  - Map every permanent assertion to its new home before deleting anything, and prove the mapping with deliberate breaks.
+- **Unknowns:** —
+- **Risk:** Rewriting tests can silently drop a rule. The assertion map and break checks are part of done.
+- **Status:** in-progress
 
 ## Slices
 
@@ -226,18 +246,19 @@ which is exactly what this roadmap avoids.
 
 ## Backlog Handoff
 
-| Roadmap ID | Change ID                 | Suggested issue title                                        | Ready for `/10x-plan` | Notes                                                                                       |
-| ---------- | ------------------------- | ------------------------------------------------------------ | --------------------- | ------------------------------------------------------------------------------------------- |
-| S-01       | record-first-investment   | Record an investment with reason and list positions          | yes                   | Run `/10x-plan record-first-investment`                                                     |
-| S-02       | position-detail-and-price | Position detail view with manual price and dated result      | no                    | Waits on S-01                                                                               |
-| S-03       | reason-confrontation      | Show same-reason history before saving a new investment      | no                    | North star; waits on S-01, S-02                                                             |
-| S-04       | close-position            | Close a position and show final result                       | no                    | Waits on S-02                                                                               |
-| S-05       | recoverable-delete        | Delete and restore a position                                | no                    | Waits on S-01                                                                               |
-| S-06       | private-diary-access      | Gate every diary page and keep each diary owner-only         | yes                   | Run `/10x-plan private-diary-access`                                                        |
-| S-07       | reason-lock-editing       | Edit investment facts with a locked reason                   | no                    | Waits on S-01                                                                               |
-| S-08       | evolve-reason-categories  | Rename and soft-remove reason categories                     | no                    | Waits on S-01                                                                               |
-| S-09       | named-wallets             | Group investments into named wallets with transparent totals | yes                   | Prerequisites S-01, S-02, S-05 are done; resolve assignment and total rules during planning |
-| S-10       | close-public-signup       | Close public sign-up; owner-created accounts only            | yes                   | Amend PRD FR-001 first; run `/10x-plan close-public-signup`                                 |
+| Roadmap ID | Change ID                     | Suggested issue title                                        | Ready for `/10x-plan` | Notes                                                                                       |
+| ---------- | ----------------------------- | ------------------------------------------------------------ | --------------------- | ------------------------------------------------------------------------------------------- |
+| S-01       | record-first-investment       | Record an investment with reason and list positions          | yes                   | Run `/10x-plan record-first-investment`                                                     |
+| S-02       | position-detail-and-price     | Position detail view with manual price and dated result      | no                    | Waits on S-01                                                                               |
+| S-03       | reason-confrontation          | Show same-reason history before saving a new investment      | no                    | North star; waits on S-01, S-02                                                             |
+| S-04       | close-position                | Close a position and show final result                       | no                    | Waits on S-02                                                                               |
+| S-05       | recoverable-delete            | Delete and restore a position                                | no                    | Waits on S-01                                                                               |
+| S-06       | private-diary-access          | Gate every diary page and keep each diary owner-only         | yes                   | Run `/10x-plan private-diary-access`                                                        |
+| S-07       | reason-lock-editing           | Edit investment facts with a locked reason                   | no                    | Waits on S-01                                                                               |
+| S-08       | evolve-reason-categories      | Rename and soft-remove reason categories                     | no                    | Waits on S-01                                                                               |
+| S-09       | named-wallets                 | Group investments into named wallets with transparent totals | yes                   | Prerequisites S-01, S-02, S-05 are done; resolve assignment and total rules during planning |
+| S-10       | close-public-signup           | Close public sign-up; owner-created accounts only            | yes                   | Amend PRD FR-001 first; run `/10x-plan close-public-signup`                                 |
+| F-01       | consolidate-db-contract-tests | Consolidate database contract tests on the current schema    | no                    | Waits on automatic-stock-prices Phase 6 acceptance                                          |
 
 ## Open Roadmap Questions
 

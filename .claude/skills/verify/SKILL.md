@@ -52,7 +52,7 @@ If the change touches the auth flow (`src/middleware.ts`, `src/pages/api/auth/*`
 
 ```bash
 npx supabase start                  # if not already running; .env must point at http://127.0.0.1:54321
-npm run dev -- --port 4321 &        # not `npm run preview`: the Vercel adapter has no preview server
+npm run dev -- --port 4321 &        # not `astro preview`: the Vercel adapter has no preview server
 BASE_URL=http://localhost:4321 npm run smoke
 npx astro dev stop                  # Astro 7 keeps the dev server running as a background daemon
 ```

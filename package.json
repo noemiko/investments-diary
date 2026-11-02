@@ -9,7 +9,6 @@
     "dev": "astro dev",
     "stop": "astro dev stop",
     "build": "astro build",
-    "preview": "astro preview",
     "astro": "astro",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -18,7 +17,6 @@
     "prepare": "husky",
     "test": "vitest run",
     "test:close-db": "node scripts/testing/database/test-close-database.mjs",
-    "test:wallet-db": "node scripts/testing/database/test-wallet-database.mjs",
     "test:decimal-db": "node scripts/testing/database/test-decimal-database.mjs",
     "test:mutation": "node scripts/testing/mutation-financial.mjs",
     "verify": "astro sync && eslint . --no-warn-ignored && vitest run",
@@ -31,7 +29,7 @@
     "test:wallet-cron": "node scripts/testing/database/test-wallet-cron.mjs",
     "probe:market-data": "node scripts/testing/market-data-probe.mjs",
     "test:market-prices-db": "node scripts/testing/database/test-market-prices-database.mjs && node scripts/testing/database/test-market-price-recovery.mjs && node scripts/testing/database/test-required-selection-migration.mjs",
-    "test:grants-db": "node scripts/testing/database/test-policy-grants.mjs"
+    "test:contract-db": "node scripts/testing/database/test-contract-database.mjs"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.10",

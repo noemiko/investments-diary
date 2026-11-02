@@ -51,7 +51,6 @@ for activation, connection checks, fallback behavior and acceptance scenarios.
 
 - `npm run dev` - Start development server
 - `npm run build` - Build for production into `.vercel/output/`
-- `npm run preview` - Not supported by the Vercel adapter; use `npm run dev` or `npx vercel dev`
 - `npm run lint` - Run ESLint with type-checked rules
 - `npm run lint:fix` - Auto-fix ESLint issues
 - `npm run format` - Run Prettier

@@ -58,8 +58,12 @@ jobs:
         run: npm run test:wallet-cron
       - name: Verify market migrations and manual recovery
         run: npm run test:market-prices-db
-      - name: Verify every RLS policy is backed by a grant
-        run: npm run test:grants-db
+      - name: Verify every permanent database rule on the current schema
+        run: npm run test:contract-db
+      - name: Verify sale constraints and ownership
+        run: npm run test:close-db
+      - name: Verify snapshot capture, idempotency and immutable history
+        run: npm run test:snapshots-db
       - name: Stop local Supabase
         if: always()
         run: supabase stop --no-backup
@@ -82,7 +86,6 @@ jobs:
         run: |
           supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,realtime,storage-api,postgres-meta,supavisor
           supabase status -o env | grep -E '^(API_URL|ANON_KEY)=' > supabase.env
-      - run: npm run test:wallet-db
       - name: Configure secrets
         run: |
           source supabase.env
