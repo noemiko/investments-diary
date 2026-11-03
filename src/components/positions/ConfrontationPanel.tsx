@@ -31,7 +31,7 @@ function ReasonText({ text }: { text: string }) {
     <div>
       <p
         ref={ref}
-        className={cn("text-sm whitespace-pre-line text-white/90", clampable && !expanded && "line-clamp-3")}
+        className={cn("text-foreground text-sm whitespace-pre-line", clampable && !expanded && "line-clamp-3")}
       >
         {text}
       </p>
@@ -42,7 +42,7 @@ function ReasonText({ text }: { text: string }) {
           onClick={() => {
             setExpanded((prev) => !prev);
           }}
-          className="mt-1 text-xs text-purple-300 hover:underline focus:ring-2 focus:ring-purple-400 focus:outline-none"
+          className="text-primary focus-visible:ring-ring/50 mt-1 rounded-sm text-xs outline-none hover:underline focus-visible:ring-[3px]"
         >
           {expanded ? "Show less" : "Show full reason"}
         </button>
@@ -55,17 +55,17 @@ function EarlierPosition({ position }: { position: ConfrontationPosition }) {
   const result = describeResult(position);
   const DirectionIcon = result ? DIRECTION_ICONS[result.direction] : null;
   return (
-    <li data-confrontation-position-id={position.id} className="space-y-1 rounded-lg border border-white/10 p-3">
+    <li data-confrontation-position-id={position.id} className="bg-card space-y-1 rounded-lg border p-3">
       <div className="flex items-baseline justify-between gap-2">
         <span className="font-medium">
           {position.instrument} {position.sell_date !== null && <Badge variant="secondary">Closed</Badge>}
         </span>
-        <span className="text-xs text-blue-100/60">Bought {formatDate(position.buy_date)}</span>
+        <span className="text-muted-foreground text-xs">Bought {formatDate(position.buy_date)}</span>
       </div>
       {position.reason_text ? (
         <ReasonText text={position.reason_text} />
       ) : (
-        <p className="text-sm text-blue-100/50 italic">No reason written</p>
+        <p className="text-muted-foreground text-sm italic">No reason written</p>
       )}
       {/* No gain/loss colour: the sign carries the direction, and the panel gives no verdict. */}
       <p className="text-sm tabular-nums" data-result-direction={result?.direction}>
@@ -73,14 +73,14 @@ function EarlierPosition({ position }: { position: ConfrontationPosition }) {
           <>
             <DirectionIcon aria-hidden="true" className="mr-1 inline size-[1.1em] align-[-0.2em]" />
             <span className="text-[1.05em] font-semibold">{result.percent}</span>
-            <span className="text-blue-100/60"> {result.asOf}</span>
+            <span className="text-muted-foreground"> {result.asOf}</span>
           </>
         ) : (
-          <span className="text-blue-100/60">{NO_PRICE}</span>
+          <span className="text-muted-foreground">{NO_PRICE}</span>
         )}
       </p>
       {position.valuation && (
-        <p className="text-xs text-blue-100/60">
+        <p className="text-muted-foreground text-xs">
           {position.valuation.source === "automatic"
             ? "Downloaded quote"
             : position.valuation.source === "manual_override"
@@ -100,7 +100,9 @@ function EarlierPosition({ position }: { position: ConfrontationPosition }) {
         position.valuation.source !== "sale" &&
         position.valuation.refreshOutcome &&
         !["never", "success"].includes(position.valuation.refreshOutcome) && (
-          <p className="text-xs text-blue-100/60">Latest download failed. The last usable saved price is retained.</p>
+          <p className="text-muted-foreground text-xs">
+            Latest download failed. The last usable saved price is retained.
+          </p>
         )}
     </li>
   );
@@ -115,20 +117,20 @@ export function ConfrontationPanel({ state }: { state: ConfrontationState }) {
     <section
       data-confrontation={state.kind}
       aria-labelledby="confrontation-heading"
-      className="space-y-3 rounded-xl border border-white/10 bg-white/5 p-4 text-white"
+      className="bg-muted/40 space-y-3 rounded-xl border p-4"
     >
-      <h2 id="confrontation-heading" className="flex items-center gap-2 text-sm font-semibold text-blue-100">
+      <h2 id="confrontation-heading" className="text-foreground flex items-center gap-2 text-sm font-semibold">
         <History className="size-4" />
         Bought for the same reason before
       </h2>
       <div aria-live="polite" className="space-y-3">
         {state.kind === "no-category" && (
-          <p className="text-sm text-blue-100/70">
+          <p className="text-muted-foreground text-sm">
             Choose a reason category to see what you bought for the same reason and how it went.
           </p>
         )}
         {state.kind === "unavailable" && (
-          <p className="text-sm text-blue-100/70">
+          <p className="text-muted-foreground text-sm">
             Your earlier positions could not be loaded, so they cannot be shown here. You can still save this
             investment.
           </p>
@@ -136,17 +138,17 @@ export function ConfrontationPanel({ state }: { state: ConfrontationState }) {
         {state.kind === "history" && (
           <>
             {state.existingCategoryName && (
-              <p className="text-sm text-blue-100/70">
+              <p className="text-muted-foreground text-sm">
                 “{state.existingCategoryName}” already exists, so this investment will be filed under it.
               </p>
             )}
             {state.positions.length === 0 ? (
-              <p data-confrontation-empty className="text-sm text-blue-100/70">
+              <p data-confrontation-empty className="text-muted-foreground text-sm">
                 You have not recorded anything for this reason yet. This will be the first position bought for it.
               </p>
             ) : (
               <>
-                <p className="text-sm text-blue-100/70">
+                <p className="text-muted-foreground text-sm">
                   You have thought this before. How did it go? Read your earlier reasoning before you save.
                 </p>
                 <ul className="space-y-2">

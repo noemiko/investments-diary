@@ -4,6 +4,7 @@ import { FormField } from "@/components/auth/FormField";
 import { ServerError } from "@/components/auth/ServerError";
 import { SubmitButton } from "@/components/auth/SubmitButton";
 import { ConfrontationPanel } from "@/components/positions/ConfrontationPanel";
+import { buttonVariants } from "@/components/ui/button";
 import { STOCK_SEARCH_COPY, searchStockListings } from "@/components/positions/stock-search";
 import { confrontationState } from "@/lib/confrontation";
 import { parseDecimal } from "@/lib/validation/decimal";
@@ -19,8 +20,11 @@ import {
   type MarketSelectionChoice,
 } from "@/types";
 
+// Same token vocabulary as WalletForm; aria-invalid drives the error border and ring.
 const controlBase =
-  "w-full rounded-lg border bg-white/10 px-3 py-2 text-white placeholder-white/40 transition-colors focus:ring-2 focus:outline-none";
+  "w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/40 md:text-sm";
+const textAction =
+  "text-primary underline underline-offset-4 hover:text-primary/80 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring";
 
 interface Props {
   categories: ReasonCategory[];
@@ -55,7 +59,7 @@ function noopSubscribe() {
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
   return (
-    <p className="mt-1 flex items-center gap-1 text-xs text-red-300">
+    <p className="text-destructive mt-1 flex items-center gap-1 text-xs">
       <CircleAlert className="size-3" />
       {message}
     </p>
@@ -235,13 +239,13 @@ export default function PositionForm({
   return (
     <form method="POST" action="/dashboard/new" className="space-y-4" onSubmit={handleSubmit} noValidate>
       <div>
-        <label htmlFor="wallet" className="mb-1 block text-sm text-blue-100/80">
+        <label htmlFor="wallet" className="text-muted-foreground mb-1 block text-sm">
           Wallet
         </label>
         {wallets.length === 0 ? (
-          <p className="text-sm text-blue-100/80">
+          <p className="text-muted-foreground text-sm">
             You have no wallets yet.{" "}
-            <a href="/dashboard/wallets/new" className="text-purple-300 hover:underline">
+            <a href="/dashboard/wallets/new" className="text-primary hover:underline">
               Create a wallet
             </a>{" "}
             first.
@@ -276,11 +280,7 @@ export default function PositionForm({
               setSearched(false);
             }}
             aria-invalid={errors.wallet_id ? true : undefined}
-            className={cn(
-              controlBase,
-              "[&>option]:bg-popover [&>option]:text-popover-foreground",
-              errors.wallet_id ? "border-red-400/60 focus:ring-red-400" : "border-white/20 focus:ring-purple-400",
-            )}
+            className={cn(controlBase, "[&>option]:bg-popover [&>option]:text-popover-foreground")}
           >
             <option value="" disabled>
               Choose a wallet…
@@ -296,7 +296,7 @@ export default function PositionForm({
       </div>
 
       <fieldset
-        className="space-y-3 rounded-lg border border-white/20 p-3"
+        className="space-y-3 rounded-lg border p-3"
         onKeyDown={(e) => {
           // Enter in the query searches in place instead of submitting the whole form.
           if (
@@ -332,11 +332,11 @@ export default function PositionForm({
             e.preventDefault();
             void runSearch();
           }}
-          className="rounded-lg border border-white/30 px-3 py-2 text-sm hover:bg-white/10"
+          className={buttonVariants({ variant: "outline" })}
         >
           Search listings
         </button>
-        <p aria-live="polite" className="text-sm text-blue-100/70">
+        <p aria-live="polite" className="text-muted-foreground text-sm">
           {searching ? (
             "Searching listings…"
           ) : announcement ? (
@@ -346,11 +346,11 @@ export default function PositionForm({
         {listingChoices.length > 0 && (
           <ul className="space-y-2" aria-label="Stock search results">
             {listingChoices.map((choice) => (
-              <li key={choice.receiptId} className="rounded-lg border border-white/15 p-2 text-sm">
+              <li key={choice.receiptId} className="rounded-lg border p-2 text-sm">
                 <p className="font-medium">
                   {choice.name} · {choice.symbol}
                 </p>
-                <p className="text-blue-100/70">
+                <p className="text-muted-foreground">
                   {choice.exchangeName} ({choice.exchange}) · {choice.instrumentType}
                 </p>
                 <button
@@ -362,7 +362,7 @@ export default function PositionForm({
                     e.preventDefault();
                     selectChoice(choice);
                   }}
-                  className="mt-2 text-purple-300 underline underline-offset-4"
+                  className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-2")}
                 >
                   Select {choice.symbol}
                 </button>
@@ -371,36 +371,31 @@ export default function PositionForm({
           </ul>
         )}
         {searched && listingChoices.length === 0 && !errors.listing_query && (
-          <p className="text-sm text-blue-100/70">No matching listings. Try another company name or symbol.</p>
+          <p className="text-muted-foreground text-sm">No matching listings. Try another company name or symbol.</p>
         )}
         <input type="hidden" name="listing_receipt_id" value={values.listing_receipt_id} />
         <input type="hidden" name="instrument" value={values.instrument} />
         {selectedListing ? (
-          <div className="flex items-start justify-between gap-3 rounded-lg bg-white/10 p-2 text-sm">
+          <div className="bg-muted flex items-start justify-between gap-3 rounded-lg p-2 text-sm">
             <div role="status">
               <p className="font-medium">
                 Selected: {selectedListing.name} · {selectedListing.symbol}
               </p>
-              <p>
+              <p className="text-muted-foreground">
                 {selectedListing.exchangeName} ({selectedListing.exchange}) · {selectedListing.instrumentType}
               </p>
             </div>
             {hydrated && (
-              <button
-                ref={changeButton}
-                type="button"
-                onClick={changeSelection}
-                className="shrink-0 text-purple-300 underline underline-offset-4 hover:text-purple-200 focus-visible:outline-2 focus-visible:outline-offset-4"
-              >
+              <button ref={changeButton} type="button" onClick={changeSelection} className={cn("shrink-0", textAction)}>
                 Change
               </button>
             )}
           </div>
         ) : (
-          <p className="text-sm text-blue-100/70">Search and select the exchange listing before saving.</p>
+          <p className="text-muted-foreground text-sm">Search and select the exchange listing before saving.</p>
         )}
         <FieldError message={errors.listing_receipt_id ?? errors.instrument} />
-        <p className="text-xs text-blue-100/70">
+        <p className="text-muted-foreground text-xs">
           {selectedWallet ? `Wallet currency: ${selectedWallet.currency}. ` : "Choose a wallet first. "}
           Search, selection and saving do not download prices. Trading currency is checked when you first click Download
           prices on the dashboard.
@@ -434,7 +429,7 @@ export default function PositionForm({
       />
 
       <div>
-        <label htmlFor="category" className="mb-1 block text-sm text-blue-100/80">
+        <label htmlFor="category" className="text-muted-foreground mb-1 block text-sm">
           Reason category
         </label>
         {/* "New category…" posts the sentinel; the server then reads new_category_name instead. */}
@@ -449,11 +444,7 @@ export default function PositionForm({
             setErrors((prev) => ({ ...prev, category_id: undefined, new_category_name: undefined, form: undefined }));
           }}
           aria-invalid={categoryError ? true : undefined}
-          className={cn(
-            controlBase,
-            "[&>option]:bg-popover [&>option]:text-popover-foreground",
-            categoryError ? "border-red-400/60 focus:ring-red-400" : "border-white/20 focus:ring-purple-400",
-          )}
+          className={cn(controlBase, "[&>option]:bg-popover [&>option]:text-popover-foreground")}
         >
           {categories.length > 0 && <option value="">Choose a category…</option>}
           {categories.map((category) => (
@@ -482,7 +473,7 @@ export default function PositionForm({
           {hydrated && isNewCategory && categories.length > 0 && (
             <button
               type="button"
-              className="mt-2 text-sm text-purple-300 underline underline-offset-4 hover:text-purple-200 focus-visible:outline-2 focus-visible:outline-offset-4"
+              className={cn("mt-2 text-sm", textAction)}
               onClick={() => {
                 setCategoryChoice("");
                 update("new_category_name", "");
@@ -504,8 +495,8 @@ export default function PositionForm({
       <ConfrontationPanel state={confrontation} />
 
       <div>
-        <label htmlFor="reason_text" className="mb-1 block text-sm text-blue-100/80">
-          Reason <span className="text-blue-100/50">(optional)</span>
+        <label htmlFor="reason_text" className="text-muted-foreground mb-1 block text-sm">
+          Reason <span className="text-muted-foreground/70">(optional)</span>
         </label>
         <textarea
           id="reason_text"
@@ -517,10 +508,7 @@ export default function PositionForm({
           }}
           placeholder="Why are you buying this?"
           aria-invalid={errors.reason_text ? true : undefined}
-          className={cn(
-            controlBase,
-            errors.reason_text ? "border-red-400/60 focus:ring-red-400" : "border-white/20 focus:ring-purple-400",
-          )}
+          className={controlBase}
         />
         <FieldError message={errors.reason_text} />
       </div>
