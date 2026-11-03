@@ -418,32 +418,32 @@ No database migration. UI-only plus one new read-only-to-provider endpoint.
 
 #### Automated
 
-- [x] 2.1 `price-context.test.ts` covers the compact variant for every source and each actionable state
-- [x] 2.2 `result-surfaces.test.ts` asserts open/closed sections on the dashboard and wallet detail
-- [x] 2.3 `npx astro sync && npm run lint && npx astro check && npm test` pass
-- [x] 2.4 `npx playwright test` passes
-- [x] 2.5 `npm run smoke` passes against `npm run dev` with local Supabase
+- [x] 2.1 `price-context.test.ts` covers the compact variant for every source and each actionable state — ccc250f
+- [x] 2.2 `result-surfaces.test.ts` asserts open/closed sections on the dashboard and wallet detail — ccc250f
+- [x] 2.3 `npx astro sync && npm run lint && npx astro check && npm test` pass — ccc250f
+- [x] 2.4 `npx playwright test` passes — ccc250f
+- [x] 2.5 `npm run smoke` passes against `npm run dev` with local Supabase — ccc250f
 
 #### Manual
 
-- [x] 2.6 At 390px the dashboard shows stacked cards with result and category visible, no horizontal page scroll
-- [x] 2.7 Wallet detail page shows the same sectioned list without the Wallet column
-- [x] 2.8 A position with a failed download or unchecked currency shows its one-line notice; a healthy one shows none
+- [x] 2.6 At 390px the dashboard shows stacked cards with result and category visible, no horizontal page scroll — ccc250f
+- [x] 2.7 Wallet detail page shows the same sectioned list without the Wallet column — ccc250f
+- [x] 2.8 A position with a failed download or unchecked currency shows its one-line notice; a healthy one shows none — ccc250f
 
 ### Phase 3: In-place stock search
 
 #### Automated
 
-- [ ] 3.1 Endpoint unit tests cover 405, 401, 403, 400 (body, length, content type), 404, 503 and success
-- [ ] 3.2 `new-position.test.ts` existing POST-flow tests pass unchanged
-- [ ] 3.3 `npx playwright test` passes with JS on and off
-- [ ] 3.4 `npx astro sync && npm run lint && npx astro check && npm test` pass
+- [x] 3.1 Endpoint unit tests cover 405, 401, 403, 400 (body, length, content type), 404, 503 and success
+- [x] 3.2 `new-position.test.ts` existing POST-flow tests pass unchanged
+- [x] 3.3 `npx playwright test` passes with JS on and off
+- [x] 3.4 `npx astro sync && npm run lint && npx astro check && npm test` pass
 
 #### Manual
 
-- [ ] 3.5 With JS, search → select → save a real AAPL investment against local Supabase with no page reload before Save
-- [ ] 3.6 With JS disabled, the same entry still saves via the POST flow
-- [ ] 3.7 Changing the wallet after selecting clears the chip and explains why
+- [x] 3.5 With JS, search → select → save a real AAPL investment against local Supabase with no page reload before Save
+- [x] 3.6 With JS disabled, the same entry still saves via the POST flow
+- [x] 3.7 Changing the wallet after selecting clears the chip and explains why
 
 ### Phase 4: Recording view on tokens, and visual gate
 

@@ -5,6 +5,7 @@
 import { reportUnexpected } from "@/lib/observability/reporter";
 import Layout from "@/layouts/Layout.astro";
 import PositionForm from "@/components/positions/PositionForm";
+import { STOCK_SEARCH_COPY, stockSearchErrors } from "@/components/positions/stock-search";
 import { createClient } from "@/lib/supabase";
 import {
   createPosition,
@@ -88,16 +89,12 @@ if (Astro.request.method === "POST") {
       if (result.ok) {
         listingChoices = result.choices;
         listingSearched = true;
-      } else if (result.reason === "not_found") {
-        errors = { wallet_id: "Choose a wallet from your list" };
-      } else if (result.reason === "invalid_request") {
-        errors = { listing_query: "Choose a wallet and enter 2–100 characters to search" };
       } else {
-        errors = { listing_query: "Stock search is unavailable. Your entries are preserved; try searching again." };
+        errors = stockSearchErrors(result.reason);
       }
     } catch (error) {
       reportUnexpected(error, { operation: "marketPrices", route: "/dashboard/new" });
-      errors = { listing_query: "Stock search could not be loaded. Your entries are preserved; try again." };
+      errors = { listing_query: STOCK_SEARCH_COPY.failed };
     }
   } else if (action === "select_listing" || action === "save") {
     const receiptId = action === "select_listing" ? selectedReceipt : values.listing_receipt_id;

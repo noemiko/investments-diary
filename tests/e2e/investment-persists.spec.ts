@@ -2,8 +2,9 @@ import { test, expect } from "@playwright/test";
 import { investmentData } from "./helpers/investment-data";
 import { waitForHydration } from "./helpers/hydration";
 
-// Metadata search is a seeded, owner/wallet-bound receipt fixture. Native selection,
-// save, authentication, routing, exact decimal writes, database reads and SSR are real.
+// Metadata search is a seeded, owner/wallet-bound receipt fixture: hydrated runs mock the in-place
+// search response with it, no-JS runs post the native Select. Save, authentication, routing, exact
+// decimal writes, database reads and SSR are real.
 for (const javaScriptEnabled of [true, false]) {
   test.describe(`investment-persists (${javaScriptEnabled ? "hydrated" : "no JavaScript"})`, () => {
     test.use({ javaScriptEnabled });
@@ -16,44 +17,95 @@ for (const javaScriptEnabled of [true, false]) {
           downloads.push(request.url());
       });
       try {
-        // Render the real native Select response with a persisted metadata fixture;
-        // browser tests do not depend on Yahoo search availability or manufacture quotes.
-        const selected = await page.request.post("/dashboard/new", {
-          headers: { Origin: String(info.project.use.baseURL) },
-          form: {
-            select_listing: data.receiptId,
-            wallet_id: data.walletId,
-            listing_query: data.symbol,
-            buy_price: "unfinished",
-            buy_date: "2026-01-15",
-            category_id: data.categoryId,
-            reason_text: "Keep this investment reasoning",
-            quantity: "2",
-            broker_label: "Fixture broker",
-          },
-        });
-        expect(selected.status()).toBe(200);
-        const html = await selected.text();
-        await page.route(
-          "**/dashboard/new",
-          async (route) => {
-            await route.fulfill({ status: 200, contentType: "text/html", body: html });
-          },
-          { times: 1 },
-        );
-        await page.goto("/dashboard/new");
-        if (javaScriptEnabled) await waitForHydration(page);
-        await expect(page.getByRole("status")).toContainText(`Selected: ${data.token} · ${data.symbol}`);
-        await expect(page.getByRole("textbox", { name: "Buy price (per share)", exact: true })).toHaveValue(
-          "unfinished",
-        );
-        await expect(page.getByRole("textbox", { name: "Reason", exact: false })).toHaveValue(
-          "Keep this investment reasoning",
-        );
-        await expect(page.getByRole("textbox", { name: "Broker (optional)", exact: true })).toHaveValue(
-          "Fixture broker",
-        );
-        await page.getByRole("textbox", { name: "Buy price (per share)", exact: true }).fill("50.25");
+        if (javaScriptEnabled) {
+          // In-place search: the search response is mocked with the seeded, owner/wallet-bound
+          // receipt, so Yahoo is never called; selection is client-side and Save stays a native
+          // POST whose receipt the server re-reads.
+          const searches: unknown[] = [];
+          await page.route("**/dashboard/new/search", async (route) => {
+            searches.push(route.request().postDataJSON());
+            await route.fulfill({
+              status: 200,
+              contentType: "application/json",
+              json: {
+                ok: true,
+                choices: [
+                  {
+                    receiptId: data.receiptId,
+                    targetId: data.targetId,
+                    validUntil: "2099-01-01T00:00:00Z",
+                    symbol: data.symbol,
+                    name: data.token,
+                    exchange: "NMS",
+                    exchangeName: "Nasdaq",
+                    instrumentType: "EQUITY",
+                  },
+                ],
+              },
+            });
+          });
+          await page.goto("/dashboard/new");
+          await waitForHydration(page);
+          const mainFrameNavigations: string[] = [];
+          page.on("framenavigated", (frame) => {
+            if (frame === page.mainFrame()) mainFrameNavigations.push(frame.url());
+          });
+          await page.getByLabel("Wallet", { exact: true }).selectOption(data.walletId);
+          await page.getByRole("textbox", { name: "Company or symbol", exact: true }).fill(data.symbol);
+          await page.getByRole("button", { name: "Search listings", exact: true }).click();
+          await expect(page.getByRole("list", { name: "Stock search results" })).toContainText(data.token);
+          expect(searches).toEqual([{ walletId: data.walletId, query: data.symbol }]);
+          await page.getByRole("button", { name: `Select ${data.symbol}`, exact: true }).click();
+          await expect(page.getByRole("status")).toContainText(`Selected: ${data.token} · ${data.symbol}`);
+          await expect(page.getByRole("button", { name: "Change", exact: true })).toBeFocused();
+          await expect(page.getByRole("list", { name: "Stock search results" })).toHaveCount(0);
+          await page.getByLabel("Buy date", { exact: true }).fill("2026-01-15");
+          await page.getByLabel("Reason category", { exact: true }).selectOption(data.categoryId);
+          await page.getByRole("textbox", { name: "Reason", exact: false }).fill("Keep this investment reasoning");
+          await page.getByRole("textbox", { name: "Quantity (optional)", exact: true }).fill("2");
+          await page.getByRole("textbox", { name: "Broker (optional)", exact: true }).fill("Fixture broker");
+          await page.getByRole("textbox", { name: "Buy price (per share)", exact: true }).fill("50.25");
+          // Search, select and filling the form happened without a page load.
+          expect(mainFrameNavigations).toEqual([]);
+        } else {
+          // Render the real native Select response with a persisted metadata fixture;
+          // browser tests do not depend on Yahoo search availability or manufacture quotes.
+          const selected = await page.request.post("/dashboard/new", {
+            headers: { Origin: String(info.project.use.baseURL) },
+            form: {
+              select_listing: data.receiptId,
+              wallet_id: data.walletId,
+              listing_query: data.symbol,
+              buy_price: "unfinished",
+              buy_date: "2026-01-15",
+              category_id: data.categoryId,
+              reason_text: "Keep this investment reasoning",
+              quantity: "2",
+              broker_label: "Fixture broker",
+            },
+          });
+          expect(selected.status()).toBe(200);
+          const html = await selected.text();
+          await page.route(
+            "**/dashboard/new",
+            async (route) => {
+              await route.fulfill({ status: 200, contentType: "text/html", body: html });
+            },
+            { times: 1 },
+          );
+          await page.goto("/dashboard/new");
+          await expect(page.getByRole("status")).toContainText(`Selected: ${data.token} · ${data.symbol}`);
+          await expect(page.getByRole("textbox", { name: "Buy price (per share)", exact: true })).toHaveValue(
+            "unfinished",
+          );
+          await expect(page.getByRole("textbox", { name: "Reason", exact: false })).toHaveValue(
+            "Keep this investment reasoning",
+          );
+          await expect(page.getByRole("textbox", { name: "Broker (optional)", exact: true })).toHaveValue(
+            "Fixture broker",
+          );
+          await page.getByRole("textbox", { name: "Buy price (per share)", exact: true }).fill("50.25");
+        }
         await page.screenshot({
           path: info.outputPath("selected-stock-form.png"),
           fullPage: true,
