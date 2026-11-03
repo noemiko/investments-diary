@@ -4,8 +4,10 @@ import { actionMessage, marketTimestamp } from "./client";
 import { formatDate, formatNumber } from "@/lib/format";
 interface Props {
   valuation?: PositionValuation;
+  /** `compact` (lists): one source label plus, only when the author can act on it, one notice line. */
+  variant?: "full" | "compact";
 }
-const { valuation } = Astro.props;
+const { valuation, variant = "full" } = Astro.props;
 const sources = {
   sale: "Recorded sale",
   manual_override: "Temporary manual correction",
@@ -13,11 +15,47 @@ const sources = {
   manual: "Manual price",
   missing: "No price",
 };
+const compactSources = {
+  sale: "Sale",
+  manual_override: "Manual correction",
+  automatic: "Downloaded",
+  manual: "Manual",
+  missing: "No price",
+};
 const outcome = valuation?.refreshOutcome;
 const failed = typeof outcome === "string" && !["never", "success"].includes(outcome);
+
+// The compact notice: at most one line, only for states the author can act on, most urgent first.
+// An older quote that was ignored is not actionable (the last usable price is retained), so it stays quiet.
+function compactNotice(value: PositionValuation): string | null {
+  if (value.source === "sale") return null;
+  if (value.quoteState === "refreshing") return "A download is in progress; saved values are shown.";
+  const pending = !value.listing && value.pendingSelection;
+  if (pending && value.pendingCurrency && value.pendingCurrency !== value.currency) {
+    return `Currency mismatch: this listing trades in ${value.pendingCurrency}, but the wallet uses ${value.currency}.`;
+  }
+  if (failed && value.refreshOutcome !== "older_quote") {
+    return `Latest download failed. ${actionMessage(value.refreshOutcome ?? "unavailable")}`;
+  }
+  if (pending) return "Trading currency is not checked yet. Click Download prices to check it.";
+  if (value.source === "missing") return "No price saved. Download prices or enter one on the detail page.";
+  return null;
+}
+const notice = valuation && variant === "compact" ? compactNotice(valuation) : null;
 ---
 
-{valuation && (
+{valuation && variant === "compact" && (
+  <div class="space-y-0.5 text-xs text-muted-foreground" data-price-context="compact">
+    <p>{compactSources[valuation.source]}</p>
+    {notice && (
+      <p class="text-foreground" data-price-notice>
+        {notice}
+      </p>
+    )}
+  </div>
+)}
+
+{valuation && variant === "full" && (
   <div class="space-y-1 text-xs text-muted-foreground" data-price-context>
     <p>
       {sources[valuation.source]} · {valuation.currency}

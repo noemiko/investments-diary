@@ -16,13 +16,14 @@ const routes: Record<Action, string> = {
   lookup: "/dashboard/market-prices/listings/download",
   confirm: "/dashboard/market-prices/listings/confirm",
 };
-function json(value: unknown, status = 200) {
+export function json(value: unknown, status = 200) {
   return new Response(JSON.stringify(value), {
     status,
     headers: { "content-type": "application/json", "cache-control": "no-store" },
   });
 }
-function status(reason: string) {
+/** Shared reason → HTTP status mapping for the market-data JSON endpoints. */
+export function status(reason: string) {
   if (reason === "not_found") return 404;
   if (reason === "invalid_request") return 400;
   if (reason === "cooldown" || reason === "refreshing") return 429;

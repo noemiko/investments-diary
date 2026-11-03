@@ -1,10 +1,5 @@
 ---
-import DeletePositionControl from "@/components/positions/DeletePositionControl.astro";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import PositionResult from "@/components/positions/PositionResult.astro";
-import PriceContext from "@/components/market-prices/PriceContext.astro";
-import { formatDate, formatNumber } from "@/lib/format";
+import PositionsSection from "@/components/positions/PositionsSection.astro";
 import type { PositionListItem } from "@/types";
 
 interface Props {
@@ -13,91 +8,13 @@ interface Props {
 }
 
 const { positions, showWallet = true } = Astro.props;
+
+// Open and closed positions in separate sections, each keeping the service order; an empty section is omitted.
+const open = positions.filter((position) => position.sell_date === null);
+const closed = positions.filter((position) => position.sell_date !== null);
 ---
 
-<Table>
-  <TableHeader>
-    <TableRow className="hover:bg-transparent">
-      <TableHead scope="col" className="text-muted-foreground">
-        Instrument
-      </TableHead>
-      <TableHead scope="col" className="text-muted-foreground">
-        Buy date
-      </TableHead>
-      <TableHead scope="col" className="text-right text-muted-foreground">
-        Buy price
-      </TableHead>
-      <TableHead scope="col" className="text-muted-foreground">
-        Result
-      </TableHead>
-      <TableHead scope="col" className="text-right text-muted-foreground">
-        Quantity
-      </TableHead>
-      <TableHead scope="col" className="text-muted-foreground">
-        Broker
-      </TableHead>
-      <TableHead scope="col" className="text-muted-foreground">
-        Category
-      </TableHead>
-      {showWallet && (
-        <TableHead scope="col" className="text-muted-foreground">
-          Wallet
-        </TableHead>
-      )}
-      <TableHead scope="col">
-        <span class="sr-only">Actions</span>
-      </TableHead>
-    </TableRow>
-  </TableHeader>
-  <TableBody>
-    {positions.map((position) => (
-      <TableRow>
-        <TableCell className="font-semibold">
-          <a href={`/dashboard/positions/${position.id}`} class="underline underline-offset-4 hover:text-primary">
-            {position.instrument}
-          </a>
-          {position.sell_date !== null && (
-            <Badge variant="secondary" className="ml-2">
-              Closed
-            </Badge>
-          )}
-        </TableCell>
-        <TableCell className="text-muted-foreground">{formatDate(position.buy_date)}</TableCell>
-        <TableCell className="text-right tabular-nums">{formatNumber(position.buy_price)}</TableCell>
-        <TableCell>
-          <PositionResult
-            buy_price={position.buy_price}
-            quantity={position.quantity}
-            current_price={position.current_price}
-            price_date={position.price_date}
-            sell_price={position.sell_price}
-            sell_date={position.sell_date}
-          />
-          <div class="min-w-48 max-w-64 whitespace-normal">
-            <PriceContext valuation={position.valuation} />
-          </div>
-        </TableCell>
-        <TableCell className="text-right text-muted-foreground tabular-nums">
-          {position.quantity === null ? "—" : formatNumber(position.quantity)}
-        </TableCell>
-        <TableCell className="text-muted-foreground">{position.broker_label ?? "—"}</TableCell>
-        <TableCell>
-          <Badge variant="secondary">{position.category_name}</Badge>
-        </TableCell>
-        {showWallet && (
-          <TableCell>
-            <a
-              href={`/dashboard/wallets/${position.wallet_id}`}
-              class="underline underline-offset-4 hover:text-primary"
-            >
-              {position.wallet_name}
-            </a>
-          </TableCell>
-        )}
-        <TableCell>
-          <DeletePositionControl id={position.id} instrument={position.instrument} />
-        </TableCell>
-      </TableRow>
-    ))}
-  </TableBody>
-</Table>
+<div class="flex min-w-0 flex-col gap-8">
+  {open.length > 0 && <PositionsSection kind="open" positions={open} showWallet={showWallet} />}
+  {closed.length > 0 && <PositionsSection kind="closed" positions={closed} showWallet={showWallet} />}
+</div>

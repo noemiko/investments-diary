@@ -1,0 +1,70 @@
+---
+import { formatAmount, formatPercent, formatSignedAmount } from "@/lib/format";
+import { describeWalletResults, groupByWallet, walletValue } from "@/lib/wallet";
+import type { Wallet, WalletPosition } from "@/types";
+
+interface Props {
+  wallets: readonly Wallet[];
+  /** All of the author's non-deleted positions; each card counts only its own wallet's. */
+  positions: readonly WalletPosition[];
+}
+const { wallets, positions } = Astro.props;
+
+// One card per wallet, each in its own currency. Wallets never sum together: there is no conversion.
+const byWallet = groupByWallet(positions);
+const cards = wallets.map((wallet) => ({
+  wallet,
+  result: walletValue(wallet, byWallet.get(wallet.id) ?? []),
+}));
+---
+
+{cards.length > 0 && (
+  <section aria-labelledby="wallet-summary-heading" class="flex flex-col gap-3">
+    <h2 id="wallet-summary-heading" class="text-sm font-medium text-muted-foreground">
+      How your wallets are doing
+    </h2>
+    <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {cards.map(({ wallet, result }) => (
+        <li
+          class="relative flex flex-col gap-2 rounded-lg border p-4 focus-within:ring-2 focus-within:ring-ring hover:bg-muted/50"
+          data-wallet-summary={wallet.id}
+        >
+          <div class="flex items-baseline justify-between gap-2">
+            <a
+              href={`/dashboard/wallets/${wallet.id}`}
+              class="truncate font-semibold underline-offset-4 after:absolute after:inset-0 hover:underline focus-visible:outline-none"
+            >
+              {wallet.name}
+            </a>
+            <span class="text-xs text-muted-foreground" data-wallet-currency={wallet.currency}>
+              {wallet.currency}
+            </span>
+          </div>
+          <p class="text-2xl font-semibold tabular-nums">{formatAmount(result.value)}</p>
+          <p class="text-sm tabular-nums">
+            {formatSignedAmount(result.change)}
+            {result.changePercent !== null && (
+              <span class="text-muted-foreground"> ({formatPercent(result.changePercent)})</span>
+            )}
+          </p>
+          <dl class="grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <dt class="text-muted-foreground">Open</dt>
+              <dd class="tabular-nums">{formatSignedAmount(result.openChange)}</dd>
+            </div>
+            <div>
+              <dt class="text-muted-foreground">Realised</dt>
+              <dd class="tabular-nums">{formatSignedAmount(result.realisedChange)}</dd>
+            </div>
+          </dl>
+          <p class="text-xs text-muted-foreground">{describeWalletResults(result)}</p>
+          {result.notCounted > 0 && (
+            <p class="text-xs text-muted-foreground" data-wallet-not-counted={result.notCounted}>
+              {result.notCounted} not counted (no quantity or no current price for an open position)
+            </p>
+          )}
+        </li>
+      ))}
+    </ul>
+  </section>
+)}

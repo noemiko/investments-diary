@@ -1,10 +1,14 @@
 import { experimental_AstroContainer as AstroContainer } from "astro/container";
+import type { APIContext } from "astro";
 import reactRenderer from "@astrojs/react/server.js";
-import { beforeEach, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import NewPosition from "@/pages/dashboard/new.astro";
+import { POST as searchEndpoint, ALL as searchOther } from "@/pages/dashboard/new/search";
 import { createPosition, listCategories, listConfrontationPositions } from "@/lib/services/positions";
 import { listWallets } from "@/lib/services/wallets";
 import { readMarketSelection, searchMarketSelections } from "@/lib/services/market-selections";
+import { createClient } from "@/lib/supabase";
+import { reportUnexpected } from "@/lib/observability/reporter";
 import { createYahooMarketData } from "@/lib/market-data/yahoo";
 import type { MarketSelectionChoice } from "@/types";
 
@@ -196,4 +200,106 @@ it("never echoes a foreign submitted wallet or category after an invalid selecti
   expect(html).toContain("Preserve my reasoning");
   expect(html).toContain('value="50,12345678"');
   expect(createPosition).not.toHaveBeenCalled();
+});
+
+describe("in-place search endpoint (/dashboard/new/search)", () => {
+  async function search(
+    body: unknown,
+    options: {
+      method?: string;
+      authenticated?: boolean;
+      origin?: string | null;
+      site?: string;
+      raw?: string;
+      contentType?: string;
+    } = {},
+  ) {
+    const method = options.method ?? "POST";
+    const headers = new Headers({ "content-type": options.contentType ?? "application/json" });
+    if (options.origin !== null) headers.set("origin", options.origin ?? "http://localhost");
+    if (options.site) headers.set("sec-fetch-site", options.site);
+    const request = new Request("http://localhost/dashboard/new/search", {
+      method,
+      headers,
+      ...(["GET", "HEAD"].includes(method) ? {} : { body: options.raw ?? JSON.stringify(body) }),
+    });
+    const context = {
+      request,
+      locals: options.authenticated === false ? { user: null } : locals,
+      cookies: {},
+    } as unknown as APIContext;
+    return await (method === "POST" ? searchEndpoint : searchOther)(context);
+  }
+  const valid = { walletId: id, query: "Apple" };
+  function expectNoProviderWork() {
+    expect(searchMarketSelections).not.toHaveBeenCalled();
+    expect(createYahooMarketData).not.toHaveBeenCalled();
+  }
+
+  it("returns the service's receipts for an explicit, verified search", async () => {
+    const response = await search(valid);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toEqual({ ok: true, choices: [choice] });
+    expect(searchMarketSelections).toHaveBeenCalledExactlyOnceWith({}, id, id, "Apple", expect.any(AbortSignal));
+    expect(createPosition).not.toHaveBeenCalled();
+    expect(readMarketSelection).not.toHaveBeenCalled();
+  });
+  it("only accepts POST", async () => {
+    for (const method of ["GET", "HEAD", "PUT", "DELETE"]) {
+      const response = await search(valid, { method });
+      expect(response.status).toBe(405);
+      expect(response.headers.get("allow")).toBe("POST");
+    }
+    expectNoProviderWork();
+  });
+  it("requires authentication before building a client", async () => {
+    const response = await search(valid, { authenticated: false });
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ ok: false, reason: "unauthenticated" });
+    expect(createClient).not.toHaveBeenCalled();
+    expectNoProviderWork();
+  });
+  it("rejects foreign, absent and cross-site origins", async () => {
+    for (const origin of ["https://attacker.test", null]) expect((await search(valid, { origin })).status).toBe(403);
+    expect((await search(valid, { site: "cross-site" })).status).toBe(403);
+    expectNoProviderWork();
+  });
+  it("rejects malformed, oversized, non-JSON and out-of-range requests without provider work", async () => {
+    const bad = [
+      { walletId: "not-a-uuid", query: "Apple" },
+      { walletId: id, query: "A" },
+      { walletId: id, query: "  A  " },
+      { walletId: id, query: "x".repeat(101) },
+      { walletId: id },
+      { query: "Apple" },
+      { ...valid, currency: "USD" },
+      [],
+      null,
+    ];
+    for (const body of bad) expect((await search(body)).status).toBe(400);
+    expect((await search(valid, { raw: "{" })).status).toBe(400);
+    expect((await search(valid, { raw: JSON.stringify({ ...valid, pad: "x".repeat(4097) }) })).status).toBe(400);
+    expect((await search(valid, { contentType: "text/plain" })).status).toBe(400);
+    expect((await search(valid, { contentType: "application/x-www-form-urlencoded" })).status).toBe(400);
+    expectNoProviderWork();
+  });
+  it.each([
+    ["not_found", 404],
+    ["invalid_request", 400],
+    ["timeout", 503],
+    ["provider_unavailable", 503],
+  ] as const)("maps a %s service result to %i with only its reason", async (reason, status) => {
+    vi.mocked(searchMarketSelections).mockResolvedValue({ ok: false, reason, status: 502, retryAfter: "x" });
+    const response = await search(valid);
+    expect(response.status).toBe(status);
+    expect(await response.json()).toEqual({ ok: false, reason });
+  });
+  it("reports unexpected failures once and returns a safe 503", async () => {
+    vi.mocked(searchMarketSelections).mockRejectedValue(new Error("PRIVATE_DATABASE_DETAIL"));
+    const response = await search(valid);
+    expect(response.status).toBe(503);
+    expect(await response.text()).not.toContain("PRIVATE_DATABASE_DETAIL");
+    expect(reportUnexpected).toHaveBeenCalledOnce();
+  });
 });

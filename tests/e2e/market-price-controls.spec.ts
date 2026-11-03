@@ -234,6 +234,11 @@ test("price controls fetch only on explicit actions and retain unsaved manual/sa
     ).toBeVisible();
     expect(actions).toEqual(["/dashboard/market-prices/download"]);
     await expect(page.getByRole("row").filter({ hasText: "AAPL" })).toContainText("+10.00%");
+    // The refreshed fragment keeps the sections: both open holdings stay under Open positions.
+    const openRows = page.locator('[data-positions-section="open"]').getByRole("row");
+    await expect(openRows.filter({ hasText: "AAPL" })).toContainText("+10.00%");
+    await expect(openRows.filter({ hasText: "MSFT" })).toHaveCount(1);
+    await expect(page.locator('[data-positions-section="closed"]')).toHaveCount(0);
     const retained = await admin.from("market_quote_cache").select("price::text").eq("id", cache.data.id).single();
     expect(retained.error).toBeNull();
     expect(retained.data?.price).toBe("11.00000000");

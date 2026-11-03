@@ -5,6 +5,9 @@
 import { reportUnexpected } from "@/lib/observability/reporter";
 import Layout from "@/layouts/Layout.astro";
 import PositionForm from "@/components/positions/PositionForm";
+import { buttonVariants } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { STOCK_SEARCH_COPY, stockSearchErrors } from "@/components/positions/stock-search";
 import { createClient } from "@/lib/supabase";
 import {
   createPosition,
@@ -88,16 +91,12 @@ if (Astro.request.method === "POST") {
       if (result.ok) {
         listingChoices = result.choices;
         listingSearched = true;
-      } else if (result.reason === "not_found") {
-        errors = { wallet_id: "Choose a wallet from your list" };
-      } else if (result.reason === "invalid_request") {
-        errors = { listing_query: "Choose a wallet and enter 2–100 characters to search" };
       } else {
-        errors = { listing_query: "Stock search is unavailable. Your entries are preserved; try searching again." };
+        errors = stockSearchErrors(result.reason);
       }
     } catch (error) {
       reportUnexpected(error, { operation: "marketPrices", route: "/dashboard/new" });
-      errors = { listing_query: "Stock search could not be loaded. Your entries are preserved; try again." };
+      errors = { listing_query: STOCK_SEARCH_COPY.failed };
     }
   } else if (action === "select_listing" || action === "save") {
     const receiptId = action === "select_listing" ? selectedReceipt : values.listing_receipt_id;
@@ -188,11 +187,14 @@ try {
 ---
 
 <Layout title="New investment">
-  <div class="bg-cosmic flex min-h-screen items-center justify-center p-4">
-    <div class="w-full max-w-md rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl">
-      <h1 class="mb-6 bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-center text-2xl font-bold text-transparent">
-        New investment
-      </h1>
+  <div class="bg-cosmic min-h-screen p-4">
+    <Card className="mx-auto max-w-3xl min-w-0 p-8">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <h1 class="text-gradient-heading text-3xl font-bold">New investment</h1>
+        <a href="/dashboard" class:list={buttonVariants({ variant: "outline" })}>
+          Back to your positions
+        </a>
+      </div>
       <PositionForm
         categories={categories}
         wallets={wallets}
@@ -204,11 +206,6 @@ try {
         listingSearched={listingSearched}
         client:load
       />
-      <p class="mt-4 text-center text-sm text-blue-100/60">
-        <a href="/dashboard" class="text-purple-300 hover:underline">
-          Back to your positions
-        </a>
-      </p>
-    </div>
+    </Card>
   </div>
 </Layout>

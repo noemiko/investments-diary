@@ -279,6 +279,15 @@ function recordBody(result, id, history = false) {
   return { ...result, body: record };
 }
 
+// One positions section of a list page ("open" or "closed"), so membership is checked inside it.
+function sectionBody(result, kind) {
+  const section = new RegExp(`<section\\b[^>]*data-positions-section="${kind}"[^>]*>[\\s\\S]*?</section>`).exec(
+    result.body,
+  )?.[0];
+  if (!section) throw new Error(`Expected ${kind} positions section missing`);
+  return { ...result, body: section };
+}
+
 // Each step: [name, run, expected]. `includes` / `excludes` are checked against the (entity-decoded) body;
 // an entry (or `location`) may be a function, read when the step runs, to use an id captured earlier.
 // `excludesIds` names captured ids that must not appear in the body; `requiresIds` names ids that must
@@ -350,7 +359,7 @@ const steps = [
     },
     {
       status: 200,
-      includes: [instrument, "50.25", categoryName],
+      includes: [instrument, "50.25", categoryName, "Open positions"],
       excludes: [EMPTY_STATE],
       requiresIds: ["mainPosition"],
     },
@@ -912,6 +921,16 @@ const steps = [
     "A: dashboard row uses final sale rather than retained quote",
     async () => recordBody(await request(a, "/dashboard"), ids.pricedPosition),
     { status: 200, includes: ["Closed", "Final +10.00%", "· sold", soldDateLabel], excludes: ["+20.00%", "as of"] },
+  ],
+  [
+    "A: dashboard lists the closed position under Closed positions",
+    async () => sectionBody(await request(a, "/dashboard"), "closed"),
+    { status: 200, includes: ["Closed positions", () => `/dashboard/positions/${ids.pricedPosition}"`] },
+  ],
+  [
+    "A: dashboard no longer lists the closed position under Open positions",
+    async () => sectionBody(await request(a, "/dashboard"), "open"),
+    { status: 200, includes: ["Open positions"], excludes: [() => `/dashboard/positions/${ids.pricedPosition}"`] },
   ],
   [
     "A: wallet member uses the same final result",

@@ -1,4 +1,4 @@
-import type { PositionListItem } from "@/types";
+import type { MarketListingCandidate, PositionListItem, PositionValuation } from "@/types";
 
 // Dev-only data for /dev/kitchen-sink: no Supabase, each array forces one table edge case.
 
@@ -89,4 +89,88 @@ export const longTextPositions: PositionListItem[] = [
     wallet_name: "Retirement",
     category_name: LONG_CATEGORY,
   },
+];
+
+export const closedPositions: PositionListItem[] = [
+  {
+    id: "00000000-0000-4000-8000-000000000006",
+    instrument: "MSFT",
+    buy_date: "2025-02-10",
+    buy_price: "380",
+    quantity: "5",
+    broker_label: "XTB",
+    sell_price: "456",
+    sell_date: "2026-09-01",
+    current_price: null,
+    price_date: null,
+    wallet_id: "00000000-0000-4000-8000-000000000010",
+    wallet_name: "Retirement",
+    category_name: "Quality growth",
+  },
+];
+
+/** Open and closed rows interleaved, as the service returns them. */
+export const mixedPositions: PositionListItem[] = [typicalPositions[0], ...closedPositions, typicalPositions[1]];
+
+const APPLE: MarketListingCandidate = {
+  symbol: "AAPL",
+  name: "Apple",
+  exchange: "NMS",
+  exchangeName: "Nasdaq",
+  instrumentType: "EQUITY",
+};
+const healthy: PositionValuation = {
+  source: "automatic",
+  currency: "USD",
+  selectedAt: "2026-10-14T20:00:00Z",
+  marketAt: "2026-10-14T20:00:00Z",
+  fetchedAt: "2026-10-14T20:05:00Z",
+  marketState: "CLOSED",
+  delayMinutes: 15,
+  quoteState: "fresh",
+  refreshOutcome: "success",
+  cooldownUntil: null,
+  manualSavedAt: null,
+  manualPrice: null,
+  manualPriceDate: null,
+  listing: { ...APPLE, currency: "USD", timezone: "America/New_York" },
+};
+const unchecked: PositionValuation = {
+  ...healthy,
+  source: "missing",
+  marketAt: null,
+  fetchedAt: null,
+  marketState: null,
+  delayMinutes: null,
+  refreshOutcome: null,
+  listing: null,
+  pendingSelection: APPLE,
+};
+
+/** One row per compact price-context state: healthy rows show no notice, the others one line each. */
+export const alertPositions: PositionListItem[] = [
+  { ...typicalPositions[0], id: "00000000-0000-4000-8000-000000000007", valuation: healthy },
+  {
+    ...typicalPositions[0],
+    id: "00000000-0000-4000-8000-000000000008",
+    instrument: "AAPL (failed download)",
+    valuation: { ...healthy, quoteState: "cooldown", refreshOutcome: "timeout", cooldownUntil: "2026-10-14T20:20:00Z" },
+  },
+  {
+    ...typicalPositions[2],
+    id: "00000000-0000-4000-8000-000000000009",
+    instrument: "AAPL (unchecked currency)",
+    valuation: unchecked,
+  },
+  {
+    ...typicalPositions[2],
+    id: "00000000-0000-4000-8000-000000000011",
+    instrument: "PKN.WA (currency mismatch)",
+    valuation: {
+      ...unchecked,
+      pendingCurrency: "PLN",
+      pendingSelection: { ...APPLE, symbol: "PKN.WA", name: "Orlen", exchange: "WSE", exchangeName: "Warsaw" },
+    },
+  },
+  { ...closedPositions[0], id: "00000000-0000-4000-8000-000000000012", valuation: { ...healthy, source: "sale" } },
 ];

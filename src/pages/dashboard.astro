@@ -4,11 +4,13 @@ import Layout from "@/layouts/Layout.astro";
 import PositionsEmptyState from "@/components/positions/PositionsEmptyState.astro";
 import PositionsErrorState from "@/components/positions/PositionsErrorState.astro";
 import PositionsTable from "@/components/positions/PositionsTable.astro";
+import WalletSummaryCards from "@/components/wallets/WalletSummaryCards.astro";
 import { DownloadPrices } from "@/components/market-prices/DownloadPrices";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase";
 import { listPositions } from "@/lib/services/positions";
+import { listWallets } from "@/lib/services/wallets";
 import { isUuid } from "@/lib/validation/uuid";
 
 const { user } = Astro.locals;
@@ -27,13 +29,14 @@ const errorMessage = ERROR_MESSAGES[Astro.url.searchParams.get("error") ?? ""];
 const supabase = createClient(Astro.request.headers, Astro.cookies);
 
 // A failed read must not cost the author the page (and its Sign out): render an error state instead of a 500.
+// The two reads are independent: without wallets the list still renders, only the summary cards are missing.
+const [positionsRead, walletsRead] = await Promise.allSettled([listPositions(supabase), listWallets(supabase)]);
 let positions: Awaited<ReturnType<typeof listPositions>> | null = null;
-try {
-  positions = await listPositions(supabase);
-} catch (error) {
-  reportUnexpected(error, { operation: "listPositions" });
-  // positions stays null → PositionsErrorState
-}
+if (positionsRead.status === "fulfilled") positions = positionsRead.value;
+else reportUnexpected(positionsRead.reason, { operation: "listPositions" }); // positions stays null → PositionsErrorState
+let wallets: Awaited<ReturnType<typeof listWallets>> = [];
+if (walletsRead.status === "fulfilled") wallets = walletsRead.value;
+else reportUnexpected(walletsRead.reason, { operation: "listWallets" }); // no summary cards, list still renders
 ---
 
 <Layout title="Dashboard">
@@ -102,7 +105,10 @@ try {
         ) : positions.length === 0 ? (
           <PositionsEmptyState />
         ) : (
-          <PositionsTable positions={positions} />
+          <div class="flex flex-col gap-6">
+            <WalletSummaryCards wallets={wallets} positions={positions} />
+            <PositionsTable positions={positions} />
+          </div>
         )}
       </div>
     </Card>

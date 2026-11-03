@@ -273,7 +273,7 @@ it("preserves form digits through every production service and exact arithmetic"
   expect((await listConfrontationPositions(author)).find((p) => p.id === id)).toMatchObject(expected);
   expect((await listWalletPositions(author)).find((p) => p.wallet_id === walletId)).toMatchObject(expected);
   expect(positionResult(detail)?.amount).toEqual({ units: 1n, scale: 16 });
-  expect(describeResult(detail)).toEqual({ percent: "0.00%", asOf: "as of Oct 1, 2026" });
+  expect(describeResult(detail)).toEqual({ percent: "0.00%", direction: "up", asOf: "as of Oct 1, 2026" });
 
   expect(
     await updateWallet(author, walletId, {

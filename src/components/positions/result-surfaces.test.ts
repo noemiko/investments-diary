@@ -11,7 +11,7 @@ import { ConfrontationPanel } from "@/components/positions/ConfrontationPanel";
 import { closePosition, getPosition, listPositions, updatePositionPrice } from "@/lib/services/positions";
 import { listWalletSnapshots } from "@/lib/services/wallet-snapshots";
 import { getWallet, listWalletPositions, listWallets } from "@/lib/services/wallets";
-import type { PositionDetail, Wallet } from "@/types";
+import type { PositionDetail, PositionValuation, Wallet } from "@/types";
 
 vi.mock("@/lib/services/wallet-snapshots", () => ({ listWalletSnapshots: vi.fn().mockResolvedValue([]) }));
 // Only I/O is replaced: real page/component wiring, arithmetic, formatting and dates execute.
@@ -237,6 +237,72 @@ describe("rendered position surfaces", () => {
   });
 });
 
+/** The dashboard summary card of one wallet, selected by its own marker. */
+function walletCard(html: string, id: string): string {
+  const found = new RegExp(`<li\\b[^>]*data-wallet-summary="${id}"[^>]*>[\\s\\S]*?</li>`).exec(html)?.[0];
+  if (!found) throw new Error(`Missing wallet card for ${id}`);
+  return found;
+}
+
+describe("dashboard wallet summary", () => {
+  async function dashboard() {
+    return (await container()).renderToString(Dashboard, {
+      request: new Request("http://localhost/dashboard"),
+      locals,
+    });
+  }
+
+  it("renders one card per wallet, each in its own currency, and never a cross-wallet total", async () => {
+    vi.mocked(listWallets).mockResolvedValue([wallets[0], { ...wallets[1], currency: "PLN" }, wallets[2]]);
+    const html = await dashboard();
+    expect(html.match(/data-wallet-summary="/g)).toHaveLength(3);
+    expect(text(walletCard(html, wallets[0].id))).toBe(
+      "Long term USD 1,060.00 +60.00 (+6.00%) Open +60.00 Realised 0.00 Open prices as of Oct 1, 2026 2 not counted (no quantity or no current price for an open position)",
+    );
+    expect(text(walletCard(html, wallets[1].id))).toBe(
+      "Other PLN 90.00 -10.00 (-10.00%) Open -10.00 Realised 0.00 Open prices as of Sep 15, 2026",
+    );
+    // A wallet without positions still gets a card.
+    expect(text(walletCard(html, wallets[2].id))).toBe(
+      "Empty USD 0.00 0.00 Open 0.00 Realised 0.00 No counted results",
+    );
+    expect(walletCard(html, wallets[1].id)).toContain(`href="/dashboard/wallets/${wallets[1].id}"`);
+    // 1,060.00 + 90.00 + 0.00 and +60.00 − 10.00 would only appear as a combined total.
+    expect(text(html)).not.toContain("1,150.00");
+    expect(text(html)).not.toContain("+50.00 (");
+  });
+
+  it("puts the cards in the refreshed fragment, not in the Download prices island", async () => {
+    const html = await dashboard();
+    const fragment = /<div data-price-refresh="dashboard-positions">[\s\S]*$/.exec(html)?.[0] ?? "";
+    expect(fragment).toContain(`data-wallet-summary="${wallets[0].id}"`);
+    expect(fragment).not.toContain("<astro-island");
+  });
+
+  it("keeps the position list without cards when wallets cannot be read", async () => {
+    vi.mocked(listWallets).mockRejectedValue(new Error("wallets failed"));
+    const html = await dashboard();
+    expect(html).not.toContain("data-wallet-summary");
+    expect(text(row(html, `/dashboard/positions/${gain.id}`))).toContain("+20.00% as of Oct 10, 2026");
+  });
+
+  it("keeps the empty state without cards for an empty diary", async () => {
+    vi.mocked(listPositions).mockResolvedValue([]);
+    const html = await dashboard();
+    expect(html).not.toContain("data-wallet-summary");
+  });
+
+  it("marks each result's neutral direction without changing its text", async () => {
+    const html = await dashboard();
+    expect(row(html, `/dashboard/positions/${gain.id}`)).toContain('data-result-direction="up"');
+    expect(row(html, `/dashboard/positions/${loss.id}`)).toContain('data-result-direction="down"');
+    expect(row(html, `/dashboard/positions/${unpriced.id}`)).not.toContain("data-result-direction");
+    expect(row(html, `/dashboard/positions/${gain.id}`)).toMatch(
+      /<svg(?=[^>]*aria-hidden="true")[^>]*lucide-trending-up/,
+    );
+  });
+});
+
 describe("rendered wallet surfaces", () => {
   it("associates each total, signed change, exclusions and oldest counted date with its wallet", async () => {
     const html = await (
@@ -385,6 +451,126 @@ describe("closed result wiring", () => {
         ),
       ),
     ).toContain("Realised results only");
+  });
+});
+
+/** One positions section (open or closed), selected by its own marker. */
+function positionsSection(html: string, kind: "open" | "closed"): string | undefined {
+  return new RegExp(`<section\\b[^>]*data-positions-section="${kind}"[^>]*>[\\s\\S]*?</section>`).exec(html)?.[0];
+}
+
+describe("sectioned positions list", () => {
+  const sold: PositionDetail = { ...gain, sell_price: "60", sell_date: "2026-09-01" };
+  const mixed = [loss, sold, unpriced];
+  beforeEach(() => {
+    vi.mocked(listPositions).mockResolvedValue(mixed);
+  });
+  async function render(page: "dashboard" | "wallet") {
+    const instance = await container();
+    return page === "dashboard"
+      ? instance.renderToString(Dashboard, { request: new Request("http://localhost/dashboard"), locals })
+      : instance.renderToString(WalletPage, {
+          request: new Request(`http://localhost/dashboard/wallets/${wallets[0].id}`),
+          params: { id: wallets[0].id },
+          locals,
+        });
+  }
+
+  it.each(["dashboard", "wallet"] as const)(
+    "splits open and closed rows into their own headed sections on the %s page",
+    async (page) => {
+      const html = await render(page);
+      const open = positionsSection(html, "open");
+      const closed = positionsSection(html, "closed");
+      if (!open || !closed) throw new Error("Missing a positions section");
+      expect(text(open)).toMatch(/^Open positions \(2\)/);
+      expect(text(closed)).toMatch(/^Closed positions \(1\)/);
+      // Each row sits in exactly one section; the open section keeps the service order.
+      expect(row(open, `/dashboard/positions/${loss.id}`)).toBeDefined();
+      expect(row(open, `/dashboard/positions/${unpriced.id}`)).toBeDefined();
+      expect(open).not.toContain(`/dashboard/positions/${sold.id}"`);
+      expect(text(row(closed, `/dashboard/positions/${sold.id}`))).toContain("Final +20.00% · sold Sep 1, 2026");
+      expect(row(closed, `/dashboard/positions/${sold.id}`)).toContain("Closed");
+      expect(closed).not.toContain(`/dashboard/positions/${loss.id}"`);
+      expect(closed).not.toContain(`/dashboard/positions/${unpriced.id}"`);
+      expect(open.indexOf(`/dashboard/positions/${loss.id}"`)).toBeLessThan(
+        open.indexOf(`/dashboard/positions/${unpriced.id}"`),
+      );
+      // Result sits next to Instrument; the Wallet column only where several wallets can appear.
+      const header = text(/<thead\b[\s\S]*?<\/thead>/.exec(open)?.[0] ?? "");
+      expect(header).toBe(
+        page === "dashboard"
+          ? "Instrument Result Category Wallet Buy date Buy price Quantity Broker Actions"
+          : "Instrument Result Category Buy date Buy price Quantity Broker Actions",
+      );
+    },
+  );
+
+  it("omits a section without rows", async () => {
+    vi.mocked(listPositions).mockResolvedValue([loss]);
+    const html = await render("dashboard");
+    expect(positionsSection(html, "open")).toBeDefined();
+    expect(positionsSection(html, "closed")).toBeUndefined();
+    expect(text(html)).not.toContain("Closed positions");
+  });
+
+  it("renders one hidden-below-md table and one md-hidden card per row, each with its own delete form", async () => {
+    const html = await render("dashboard");
+    const open = positionsSection(html, "open") ?? "";
+    expect(open).toMatch(/<table\b[^>]*class="[^"]*\bhidden md:table\b/);
+    const card = new RegExp(`<li\\b[^>]*data-position-card="${loss.id}"[^>]*>[\\s\\S]*?</li>`).exec(open)?.[0];
+    if (!card) throw new Error("Missing mobile card");
+    expect(open).toMatch(/<ul\b[^>]*class="[^"]*\bmd:hidden\b/);
+    expect(text(card)).toContain("-20.00% as of Oct 1, 2026");
+    expect(text(card)).toContain("Growth");
+    expect(card).toContain(`/dashboard/positions/${loss.id}/delete`);
+    expect(row(open, `/dashboard/positions/${loss.id}`)).toContain(`/dashboard/positions/${loss.id}/delete`);
+  });
+
+  it("keeps the cards and both sections in the one refreshed fragment, without islands or inputs", async () => {
+    const html = await render("dashboard");
+    expect(html.match(/data-price-refresh="dashboard-positions"/g)).toHaveLength(1);
+    const fragment = /<div data-price-refresh="dashboard-positions">[\s\S]*$/.exec(html)?.[0] ?? "";
+    expect(fragment).toContain('data-positions-section="open"');
+    expect(fragment).toContain('data-positions-section="closed"');
+    expect(fragment).toContain(`data-position-card="${loss.id}"`);
+    expect(fragment).not.toContain("<astro-island");
+    expect(fragment).not.toMatch(/<(input|select|textarea)\b/);
+  });
+
+  it("shows the compact notice in the row for an unchecked currency, and none for a healthy price", async () => {
+    const pending = {
+      source: "missing",
+      currency: "USD",
+      selectedAt: null,
+      marketAt: null,
+      fetchedAt: null,
+      marketState: null,
+      delayMinutes: null,
+      quoteState: "never",
+      refreshOutcome: null,
+      cooldownUntil: null,
+      manualSavedAt: null,
+      manualPrice: null,
+      manualPriceDate: null,
+      listing: null,
+      pendingSelection: {
+        symbol: "AAPL",
+        name: "Apple",
+        exchange: "NMS",
+        exchangeName: "Nasdaq",
+        instrumentType: "EQUITY",
+      },
+    } satisfies PositionValuation;
+    vi.mocked(listPositions).mockResolvedValue([
+      { ...unpriced, valuation: pending },
+      { ...loss, valuation: { ...pending, source: "manual", pendingSelection: null } },
+    ]);
+    const html = await render("dashboard");
+    const unpricedRow = text(row(html, `/dashboard/positions/${unpriced.id}`));
+    expect(unpricedRow).toContain("Trading currency is not checked yet");
+    expect(unpricedRow).not.toContain("Selected: AAPL");
+    expect(row(html, `/dashboard/positions/${loss.id}`)).not.toContain("data-price-notice");
   });
 });
 
