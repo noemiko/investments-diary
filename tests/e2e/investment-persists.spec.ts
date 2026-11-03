@@ -67,6 +67,14 @@ for (const javaScriptEnabled of [true, false]) {
         await expect(row.getByRole("cell", { name: "2", exact: true })).toBeVisible();
         await expect(row).toContainText("Trading currency is not checked yet");
         await expect(row.getByRole("link", { name: /Link stock listing/ })).toHaveCount(0);
+        // A new holding has no sale: it is listed under Open positions only.
+        await expect(page.getByRole("heading", { name: "Open positions", exact: true })).toBeVisible();
+        await expect(
+          page.locator('[data-positions-section="open"]').getByRole("row").filter({ hasText: data.symbol }),
+        ).toHaveCount(1);
+        await expect(
+          page.locator('[data-positions-section="closed"]').getByRole("row").filter({ hasText: data.symbol }),
+        ).toHaveCount(0);
         await expect(page.getByRole("button", { name: "Download prices", exact: true })).toBeEnabled();
         await page.reload();
         await expect(row).toHaveCount(1);
@@ -76,6 +84,14 @@ for (const javaScriptEnabled of [true, false]) {
           fullPage: true,
           style: "astro-dev-toolbar { display: none !important; }",
         });
+        // Below md the same holding is a card (the table is display:none), with its result and one-line notice.
+        await page.setViewportSize({ width: 390, height: 844 });
+        const card = page.locator("[data-position-card]").filter({ hasText: data.symbol });
+        await expect(card).toBeVisible();
+        await expect(row).toBeHidden();
+        await expect(card).toContainText("No price yet");
+        await expect(card).toContainText("Trading currency is not checked yet");
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(await data.selectedPosition()).toMatchObject({
           instrument: data.symbol,
           market_target_id: data.targetId,

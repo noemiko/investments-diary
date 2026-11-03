@@ -405,30 +405,30 @@ No database migration. UI-only plus one new read-only-to-provider endpoint.
 
 #### Automated
 
-- [x] 1.1 `result.test.ts` covers up, down, flat and null for open and closed results
-- [x] 1.2 `result-surfaces.test.ts` asserts one card per wallet with its currency and that existing row text is unchanged
-- [x] 1.3 `npx astro sync && npm run lint && npx astro check && npm test` pass
+- [x] 1.1 `result.test.ts` covers up, down, flat and null for open and closed results — a7b985e
+- [x] 1.2 `result-surfaces.test.ts` asserts one card per wallet with its currency and that existing row text is unchanged — a7b985e
+- [x] 1.3 `npx astro sync && npm run lint && npx astro check && npm test` pass — a7b985e
 
 #### Manual
 
-- [x] 1.4 With two wallets in different currencies, each card shows its own currency and no combined total appears
-- [x] 1.5 Download prices refreshes card values without a reload
+- [x] 1.4 With two wallets in different currencies, each card shows its own currency and no combined total appears — a7b985e
+- [x] 1.5 Download prices refreshes card values without a reload — a7b985e
 
 ### Phase 2: Sectioned, compact positions list
 
 #### Automated
 
-- [ ] 2.1 `price-context.test.ts` covers the compact variant for every source and each actionable state
-- [ ] 2.2 `result-surfaces.test.ts` asserts open/closed sections on the dashboard and wallet detail
-- [ ] 2.3 `npx astro sync && npm run lint && npx astro check && npm test` pass
-- [ ] 2.4 `npx playwright test` passes
-- [ ] 2.5 `npm run smoke` passes against `npm run dev` with local Supabase
+- [x] 2.1 `price-context.test.ts` covers the compact variant for every source and each actionable state
+- [x] 2.2 `result-surfaces.test.ts` asserts open/closed sections on the dashboard and wallet detail
+- [x] 2.3 `npx astro sync && npm run lint && npx astro check && npm test` pass
+- [x] 2.4 `npx playwright test` passes
+- [x] 2.5 `npm run smoke` passes against `npm run dev` with local Supabase
 
 #### Manual
 
-- [ ] 2.6 At 390px the dashboard shows stacked cards with result and category visible, no horizontal page scroll
-- [ ] 2.7 Wallet detail page shows the same sectioned list without the Wallet column
-- [ ] 2.8 A position with a failed download or unchecked currency shows its one-line notice; a healthy one shows none
+- [x] 2.6 At 390px the dashboard shows stacked cards with result and category visible, no horizontal page scroll
+- [x] 2.7 Wallet detail page shows the same sectioned list without the Wallet column
+- [x] 2.8 A position with a failed download or unchecked currency shows its one-line notice; a healthy one shows none
 
 ### Phase 3: In-place stock search
 

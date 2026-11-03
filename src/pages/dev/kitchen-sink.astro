@@ -6,7 +6,14 @@ import Layout from "@/layouts/Layout.astro";
 import PositionsEmptyState from "@/components/positions/PositionsEmptyState.astro";
 import PositionsErrorState from "@/components/positions/PositionsErrorState.astro";
 import PositionsTable from "@/components/positions/PositionsTable.astro";
-import { longTextPositions, positionsWithNulls, typicalPositions } from "@/components/positions/fixtures";
+import {
+  alertPositions,
+  closedPositions,
+  longTextPositions,
+  mixedPositions,
+  positionsWithNulls,
+  typicalPositions,
+} from "@/components/positions/fixtures";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -17,6 +24,10 @@ import { cn } from "@/lib/utils";
 if (!import.meta.env.DEV) {
   return new Response(null, { status: 404 });
 }
+
+// `?frame=mobile` renders only the mixed list, for the 390px iframe below: the cards switch on the
+// viewport width (`md:`), so a narrow container on this page alone would still show the table.
+const mobileFrame = Astro.url.searchParams.get("frame") === "mobile";
 
 // Forced visual states: the variant's hover / focus-visible classes applied statically (see button.tsx).
 const FOCUS = "border-ring ring-ring/50 ring-[3px]";
@@ -36,80 +47,116 @@ const buttonStates = [
 ];
 ---
 
-<Layout title="Kitchen sink">
-  <div class="bg-cosmic min-h-screen p-4">
-    <Card className="mx-auto max-w-5xl min-w-0 p-8">
-      <div>
-        <h1 class="text-gradient-heading text-3xl font-bold">Kitchen sink</h1>
-        <p class="mt-1 text-sm text-muted-foreground">
-          Dev-only view of the dashboard's named states, rendered from fixtures without Supabase.
-        </p>
-      </div>
-
-      <section class="flex min-w-0 flex-col gap-3">
-        <h2 class="text-lg font-semibold">State: default (typical rows)</h2>
-        <PositionsTable positions={typicalPositions} />
-      </section>
-
-      <section class="flex min-w-0 flex-col gap-3">
-        <h2 class="text-lg font-semibold">State: optional fields empty (quantity and broker null)</h2>
-        <PositionsTable positions={positionsWithNulls} />
-      </section>
-
-      <section class="flex min-w-0 flex-col gap-3">
-        <h2 class="text-lg font-semibold">State: long texts (100-character instrument, 60-character category)</h2>
-        <PositionsTable positions={longTextPositions} />
-      </section>
-
-      <section class="flex min-w-0 flex-col gap-3">
-        <h2 class="text-lg font-semibold">State: empty (no positions)</h2>
-        <PositionsEmptyState />
-      </section>
-
-      <section class="flex min-w-0 flex-col gap-3">
-        <h2 class="text-lg font-semibold">Buttons: default, hover, focus, disabled</h2>
-        {buttonStates.map((state) => (
-          <div class="flex flex-col gap-2">
-            <h3 class="text-sm font-medium text-muted-foreground">{state.label}</h3>
-            <div class="flex flex-wrap items-center gap-3">
-              <button type="button" class:list={state.base}>
-                Default
-              </button>
-              <button type="button" class:list={state.hover}>
-                Hover
-              </button>
-              <button type="button" class:list={state.focus}>
-                Focus
-              </button>
-              <button type="button" class:list={state.base} disabled>
-                Disabled
-              </button>
-            </div>
-          </div>
-        ))}
-      </section>
-
-      <section class="flex min-w-0 flex-col gap-3">
-        <h2 class="text-lg font-semibold">Badges</h2>
-        <div class="flex flex-wrap items-center gap-3">
-          <Badge variant="secondary">Secondary (category)</Badge>
-          <Badge>Default</Badge>
-          <Badge variant="outline">Outline</Badge>
+{mobileFrame ? (
+  <Layout title="Kitchen sink (390px)">
+    <div class="p-4">
+      <PositionsTable positions={[...mixedPositions, ...alertPositions]} />
+    </div>
+  </Layout>
+) : (
+  <Layout title="Kitchen sink">
+    <div class="bg-cosmic min-h-screen p-4">
+      <Card className="mx-auto max-w-5xl min-w-0 p-8">
+        <div>
+          <h1 class="text-gradient-heading text-3xl font-bold">Kitchen sink</h1>
+          <p class="mt-1 text-sm text-muted-foreground">
+            Dev-only view of the dashboard's named states, rendered from fixtures without Supabase.
+          </p>
         </div>
-      </section>
 
-      <section class="flex min-w-0 flex-col gap-3">
-        <h2 class="text-lg font-semibold">State: error (positions could not be loaded)</h2>
-        <PositionsErrorState />
-      </section>
+        <section class="flex min-w-0 flex-col gap-3">
+          <h2 class="text-lg font-semibold">State: only open positions (typical rows)</h2>
+          <PositionsTable positions={typicalPositions} />
+        </section>
 
-      <section class="flex min-w-0 flex-col gap-3">
-        <h2 class="text-lg font-semibold">States not applicable</h2>
-        <p class="text-sm text-muted-foreground">
-          Loading does not apply to this view: the dashboard loads nothing on the client. Its data is read on the server
-          before the page renders, and a failed read shows the error state above.
-        </p>
-      </section>
-    </Card>
-  </div>
-</Layout>
+        <section class="flex min-w-0 flex-col gap-3">
+          <h2 class="text-lg font-semibold">State: only closed positions</h2>
+          <PositionsTable positions={closedPositions} />
+        </section>
+
+        <section class="flex min-w-0 flex-col gap-3">
+          <h2 class="text-lg font-semibold">State: mixed (open and closed, interleaved by the service)</h2>
+          <PositionsTable positions={mixedPositions} />
+        </section>
+
+        <section class="flex min-w-0 flex-col gap-3">
+          <h2 class="text-lg font-semibold">
+            State: alerts present (healthy, failed download, unchecked currency, currency mismatch, sale)
+          </h2>
+          <PositionsTable positions={alertPositions} />
+        </section>
+
+        <section class="flex min-w-0 flex-col gap-3">
+          <h2 class="text-lg font-semibold">State: 390px (mobile cards, mixed and alerts)</h2>
+          <iframe
+            src="/dev/kitchen-sink?frame=mobile"
+            title="Positions list at 390px"
+            width="390"
+            height="900"
+            class="max-w-full rounded-md border bg-background"
+          ></iframe>
+        </section>
+
+        <section class="flex min-w-0 flex-col gap-3">
+          <h2 class="text-lg font-semibold">State: optional fields empty (quantity and broker null)</h2>
+          <PositionsTable positions={positionsWithNulls} />
+        </section>
+
+        <section class="flex min-w-0 flex-col gap-3">
+          <h2 class="text-lg font-semibold">State: long texts (100-character instrument, 60-character category)</h2>
+          <PositionsTable positions={longTextPositions} />
+        </section>
+
+        <section class="flex min-w-0 flex-col gap-3">
+          <h2 class="text-lg font-semibold">State: empty (no positions)</h2>
+          <PositionsEmptyState />
+        </section>
+
+        <section class="flex min-w-0 flex-col gap-3">
+          <h2 class="text-lg font-semibold">Buttons: default, hover, focus, disabled</h2>
+          {buttonStates.map((state) => (
+            <div class="flex flex-col gap-2">
+              <h3 class="text-sm font-medium text-muted-foreground">{state.label}</h3>
+              <div class="flex flex-wrap items-center gap-3">
+                <button type="button" class:list={state.base}>
+                  Default
+                </button>
+                <button type="button" class:list={state.hover}>
+                  Hover
+                </button>
+                <button type="button" class:list={state.focus}>
+                  Focus
+                </button>
+                <button type="button" class:list={state.base} disabled>
+                  Disabled
+                </button>
+              </div>
+            </div>
+          ))}
+        </section>
+
+        <section class="flex min-w-0 flex-col gap-3">
+          <h2 class="text-lg font-semibold">Badges</h2>
+          <div class="flex flex-wrap items-center gap-3">
+            <Badge variant="secondary">Secondary (category)</Badge>
+            <Badge>Default</Badge>
+            <Badge variant="outline">Outline</Badge>
+          </div>
+        </section>
+
+        <section class="flex min-w-0 flex-col gap-3">
+          <h2 class="text-lg font-semibold">State: error (positions could not be loaded)</h2>
+          <PositionsErrorState />
+        </section>
+
+        <section class="flex min-w-0 flex-col gap-3">
+          <h2 class="text-lg font-semibold">States not applicable</h2>
+          <p class="text-sm text-muted-foreground">
+            Loading does not apply to this view: the dashboard loads nothing on the client. Its data is read on the
+            server before the page renders, and a failed read shows the error state above.
+          </p>
+        </section>
+      </Card>
+    </div>
+  </Layout>
+)}
