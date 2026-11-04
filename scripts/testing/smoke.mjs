@@ -305,7 +305,11 @@ const steps = [
       { status: 302, location: "/auth/signin" },
     ],
   ]),
-  ["home renders", () => request(a, "/"), { status: 200 }],
+  [
+    "home redirects anonymous user",
+    () => request(a, "/"),
+    { status: 302, location: "/auth/signin", exactLocation: true },
+  ],
   ["dashboard redirects anonymous user", () => request(a, "/dashboard"), { status: 302, location: "/auth/signin" }],
   [
     "app has no signup endpoint",
@@ -321,7 +325,22 @@ const steps = [
   [
     "signin accepts correct password",
     () => request(a, "/api/auth/signin", { method: "POST", form: { email: a.email, password } }),
-    { status: 302, location: "/", exactLocation: true },
+    { status: 302, location: "/dashboard", exactLocation: true },
+  ],
+  [
+    "home opens dashboard after signin",
+    () => request(a, "/"),
+    { status: 302, location: "/dashboard", exactLocation: true },
+  ],
+  [
+    "signin opens dashboard for signed-in users",
+    () => request(a, "/auth/signin"),
+    { status: 302, location: "/dashboard", exactLocation: true },
+  ],
+  [
+    "dashboard landing renders after signin",
+    () => request(a, "/dashboard"),
+    { status: 200, includes: ["Your positions", "Wallets"], excludes: ["10x Astro Starter"] },
   ],
   ["dashboard renders for signed-in user", () => request(a, "/dashboard"), { status: 200 }],
 
@@ -559,7 +578,7 @@ const steps = [
   [
     "B: signin accepts correct password",
     () => request(b, "/api/auth/signin", { method: "POST", form: { email: b.email, password } }),
-    { status: 302, location: "/", exactLocation: true },
+    { status: 302, location: "/dashboard", exactLocation: true },
   ],
   [
     "B: dashboard does not list A's position",
@@ -735,7 +754,7 @@ const steps = [
   [
     "A: signin accepts correct password again",
     () => request(a, "/api/auth/signin", { method: "POST", form: { email: a.email, password } }),
-    { status: 302, location: "/", exactLocation: true },
+    { status: 302, location: "/dashboard", exactLocation: true },
   ],
   [
     "A: detail page still shows the result",

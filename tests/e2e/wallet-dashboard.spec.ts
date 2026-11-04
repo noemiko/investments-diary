@@ -1,3 +1,4 @@
+import { waitForHydration } from "./helpers/hydration";
 import { test, expect } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
@@ -71,6 +72,7 @@ test("daily wallet dashboard: ranges, exact details, reload, keyboard, mobile an
       ).status(),
     ).toBe(302);
     await page.goto(`/dashboard/wallets/${w.data.id}`);
+    await waitForHydration(page);
     const controls = page.getByRole("group", { name: "History period" });
     await expect(controls.getByRole("button", { name: "3 months", exact: true })).toHaveAttribute(
       "aria-pressed",
@@ -99,6 +101,7 @@ test("daily wallet dashboard: ranges, exact details, reload, keyboard, mobile an
     });
     expect(errors).toEqual([]);
     await page.reload();
+    await waitForHydration(page);
     await expect(page.getByText("Observation data (2)", { exact: true })).toBeVisible();
     const nojs = await browser.newContext({
       javaScriptEnabled: false,
@@ -118,6 +121,7 @@ test("daily wallet dashboard: ranges, exact details, reload, keyboard, mobile an
     expect((await admin.from("wallet_snapshots").delete().eq("wallet_id", w.data.id)).error).toBeNull();
     expect((await admin.from("wallet_snapshots").insert(rows[0])).error).toBeNull();
     await page.reload();
+    await waitForHydration(page);
     await expect(page.getByText("No observations in this period. Choose a longer range.")).toBeVisible();
     await controls.getByRole("button", { name: "All", exact: true }).click();
     const chart = page.getByRole("group", { name: "Daily wallet value chart. Focus or tap a point for details." });
@@ -156,6 +160,7 @@ test("daily wallet dashboard: ranges, exact details, reload, keyboard, mobile an
     });
     expect((await admin.from("wallet_snapshots").insert(dense)).error).toBeNull();
     await page.reload();
+    await waitForHydration(page);
     await controls.getByRole("button", { name: "1 year", exact: true }).click();
     await expect(page.locator('svg circle[role="button"]')).toHaveCount(365);
     await page.addStyleTag({ content: "astro-dev-toolbar { display: none !important; }" });

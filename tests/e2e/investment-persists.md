@@ -3,8 +3,10 @@
 User-selected risk: the investment submitted through the real form disappears
 from the dashboard after navigation or reload. Seed: `tests/e2e/seed.spec.ts`.
 
-1. Prepare a uniquely named wallet/category under the local E2E user. Use the
-   setup project's saved session; keep auth, routing, DB and SSR real.
+1. Create a disposable local user for each variant and authenticate through the
+   real sign-in endpoint. Prepare a uniquely named wallet/category under that user;
+   keep auth, routing, DB and SSR real. Separate users prevent concurrent writes
+   from shifting another variant's paginated dashboard reads.
 2. Seed a unique owner/wallet-bound listing-choice receipt as the provider-metadata
    boundary. POST its actual native Select action to `/dashboard/new`, then display
    that real SSR response in the browser. Keep unfinished price and other draft fields.

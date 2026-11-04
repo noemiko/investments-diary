@@ -22,13 +22,13 @@ export async function investmentData() {
   const options = { auth: { persistSession: false, autoRefreshToken: false } };
   const admin = createClient<ApiDatabase>(url.origin, status.SERVICE_ROLE_KEY, options);
   const author = createClient<ApiDatabase>(url.origin, status.ANON_KEY, options);
-  const email = process.env.E2E_USERNAME;
-  const password = process.env.E2E_PASSWORD;
-  if (!email || !password) throw new Error("Set E2E_USERNAME and E2E_PASSWORD");
+  const email = `investment-${randomUUID()}@example.test`;
+  const password = randomUUID();
+  const created = await admin.auth.admin.createUser({ email, password, email_confirm: true });
+  if (created.error) throw created.error;
+  const owner = created.data.user.id;
   const login = await author.auth.signInWithPassword({ email, password });
   expect(login.error).toBeNull();
-  if (!login.data.user) throw new Error("Missing local test user");
-  const owner = login.data.user.id;
   const token = `E2E-${randomUUID()}`;
   const symbol = `E2E${randomUUID().slice(0, 8).toUpperCase()}`;
   let walletId: string | undefined;
@@ -63,6 +63,7 @@ export async function investmentData() {
       expect(remaining.error).toBeNull();
       expect(remaining.data, `${table}: test residue`).toEqual([]);
     }
+    expect((await admin.auth.admin.deleteUser(owner)).error).toBeNull();
   };
 
   try {
@@ -119,5 +120,5 @@ export async function investmentData() {
     if (result.error) throw result.error;
     return result.data;
   };
-  return { token, symbol, walletId, categoryId, receiptId, targetId, selectedPosition, cleanup };
+  return { email, password, token, symbol, walletId, categoryId, receiptId, targetId, selectedPosition, cleanup };
 }
