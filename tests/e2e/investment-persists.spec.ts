@@ -7,7 +7,7 @@ import { waitForHydration } from "./helpers/hydration";
 // decimal writes, database reads and SSR are real.
 for (const javaScriptEnabled of [true, false]) {
   test.describe(`investment-persists (${javaScriptEnabled ? "hydrated" : "no JavaScript"})`, () => {
-    test.use({ javaScriptEnabled });
+    test.use({ javaScriptEnabled, storageState: { cookies: [], origins: [] } });
     test("selected investment persists without downloading a quote", async ({ page }, info) => {
       const data = await investmentData();
       info.annotations.push({ type: "test-data", description: data.token });
@@ -17,6 +17,13 @@ for (const javaScriptEnabled of [true, false]) {
           downloads.push(request.url());
       });
       try {
+        const login = await page.request.post("/api/auth/signin", {
+          headers: { Origin: String(info.project.use.baseURL) },
+          form: { email: data.email, password: data.password },
+          maxRedirects: 0,
+        });
+        expect(login.status()).toBe(302);
+        expect(login.headers().location).toBe("/dashboard");
         if (javaScriptEnabled) {
           // In-place search: the search response is mocked with the seeded, owner/wallet-bound
           // receipt, so Yahoo is never called; selection is client-side and Save stays a native
