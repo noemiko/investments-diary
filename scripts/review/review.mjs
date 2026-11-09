@@ -19,6 +19,33 @@ export function validateReview(review) {
   return parsed;
 }
 
+// Decides whether a changed file's diff is sent to the reviewer model.
+// `path` is the repo-relative path from the `diff --git a/<path> b/<path>` header.
+// Mirrors ci.yml's docs-only rule (`**/*.md`), so SQL and scripts under context/ stay reviewed.
+// Markdown that steers agents (CLAUDE.md, AGENTS.md, .claude/**) is behaviour, not docs, so it stays in.
+const AGENT_INSTRUCTIONS = /(^|\/)(CLAUDE|AGENTS)\.md$|^\.claude\//;
+const GENERATED = /(^|\/)package-lock\.json$/;
+
+export function isReviewable(path) {
+  if (AGENT_INSTRUCTIONS.test(path)) return true;
+  if (GENERATED.test(path)) return false;
+  return !path.toLowerCase().endsWith(".md");
+}
+
+// Splits a unified PR diff into per-file chunks and drops the ones isReviewable() rejects.
+// Excluded paths are returned so the model can disclose them rather than imply they were reviewed.
+export function filterDiff(diff) {
+  const chunks = diff.split(/^(?=diff --git )/m).filter((chunk) => chunk.startsWith("diff --git "));
+  const kept = [];
+  const skipped = [];
+  for (const chunk of chunks) {
+    const path = chunk.match(/^diff --git a\/(.+?) b\//)?.[1] ?? "";
+    if (isReviewable(path)) kept.push(chunk);
+    else skipped.push(path);
+  }
+  return { diff: kept.join(""), skipped };
+}
+
 export function gateReview(review, ciPassed) {
   return ciPassed && review.verdict === "pass" && !criteria.some((key) => review[key].status === "NOT VERIFIED");
 }
@@ -90,9 +117,13 @@ export async function main(resultPath = "review-result.json") {
       ["ci", "Decimal transport (local Supabase)"].every((name) =>
         jobs.some((job) => job.name === name && job.conclusion === "success"),
       );
-    const diff = await api(`pulls/${pr.number}`, "GET", undefined, "application/vnd.github.diff");
-    if (!diff.trim() || Buffer.byteLength(diff) > 250_000)
-      throw new Error("Empty or oversized diff; manual review required (250 KB limit)");
+    const fullDiff = await api(`pulls/${pr.number}`, "GET", undefined, "application/vnd.github.diff");
+    const { diff, skipped } = filterDiff(fullDiff);
+    const size = Buffer.byteLength(diff);
+    if (!diff.trim() || size > 250_000)
+      throw new Error(
+        `Empty or oversized reviewable diff (${Math.round(size / 1000)} KB after excluding ${skipped.length} non-code files; 250 KB limit); manual review required`,
+      );
     const review = await requestReview({
       title: pr.title,
       requirements: pr.body,
@@ -101,7 +132,10 @@ export async function main(resultPath = "review-result.json") {
       jobs: jobs.map(({ name, conclusion }) => ({ name, conclusion })),
       diff,
       contextLimitations:
-        "Only PR diff and CI conclusions supplied; disclose missing callers, unchanged code, or requirements where needed. Never infer verification from absent evidence.",
+        "Only PR diff and CI conclusions supplied; disclose missing callers, unchanged code, or requirements where needed. Never infer verification from absent evidence." +
+        (skipped.length
+          ? ` These changed files were excluded from the diff as non-code and were NOT reviewed: ${skipped.join(", ")}.`
+          : ""),
     });
     const passed = gateReview(review, ciPassed);
     await writeFile(resultPath, JSON.stringify({ head: pr.head.sha, ciPassed, passed, review }, null, 2));

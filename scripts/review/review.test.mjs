@@ -188,3 +188,26 @@ test("provider errors, refusals and truncation cannot produce a passing review",
   status = 401;
   await assert.rejects(requestReview({}, env), (error) => error.statusCode === 401);
 });
+
+test("filterDiff drops docs and lockfiles but keeps code, context SQL and agent instructions", async () => {
+  const { filterDiff } = await import("./review.mjs");
+  const chunk = (path) => `diff --git a/${path} b/${path}\n--- a/${path}\n+++ b/${path}\n@@ -0,0 +1 @@\n+x\n`;
+  const paths = [
+    "src/lib/result.ts",
+    "context/domain/01-domain-distillation.md",
+    "context/deployment/recovery.sql",
+    "README.md",
+    "package-lock.json",
+    "CLAUDE.md",
+    ".claude/skills/verify/SKILL.md",
+  ];
+  const { diff, skipped } = filterDiff(paths.map(chunk).join(""));
+  assert.deepEqual(skipped, ["context/domain/01-domain-distillation.md", "README.md", "package-lock.json"]);
+  for (const kept of [
+    "src/lib/result.ts",
+    "context/deployment/recovery.sql",
+    "CLAUDE.md",
+    ".claude/skills/verify/SKILL.md",
+  ])
+    assert.ok(diff.includes(`diff --git a/${kept} b/${kept}`), kept);
+});
