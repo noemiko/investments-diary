@@ -27,6 +27,8 @@ jobs:
       - run: npm ci
       - run: npx astro sync
       - run: npm test
+      - run: npm ci --prefix scripts/review --ignore-scripts
+      - run: node --test scripts/review/review.test.mjs
       - run: npm run lint
       - run: npx astro check
       - run: npm run build
