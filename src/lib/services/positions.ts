@@ -76,7 +76,7 @@ export async function listPositions(client: Client, walletId?: string): Promise<
     let query = client
       .from("position_effective_prices")
       .select(
-        `id, instrument, buy_date, buy_price::text, quantity::text, broker_label, current_price::text, price_date, sell_price::text, sell_date, wallet_id, wallets!positions_wallet_fkey(name), reason_categories(name),${EFFECTIVE_PRICE_COLUMNS}`,
+        `id, instrument, buy_date, buy_price::text, opening_commission::text, closing_commission::text, quantity::text, broker_label, current_price::text, price_date, sell_price::text, sell_date, wallet_id, wallets!positions_wallet_fkey(name), reason_categories(name),${EFFECTIVE_PRICE_COLUMNS}`,
       )
       .is("deleted_at", null)
       .order("buy_date", { ascending: false })
@@ -101,7 +101,7 @@ export async function listConfrontationPositions(client: Client): Promise<Confro
     client
       .from("position_effective_prices")
       .select(
-        `id, category_id, instrument, buy_date, buy_price::text, quantity::text, current_price::text, price_date, sell_price::text, sell_date, reason_text,${EFFECTIVE_PRICE_COLUMNS}`,
+        `id, category_id, instrument, buy_date, buy_price::text, opening_commission::text, closing_commission::text, quantity::text, current_price::text, price_date, sell_price::text, sell_date, reason_text,${EFFECTIVE_PRICE_COLUMNS}`,
       )
       .is("deleted_at", null)
       .order("buy_date", { ascending: false })
@@ -122,7 +122,7 @@ export async function getPosition(client: Client, id: string): Promise<PositionD
   const { data, error } = await client
     .from("position_effective_prices")
     .select(
-      `id, instrument, buy_date, buy_price::text, quantity::text, broker_label, current_price::text, price_date, sell_price::text, sell_date, reason_text, wallet_id, wallets!positions_wallet_fkey(name), reason_categories(name),${EFFECTIVE_PRICE_COLUMNS}`,
+      `id, instrument, buy_date, buy_price::text, opening_commission::text, closing_commission::text, quantity::text, broker_label, current_price::text, price_date, sell_price::text, sell_date, reason_text, wallet_id, wallets!positions_wallet_fkey(name), reason_categories(name),${EFFECTIVE_PRICE_COLUMNS}`,
     )
     .eq("id", id)
     .is("deleted_at", null)
@@ -284,6 +284,7 @@ export async function createPosition(
       market_selection_receipt_id: selection.receiptId,
       buy_date: input.buy_date,
       buy_price: input.buy_price,
+      opening_commission: input.opening_commission,
       quantity: input.quantity,
       broker_label: input.broker_label,
       reason_text: input.reason_text,
@@ -305,14 +306,21 @@ export async function closePosition(
   input: ClosePositionInput,
 ): Promise<ClosePositionResult> {
   try {
-    const { data, error } = await client
+    let query = client
       .from("positions")
-      .update({ sell_price: input.sell_price, sell_date: input.sell_date })
+      .update({
+        sell_price: input.sell_price,
+        sell_date: input.sell_date,
+        closing_commission: input.closing_commission,
+        ...(input.quantity !== undefined ? { quantity: input.quantity } : {}),
+      })
       .eq("id", id)
       .is("deleted_at", null)
       .is("sell_price", null)
       .is("sell_date", null)
       .select("id");
+    if (input.quantity !== undefined) query = query.is("quantity", null);
+    const { data, error } = await query;
     if (error) {
       if (VALIDATION_CODES.has(error.code)) return { ok: false, error: "validation" };
       logUnexpected("closePosition", error);

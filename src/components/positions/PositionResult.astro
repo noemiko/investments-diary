@@ -4,8 +4,7 @@ import { describeResult, NO_PRICE, type PositionResultInput } from "@/lib/result
 
 type Props = PositionResultInput;
 
-const { buy_price, quantity, current_price, price_date, sell_price, sell_date } = Astro.props;
-const result = describeResult({ buy_price, quantity, current_price, price_date, sell_price, sell_date });
+const result = describeResult(Astro.props);
 
 // Percent only, by the author's decision (2026-10-15); `positionResult().amount` is computed but not shown.
 // The icon is a neutral, decorative direction cue in the foreground colour: the sign in the text still
@@ -14,7 +13,7 @@ const Icon = result ? { up: TrendingUp, down: TrendingDown, flat: Minus }[result
 ---
 
 {result && Icon ? (
-  <span class="tabular-nums" data-result-direction={result.direction}>
+  <span class="tabular-nums" title="Return after paid commissions" data-result-direction={result.direction}>
     <Icon aria-hidden="true" className="inline size-[1.1em] align-[-0.2em] text-foreground" />
     <span class="text-[1.05em] font-semibold">{result.percent}</span>
     <span class="text-muted-foreground"> {result.asOf}</span>

@@ -1,19 +1,26 @@
-import { decimalUnits, exactAmount, type ExactAmount, type ExactRatio } from "@/lib/decimal";
+import { INPUT_FACTOR, decimalUnits, exactAmount, type ExactAmount, type ExactRatio } from "@/lib/decimal";
 import { formatDate, formatPercent } from "@/lib/format";
 import type { PositionListItem } from "@/types";
 
 /** The fields a position's result is computed from. */
 export type PositionResultInput = Pick<
   PositionListItem,
-  "buy_price" | "quantity" | "current_price" | "price_date" | "sell_price" | "sell_date"
+  | "buy_price"
+  | "quantity"
+  | "current_price"
+  | "price_date"
+  | "sell_price"
+  | "sell_date"
+  | "opening_commission"
+  | "closing_commission"
 >;
 
-/** A final sale result or an open position's latest manually entered result. */
+/** A final sale result or an open position's latest selected price result. */
 export interface PositionResultValue {
   kind: "open" | "closed";
-  /** `(result_price − buy_price) / buy_price × 100`. */
+  /** Net profit / (purchase value + opening commission) × 100. */
   percent: ExactRatio;
-  /** `(result_price − buy_price) × quantity`, or `null` when the position has no quantity. */
+  /** Price change × quantity less paid commissions, or null without quantity. */
   amount: ExactAmount | null;
   /** The sale date when closed, otherwise the quote date (`YYYY-MM-DD`). */
   priceDate: string;
@@ -33,10 +40,19 @@ export function positionResult(input: PositionResultInput): PositionResultValue 
   }
   const buy = decimalUnits(input.buy_price);
   const difference = decimalUnits(price) - buy;
+  const opening = decimalUnits(input.opening_commission);
+  const paidFees = (opening + (closed ? decimalUnits(input.closing_commission) : 0n)) * INPUT_FACTOR;
+  const quantity = input.quantity === null ? null : decimalUnits(input.quantity);
+  const amount = quantity === null ? null : exactAmount(difference * quantity - paidFees);
+  if (paidFees !== 0n && (amount === null || quantity === null)) throw new Error("Commission requires quantity");
+  const percent =
+    paidFees !== 0n && amount !== null && quantity !== null
+      ? { numerator: amount.units * 100n, denominator: buy * quantity + opening * INPUT_FACTOR }
+      : { numerator: difference * 100n, denominator: buy };
   return {
     kind: closed ? "closed" : "open",
-    percent: { numerator: difference * 100n, denominator: buy },
-    amount: input.quantity === null ? null : exactAmount(difference * decimalUnits(input.quantity)),
+    percent,
+    amount,
     priceDate: date,
   };
 }
@@ -71,7 +87,7 @@ export function describeResult(input: PositionResultInput): ResultDescription | 
 }
 
 /**
- * Which way the result icon points. `exact` is the unrounded ratio (its denominator, the buy price, is
+ * Which way the result icon points. `exact` is the unrounded ratio (its denominator, the positive purchase cost, is
  * always positive, so `exact.numerator` alone carries the sign); `shown` is the text beside the icon,
  * e.g. `"+20.00%"`, `"-0.01%"` or `"0.00%"`.
  */

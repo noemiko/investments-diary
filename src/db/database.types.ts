@@ -274,6 +274,7 @@ export type Database = {
           buy_date: string
           buy_price: number
           category_id: string
+          closing_commission: number
           created_at: string
           current_price: number | null
           deleted_at: string | null
@@ -284,6 +285,7 @@ export type Database = {
           market_listing_id: string | null
           market_selection_receipt_id: string | null
           market_target_id: string
+          opening_commission: number
           price_date: string | null
           quantity: number | null
           reason_text: string | null
@@ -297,6 +299,7 @@ export type Database = {
           buy_date: string
           buy_price: number
           category_id: string
+          closing_commission?: number
           created_at?: string
           current_price?: number | null
           deleted_at?: string | null
@@ -307,6 +310,7 @@ export type Database = {
           market_listing_id?: string | null
           market_selection_receipt_id?: string | null
           market_target_id: string
+          opening_commission?: number
           price_date?: string | null
           quantity?: number | null
           reason_text?: string | null
@@ -320,6 +324,7 @@ export type Database = {
           buy_date?: string
           buy_price?: number
           category_id?: string
+          closing_commission?: number
           created_at?: string
           current_price?: number | null
           deleted_at?: string | null
@@ -330,6 +335,7 @@ export type Database = {
           market_listing_id?: string | null
           market_selection_receipt_id?: string | null
           market_target_id?: string
+          opening_commission?: number
           price_date?: string | null
           quantity?: number | null
           reason_text?: string | null
@@ -503,6 +509,7 @@ export type Database = {
           buy_date: string | null
           buy_price: number | null
           category_id: string | null
+          closing_commission: number | null
           cooldown_until: string | null
           created_at: string | null
           current_price: number | null
@@ -519,6 +526,7 @@ export type Database = {
           market_listing_id: string | null
           market_state: string | null
           market_target_id: string | null
+          opening_commission: number | null
           pending_cooldown_until: string | null
           pending_currency: string | null
           pending_exchange: string | null

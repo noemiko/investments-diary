@@ -68,7 +68,11 @@ function EarlierPosition({ position }: { position: ConfrontationPosition }) {
         <p className="text-muted-foreground text-sm italic">No reason written</p>
       )}
       {/* No gain/loss colour: the sign carries the direction, and the panel gives no verdict. */}
-      <p className="text-sm tabular-nums" data-result-direction={result?.direction}>
+      <p
+        className="text-sm tabular-nums"
+        title="Return after paid commissions"
+        data-result-direction={result?.direction}
+      >
         {result && DirectionIcon ? (
           <>
             <DirectionIcon aria-hidden="true" className="mr-1 inline size-[1.1em] align-[-0.2em]" />

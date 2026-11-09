@@ -46,6 +46,8 @@ const headingId = `${kind}-positions-${positions[0]?.id ?? "empty"}`;
           {closed && <Badge variant="secondary">Closed</Badge>}
         </div>
         <PositionResult
+          opening_commission={position.opening_commission}
+          closing_commission={position.closing_commission}
           buy_price={position.buy_price}
           quantity={position.quantity}
           current_price={position.current_price}
@@ -121,6 +123,8 @@ const headingId = `${kind}-positions-${positions[0]?.id ?? "empty"}`;
           </TableCell>
           <TableCell>
             <PositionResult
+              opening_commission={position.opening_commission}
+              closing_commission={position.closing_commission}
               buy_price={position.buy_price}
               quantity={position.quantity}
               current_price={position.current_price}

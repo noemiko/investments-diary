@@ -1,8 +1,13 @@
 import type { Tables } from "@/db/database.types";
 
 type CategoryRow = Tables<"reason_categories">;
-type PositionRow = Omit<Tables<"positions">, "buy_price" | "quantity" | "current_price" | "sell_price"> & {
+type PositionRow = Omit<
+  Tables<"positions">,
+  "buy_price" | "quantity" | "current_price" | "sell_price" | "opening_commission" | "closing_commission"
+> & {
   buy_price: string;
+  opening_commission: string;
+  closing_commission: string;
   quantity: string | null;
   current_price: string | null;
   sell_price: string | null;
@@ -18,6 +23,8 @@ export type PositionListItem = Pick<
   | "id"
   | "instrument"
   | "buy_date"
+  | "opening_commission"
+  | "closing_commission"
   | "buy_price"
   | "quantity"
   | "broker_label"
@@ -42,6 +49,8 @@ export type ConfrontationPosition = Pick<
   | "category_id"
   | "instrument"
   | "buy_date"
+  | "opening_commission"
+  | "closing_commission"
   | "buy_price"
   | "quantity"
   | "current_price"
@@ -60,7 +69,14 @@ export type DeletedPositionItem = Pick<PositionRow, "id" | "instrument" | "buy_d
 /** The entry form after parsing: exactly one of `category_id` / `new_category_name` is set. */
 export type NewPositionInput = Pick<
   PositionRow,
-  "instrument" | "buy_date" | "buy_price" | "quantity" | "broker_label" | "reason_text" | "wallet_id"
+  | "instrument"
+  | "buy_date"
+  | "buy_price"
+  | "quantity"
+  | "broker_label"
+  | "reason_text"
+  | "wallet_id"
+  | "opening_commission"
 > & { listing_receipt_id: string } & (
     { category_id: string; new_category_name: null } | { category_id: null; new_category_name: string }
   );
@@ -70,6 +86,7 @@ export const POSITION_FORM_FIELDS = [
   "listing_receipt_id",
   "listing_query",
   "buy_price",
+  "opening_commission",
   "buy_date",
   "wallet_id",
   "category_id",
@@ -114,7 +131,15 @@ export type Wallet = Pick<WalletRow, "id" | "name" | "starting_value"> & {
 /** The fields of a position a wallet's value is computed from, grouped by `wallet_id`. */
 export type WalletPosition = Pick<
   PositionRow,
-  "wallet_id" | "buy_price" | "quantity" | "current_price" | "price_date" | "sell_price" | "sell_date"
+  | "wallet_id"
+  | "buy_price"
+  | "quantity"
+  | "current_price"
+  | "price_date"
+  | "sell_price"
+  | "sell_date"
+  | "opening_commission"
+  | "closing_commission"
 >;
 
 /** The wallet form after parsing: a name and a starting value of 0 or more. */
@@ -136,9 +161,18 @@ export type WalletFormErrors = Partial<Record<WalletFormField | "form", string>>
 export interface ClosePositionInput {
   sell_price: string;
   sell_date: string;
+  closing_commission: string;
+  /** Only supplied to complete a previously missing quantity. */
+  quantity?: string;
 }
 
-export const CLOSE_POSITION_FORM_FIELDS = ["sell_price", "sell_date", "acknowledgement"] as const;
+export const CLOSE_POSITION_FORM_FIELDS = [
+  "sell_price",
+  "sell_date",
+  "closing_commission",
+  "quantity",
+  "acknowledgement",
+] as const;
 export type ClosePositionFormField = (typeof CLOSE_POSITION_FORM_FIELDS)[number];
 export type ClosePositionFormValues = Record<ClosePositionFormField, string>;
 export type ClosePositionFormErrors = Partial<Record<ClosePositionFormField | "form", string>>;

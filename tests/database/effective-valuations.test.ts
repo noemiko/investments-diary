@@ -93,8 +93,10 @@ it("uses identical cached effective values on all reads, preserving zero sales, 
           user_id: owner,
           wallet_id: source,
           category_id: category.data.id,
+          closing_commission: "0",
           instrument: "AAPL",
           market_selection_receipt_id: await selectionReceipt(author, owner, source, "AAPL"),
+          opening_commission: "0",
           buy_price: "10",
           buy_date: "2026-01-01",
           quantity: "2",
@@ -105,11 +107,13 @@ it("uses identical cached effective values on all reads, preserving zero sales, 
           category_id: category.data.id,
           instrument: "ZERO",
           market_selection_receipt_id: await selectionReceipt(author, owner, source, "ZERO"),
+          opening_commission: "0",
           buy_price: "10",
           buy_date: "2026-01-01",
           quantity: "2",
           current_price: "99",
           price_date: "2026-01-02",
+          closing_commission: "0",
           sell_price: "0",
           sell_date: "2026-01-03",
         },
@@ -162,7 +166,9 @@ it("uses identical cached effective values on all reads, preserving zero sales, 
     if (after.error) throw after.error;
     expect(after.data).toEqual({ ...before.data, wallet_id: target });
     // Ordinary owner writes retain their existing permissions after wallet_id becomes RPC-only.
-    expect(await closePosition(author, open, { sell_price: "16", sell_date: "2026-01-06" })).toEqual({ ok: true });
+    expect(
+      await closePosition(author, open, { closing_commission: "0", sell_price: "16", sell_date: "2026-01-06" }),
+    ).toEqual({ ok: true });
     expect(await deletePosition(author, open)).toEqual({ ok: true });
     expect(await restorePosition(author, open)).toEqual({ ok: true });
   } finally {

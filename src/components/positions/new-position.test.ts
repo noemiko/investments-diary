@@ -49,6 +49,7 @@ const fields = {
   listing_query: "Apple",
   listing_receipt_id: receiptId,
   instrument: "UNTRUSTED LABEL",
+  opening_commission: "0",
   buy_price: "50,12345678",
   buy_date: "2026-01-01",
   category_id: id,
@@ -99,7 +100,13 @@ it("opening the form never searches, reads a selection or downloads a quote", as
 });
 it("native search bypasses buy validation and retains every other raw field", async () => {
   const html = await (
-    await render({ ...fields, action: "search_listing", buy_price: "unfinished", new_category_name: "Draft category" })
+    await render({
+      ...fields,
+      action: "search_listing",
+      opening_commission: "0",
+      buy_price: "unfinished",
+      new_category_name: "Draft category",
+    })
   ).text();
   expect(searchMarketSelections).toHaveBeenCalledExactlyOnceWith({}, id, id, "Apple", expect.anything());
   expect(html).toContain('name="select_listing"');
@@ -116,7 +123,9 @@ it("native search bypasses buy validation and retains every other raw field", as
   expect(createYahooMarketData).not.toHaveBeenCalled();
 });
 it("native selection reads the server receipt without searching, quoting or validating unfinished buy fields", async () => {
-  const html = await (await render({ ...fields, select_listing: receiptId, buy_price: "unfinished" })).text();
+  const html = await (
+    await render({ ...fields, select_listing: receiptId, opening_commission: "0", buy_price: "unfinished" })
+  ).text();
   expect(readMarketSelection).toHaveBeenCalledExactlyOnceWith({}, id, id, receiptId);
   expect(plain(html)).toContain("Selected: Apple Inc. · AAPL");
   expect(html).toContain('name="instrument" value="AAPL"');
@@ -138,6 +147,7 @@ it("saving uses the owner-bound canonical symbol and receipt while leaving quote
     expect.objectContaining({
       instrument: "AAPL",
       listing_receipt_id: receiptId,
+      opening_commission: "0",
       buy_price: "50.12345678",
       quantity: "2.25",
       reason_text: fields.reason_text,
@@ -302,4 +312,32 @@ describe("in-place search endpoint (/dashboard/new/search)", () => {
     expect(await response.text()).not.toContain("PRIVATE_DATABASE_DETAIL");
     expect(reportUnexpected).toHaveBeenCalledOnce();
   });
+});
+
+it.each(["search_listing", "select_listing", "save"])(
+  "preserves the opening commission during native %s round trips",
+  async (action) => {
+    vi.mocked(createPosition).mockResolvedValue({ ok: false, error: "unexpected" });
+    const body = {
+      ...fields,
+      action,
+      opening_commission: "5,00000001",
+      ...(action === "select_listing" ? { select_listing: receiptId } : {}),
+    };
+    const html = await (await render(body)).text();
+    expect(html).toMatch(/name="opening_commission"[^>]*value="5,00000001"/);
+    expect(plain(html)).toContain("Opening commission (USD)");
+    if (action === "save")
+      expect(createPosition).toHaveBeenCalledWith(
+        {},
+        id,
+        expect.objectContaining({ opening_commission: "5.00000001" }),
+      );
+  },
+);
+it("blocks a fee-bearing native creation without quantity and preserves the raw fee", async () => {
+  const html = await (await render({ ...fields, action: "save", opening_commission: "5", quantity: "" })).text();
+  expect(plain(html)).toContain("Enter quantity to record a commission");
+  expect(html).toMatch(/name="opening_commission"[^>]*value="5"/);
+  expect(createPosition).not.toHaveBeenCalled();
 });

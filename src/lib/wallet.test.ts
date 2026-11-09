@@ -4,8 +4,10 @@ import { formatAmount, formatPercent, formatSignedAmount } from "@/lib/format";
 import type { WalletPosition } from "@/types";
 
 const priced = (buy_price: string, current_price: string, quantity: string | null, price_date: string) => ({
+  closing_commission: "0",
   sell_price: null,
   sell_date: null,
+  opening_commission: "0",
   buy_price,
   current_price,
   quantity,
@@ -84,7 +86,16 @@ describe("walletValue", () => {
     expect(
       displayed(
         walletValue({ starting_value: "500" }, [
-          { sell_price: null, sell_date: null, buy_price: "50", quantity: "10", current_price: null, price_date: null },
+          {
+            closing_commission: "0",
+            sell_price: null,
+            sell_date: null,
+            opening_commission: "0",
+            buy_price: "50",
+            quantity: "10",
+            current_price: null,
+            price_date: null,
+          },
         ]),
       ),
     ).toMatchObject({ value: "500.00", change: "0.00", counted: 0, notCounted: 1, asOf: null });
@@ -141,15 +152,17 @@ describe("groupByWallet", () => {
   it("groups by id while keeping input order", () => {
     const one: WalletPosition = {
       wallet_id: "w1",
+      closing_commission: "0",
       sell_price: null,
       sell_date: null,
+      opening_commission: "0",
       buy_price: "1",
       quantity: "1",
       current_price: null,
       price_date: null,
     };
-    const two: WalletPosition = { ...one, wallet_id: "w2", buy_price: "2" };
-    const three: WalletPosition = { ...one, buy_price: "3" };
+    const two: WalletPosition = { ...one, wallet_id: "w2", opening_commission: "0", buy_price: "2" };
+    const three: WalletPosition = { ...one, opening_commission: "0", buy_price: "3" };
     const groups = groupByWallet([one, two, three]);
     expect(groups.get("w1")).toEqual([one, three]);
     expect(groups.get("w2")).toEqual([two]);
@@ -159,10 +172,12 @@ describe("groupByWallet", () => {
 
 describe("realised wallet results", () => {
   const sold = {
+    opening_commission: "0",
     buy_price: "50",
     quantity: "10",
     current_price: "999",
     price_date: "2026-10-20",
+    closing_commission: "0",
     sell_price: "60",
     sell_date: "2026-01-01",
   };
@@ -202,7 +217,7 @@ describe("realised wallet results", () => {
     expect(describeWalletResults(result)).toBe("Realised results only");
   });
   it("includes total losses and does not invent empty freshness or a zero-start percentage", () => {
-    const result = walletValue({ starting_value: "0" }, [{ ...sold, sell_price: "0" }]);
+    const result = walletValue({ starting_value: "0" }, [{ ...sold, closing_commission: "0", sell_price: "0" }]);
     expect(displayed(result)).toMatchObject({
       value: "-500.00",
       change: "-500.00",
@@ -216,9 +231,41 @@ describe("realised wallet results", () => {
 
 it("keeps realised and open breakdown exact", () => {
   const value = walletValue({ starting_value: "1000" }, [
-    { ...priced("50", "999", "10", "2026-10-01"), sell_price: "60", sell_date: "2026-02-01" },
+    { ...priced("50", "999", "10", "2026-10-01"), closing_commission: "0", sell_price: "60", sell_date: "2026-02-01" },
     priced("10", "12", "20", "2026-10-01"),
   ]);
   expect(value.realisedChange).toEqual({ units: 1000000000000000000n, scale: 16 });
   expect(value.openChange).toEqual({ units: 400000000000000000n, scale: 16 });
+});
+
+it("deducts paid opening fees before a quote without inventing valuation coverage", () => {
+  const holding = {
+    ...priced("100", "110", "10", "2026-10-01"),
+    opening_commission: "5",
+    current_price: null,
+    price_date: null,
+  };
+  const unpriced = walletValue({ starting_value: "1000" }, [holding]);
+  expect(formatAmount(unpriced.value)).toBe("995.00");
+  expect(formatSignedAmount(unpriced.openChange)).toBe("-5.00");
+  expect(unpriced).toMatchObject({ counted: 0, openCount: 0, notCounted: 1, asOf: null });
+  expect(describeWalletResults(unpriced)).toContain("commissions included");
+  const quoted = walletValue({ starting_value: "1000" }, [
+    { ...holding, current_price: "110", price_date: "2026-10-01" },
+  ]);
+  expect(formatAmount(quoted.value)).toBe("1,095.00");
+  expect(quoted).toMatchObject({ counted: 1, openCount: 1, notCounted: 0 });
+  expect(formatAmount(walletValue({ starting_value: "1000" }, []).value)).toBe("1,000.00");
+});
+
+it("does not describe a wallet with unpriced paid fees as realised results only", () => {
+  const result = walletValue({ starting_value: "1000" }, [
+    { ...priced("100", "110", "10", "2026-10-01"), sell_price: "110", sell_date: "2026-10-01" },
+    { ...priced("100", "110", "10", "2026-10-01"), opening_commission: "5", current_price: null, price_date: null },
+  ]);
+  expect(result).toMatchObject({ realisedCount: 1, openCount: 0, notCounted: 1, asOf: null });
+  expect(formatAmount(result.value)).toBe("1,095.00");
+  expect(describeWalletResults(result)).toBe(
+    "Realised results and paid opening commissions · Open position valuations incomplete",
+  );
 });

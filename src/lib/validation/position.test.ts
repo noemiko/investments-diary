@@ -7,6 +7,7 @@ const valid: PositionFormValues = {
   instrument: "Exact",
   listing_receipt_id: "00000000-0000-4000-8000-000000000003",
   listing_query: "Exact",
+  opening_commission: "0",
   buy_price: "50",
   buy_date: "2026-10-01",
   quantity: "",
@@ -51,10 +52,15 @@ describe("required stock selection", () => {
 
 describe("numeric form contracts", () => {
   it("preserves the maximum and optional quantity", () => {
-    const result = parsePositionForm({ ...valid, buy_price: "999999999999,99999999", quantity: "0.00000001" });
+    const result = parsePositionForm({
+      ...valid,
+      opening_commission: "0",
+      buy_price: "999999999999,99999999",
+      quantity: "0.00000001",
+    });
     expect(result).toMatchObject({
       success: true,
-      data: { buy_price: "999999999999.99999999", quantity: "0.00000001" },
+      data: { opening_commission: "0", buy_price: "999999999999.99999999", quantity: "0.00000001" },
     });
     expect(parsePositionForm(valid)).toMatchObject({ success: true, data: { quantity: null } });
   });
@@ -96,5 +102,30 @@ describe("calendar and price date contracts", () => {
   });
   it.each(["2026-09-30", "2026-10-22", "2026-02-30", ""])("rejects price date %j", (price_date) => {
     expect(parsePriceForm({ current_price: "1", price_date }, valid.buy_date).success).toBe(false);
+  });
+});
+
+describe("opening commissions", () => {
+  it.each(["", "0", "0.00000000"])("treats %j as fee-free", (opening_commission) => {
+    expect(parsePositionForm({ ...valid, opening_commission })).toMatchObject({
+      success: true,
+      data: { opening_commission: "0", quantity: null },
+    });
+  });
+  it("requires quantity only for a positive commission", () => {
+    expect(parsePositionForm({ ...valid, opening_commission: "5" })).toMatchObject({
+      success: false,
+      errors: { quantity: "Enter quantity to record a commission" },
+    });
+    expect(parsePositionForm({ ...valid, opening_commission: "5,00000001", quantity: "0,5" })).toMatchObject({
+      success: true,
+      data: { opening_commission: "5.00000001", quantity: "0.5" },
+    });
+  });
+  it.each(["-1", "1.000000001", "1000000000000", "NaN", "1 2"])("rejects fee %j", (opening_commission) => {
+    expect(parsePositionForm({ ...valid, opening_commission, quantity: "1" })).toMatchObject({
+      success: false,
+      errors: { opening_commission: "Enter a number like 50.25" },
+    });
   });
 });

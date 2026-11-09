@@ -7,7 +7,7 @@ import type { Wallet, WalletPosition } from "@/types";
 export interface WalletValueResult {
   /** `starting_value + change`. */
   value: ExactAmount;
-  /** Σ `amount` of the counted positions, i.e. Σ (result_price − buy_price) × quantity. */
+  /** Net position results, including paid opening fees on unpriced holdings. */
   change: ExactAmount;
   realisedChange: ExactAmount;
   openChange: ExactAmount;
@@ -45,6 +45,10 @@ export function walletValue(
     const result = positionResult(position);
 
     if (result?.amount == null) {
+      // A paid opening fee is known even when the price-dependent result is unavailable.
+      const fee = decimalUnits(position.opening_commission) * INPUT_FACTOR;
+      change -= fee;
+      openChange -= fee;
       notCounted++;
       continue;
     }
@@ -89,8 +93,14 @@ export function groupByWallet(positions: readonly WalletPosition[]): Map<string,
 
 /** Shared wording for summary and detail so realised sales never imply quote freshness. */
 export function describeWalletResults(result: WalletValueResult): string {
-  if (result.counted === 0) return "No counted results";
-  if (result.openCount === 0) return "Realised results only";
+  if (result.counted === 0)
+    return result.openChange.units < 0n
+      ? "Paid opening commissions included · Position valuations incomplete"
+      : "No counted results";
+  if (result.openCount === 0)
+    return result.openChange.units < 0n
+      ? "Realised results and paid opening commissions · Open position valuations incomplete"
+      : "Realised results only";
   const freshness = result.asOf === null ? "" : `Open prices as of ${formatDate(result.asOf)}`;
   return result.realisedCount > 0 ? `${freshness} · Includes realised gains/losses` : freshness;
 }

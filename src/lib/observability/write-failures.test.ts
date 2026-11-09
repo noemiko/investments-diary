@@ -37,6 +37,7 @@ const input = {
   new_category_name: null,
   instrument: "Private",
   buy_date: "2026-01-01",
+  opening_commission: "0",
   buy_price: "1",
   quantity: null,
   broker_label: null,
@@ -65,7 +66,8 @@ const writes = [
   },
   {
     operation: "closePosition",
-    run: (c: ReturnType<typeof client>) => closePosition(c, "id", { sell_price: "0", sell_date: "2026-01-02" }),
+    run: (c: ReturnType<typeof client>) =>
+      closePosition(c, "id", { closing_commission: "0", sell_price: "0", sell_date: "2026-01-02" }),
   },
 ];
 it.each(writes)("$operation reports unexpected returned errors once", async ({ operation, run }) => {

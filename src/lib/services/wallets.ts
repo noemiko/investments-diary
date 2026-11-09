@@ -68,7 +68,7 @@ export async function listWalletPositions(client: Client): Promise<WalletPositio
     client
       .from("position_effective_prices")
       .select(
-        `wallet_id, buy_price::text, quantity::text, current_price::text, price_date, sell_price::text, sell_date,${EFFECTIVE_PRICE_COLUMNS}`,
+        `wallet_id, buy_price::text, opening_commission::text, closing_commission::text, quantity::text, current_price::text, price_date, sell_price::text, sell_date,${EFFECTIVE_PRICE_COLUMNS}`,
       )
       .is("deleted_at", null)
       .order("id", { ascending: true })

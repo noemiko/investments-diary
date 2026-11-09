@@ -52,8 +52,10 @@ const wallets: Wallet[] = [
 const gain: PositionDetail = {
   id: "20000000-0000-4000-8000-000000000001",
   instrument: "Gain",
+  closing_commission: "0",
   sell_price: null,
   sell_date: null,
+  opening_commission: "0",
   buy_price: "50",
   current_price: "60",
   quantity: "10",
@@ -69,6 +71,7 @@ const loss: PositionDetail = {
   ...gain,
   id: "20000000-0000-4000-8000-000000000002",
   instrument: "Loss",
+  opening_commission: "0",
   buy_price: "100",
   current_price: "80",
   quantity: "2",
@@ -78,6 +81,7 @@ const percentOnly: PositionDetail = {
   ...gain,
   id: "20000000-0000-4000-8000-000000000003",
   instrument: "Percent only",
+  opening_commission: "0",
   buy_price: "10",
   current_price: "15",
   quantity: null,
@@ -95,6 +99,7 @@ const other: PositionDetail = {
   ...gain,
   id: "20000000-0000-4000-8000-000000000005",
   instrument: "Other loss",
+  opening_commission: "0",
   buy_price: "10",
   current_price: "8",
   quantity: "5",
@@ -198,6 +203,7 @@ describe("rendered position surfaces", () => {
   it("keeps all eight decimal places in rendered detail prices and quantities", async () => {
     vi.mocked(getPosition).mockResolvedValue({
       ...gain,
+      opening_commission: "0",
       buy_price: "123456789012.12345678",
       current_price: "123456789012.12345678",
       quantity: "0.00000001",
@@ -257,7 +263,7 @@ describe("dashboard wallet summary", () => {
     const html = await dashboard();
     expect(html.match(/data-wallet-summary="/g)).toHaveLength(3);
     expect(text(walletCard(html, wallets[0].id))).toBe(
-      "Long term USD 1,060.00 +60.00 (+6.00%) Open +60.00 Realised 0.00 Open prices as of Oct 1, 2026 2 not counted (no quantity or no current price for an open position)",
+      "Long term USD 1,060.00 +60.00 (+6.00%) Open +60.00 Realised 0.00 Open prices as of Oct 1, 2026 2 not counted (no quantity or no current price for an open position); paid opening commissions are included",
     );
     expect(text(walletCard(html, wallets[1].id))).toBe(
       "Other PLN 90.00 -10.00 (-10.00%) Open -10.00 Realised 0.00 Open prices as of Sep 15, 2026",
@@ -311,7 +317,7 @@ describe("rendered wallet surfaces", () => {
     const first = text(row(html, `/dashboard/wallets/${wallets[0].id}`));
     const second = text(row(html, `/dashboard/wallets/${wallets[1].id}`));
     expect(first).toBe(
-      "Long term USD 1,000.00 1,060.00 +60.00 (+6.00%) Open prices as of Oct 1, 2026 2 not counted (no quantity or no current price for an open position)",
+      "Long term USD 1,000.00 1,060.00 +60.00 (+6.00%) Open prices as of Oct 1, 2026 2 not counted (no quantity or no current price for an open position); paid opening commissions are included",
     );
     expect(second).toBe("Other USD 100.00 90.00 -10.00 (-10.00%) Open prices as of Sep 15, 2026");
     expect(first).not.toContain("as of Jan 1, 2026");
@@ -329,7 +335,7 @@ describe("rendered wallet surfaces", () => {
     // Everything before Investments is the actual WalletValue output, not member dates below it.
     const summary = text(html.split("<section")[0]);
     expect(summary).toContain(
-      "Starting value 1,000.00 Current value 1,060.00 Change +60.00 (+6.00%) Live total from your latest recorded prices selected from saved manual entries and downloaded quotes Realised gain/loss 0.00 Open gain/loss +60.00 Open prices as of Oct 1, 2026 2 not counted (no quantity or no current price for an open position)",
+      "Starting value 1,000.00 Current value 1,060.00 Change +60.00 (+6.00%) Live total from your latest recorded prices selected from saved manual entries and downloaded quotes Realised gain/loss 0.00 Open gain/loss +60.00 Open prices as of Oct 1, 2026 2 not counted (no quantity or no current price for an open position); paid opening commissions are included",
     );
     expect(summary).not.toContain("as of Jan 1, 2026");
     expect(text(row(html, `/dashboard/positions/${gain.id}`))).toContain("+20.00% as of Oct 10, 2026");
@@ -358,6 +364,7 @@ describe("rendered wallet surfaces", () => {
 describe("closed result wiring", () => {
   const closed: PositionDetail = {
     ...gain,
+    closing_commission: "0",
     sell_price: "60",
     sell_date: "2026-09-01",
     current_price: "80",
@@ -410,7 +417,13 @@ describe("closed result wiring", () => {
   });
   it("renders a zero sale without a quote and preserves all eight sale decimals", async () => {
     const instance = await container();
-    vi.mocked(getPosition).mockResolvedValue({ ...closed, sell_price: "0", current_price: null, price_date: null });
+    vi.mocked(getPosition).mockResolvedValue({
+      ...closed,
+      closing_commission: "0",
+      sell_price: "0",
+      current_price: null,
+      price_date: null,
+    });
     const options = {
       request: new Request(`http://localhost/dashboard/positions/${gain.id}`),
       params: { id: gain.id },
@@ -419,17 +432,21 @@ describe("closed result wiring", () => {
     expect(positionResultText(await instance.renderToString(PositionPage, options))).toBe(
       "Final -100.00% · sold Sep 1, 2026",
     );
-    vi.mocked(getPosition).mockResolvedValue({ ...closed, sell_price: "123456789012.12345678" });
+    vi.mocked(getPosition).mockResolvedValue({
+      ...closed,
+      closing_commission: "0",
+      sell_price: "123456789012.12345678",
+    });
     expect(text(await instance.renderToString(PositionPage, options))).toContain("Sell price 123,456,789,012.12345678");
   });
   it("labels mixed and realised-only summaries consistently", async () => {
     vi.mocked(listPositions).mockResolvedValue([
       closed,
-      { ...loss, buy_price: "10", current_price: "12", quantity: "20" },
+      { ...loss, opening_commission: "0", buy_price: "10", current_price: "12", quantity: "20" },
     ]);
     vi.mocked(listWalletPositions).mockResolvedValue([
       closed,
-      { ...loss, buy_price: "10", current_price: "12", quantity: "20" },
+      { ...loss, opening_commission: "0", buy_price: "10", current_price: "12", quantity: "20" },
     ]);
     const instance = await container();
     const list = await instance.renderToString(WalletList, {
@@ -460,7 +477,7 @@ function positionsSection(html: string, kind: "open" | "closed"): string | undef
 }
 
 describe("sectioned positions list", () => {
-  const sold: PositionDetail = { ...gain, sell_price: "60", sell_date: "2026-09-01" };
+  const sold: PositionDetail = { ...gain, closing_commission: "0", sell_price: "60", sell_date: "2026-09-01" };
   const mixed = [loss, sold, unpriced];
   beforeEach(() => {
     vi.mocked(listPositions).mockResolvedValue(mixed);
@@ -590,7 +607,13 @@ describe("native closing submissions", () => {
       locals,
     });
   }
-  const sale = { action: "close", sell_price: "0", sell_date: "2026-09-01", acknowledgement: "on" };
+  const sale = {
+    action: "close",
+    closing_commission: "0",
+    sell_price: "0",
+    sell_date: "2026-09-01",
+    acknowledgement: "on",
+  };
   it("starts with an empty sale price, UTC date and unchecked acknowledgement in a separate native form", async () => {
     const html = await (
       await container()
@@ -616,11 +639,17 @@ describe("native closing submissions", () => {
     const response = await submit(sale);
     expect(response.status).toBe(303);
     expect(response.headers.get("location")).toBe(`/dashboard/positions/${gain.id}`);
-    expect(closePosition).toHaveBeenCalledExactlyOnceWith({}, gain.id, { sell_price: "0", sell_date: "2026-09-01" });
+    expect(closePosition).toHaveBeenCalledExactlyOnceWith({}, gain.id, {
+      closing_commission: "0",
+      sell_price: "0",
+      sell_date: "2026-09-01",
+    });
     expect(updatePositionPrice).not.toHaveBeenCalled();
   });
   it("keeps invalid sale values and shows acknowledgement and field errors without writing", async () => {
-    const html = await (await submit({ action: "close", sell_price: "-1", sell_date: "2026-02-30" })).text();
+    const html = await (
+      await submit({ action: "close", closing_commission: "0", sell_price: "-1", sell_date: "2026-02-30" })
+    ).text();
     expect(html).toMatch(/name="sell_price"[^>]*value="-1"/);
     expect(html).toMatch(/name="sell_date"[^>]*value="2026-02-30"/);
     expect(html).toContain('id="sell_price-error"');
@@ -633,7 +662,7 @@ describe("native closing submissions", () => {
     "retains submitted sale values after %s write failure",
     async (error) => {
       vi.mocked(closePosition).mockResolvedValue({ ok: false, error });
-      const html = await (await submit({ ...sale, sell_price: "60,12345678" })).text();
+      const html = await (await submit({ ...sale, closing_commission: "0", sell_price: "60,12345678" })).text();
       expect(html).toMatch(/name="sell_price"[^>]*value="60,12345678"/);
       expect(html).toMatch(/name="sell_date"[^>]*value="2026-09-01"/);
       expect(/<input[^>]*name="acknowledgement"[^>]*>/.exec(html)?.[0]).toContain("checked");
@@ -686,7 +715,12 @@ describe("native closing submissions", () => {
     expect(closePosition).not.toHaveBeenCalled();
   });
   it("rejects stale close and price submissions on an already closed detail", async () => {
-    vi.mocked(getPosition).mockResolvedValue({ ...gain, sell_price: "60", sell_date: "2026-09-01" });
+    vi.mocked(getPosition).mockResolvedValue({
+      ...gain,
+      closing_commission: "0",
+      sell_price: "60",
+      sell_date: "2026-09-01",
+    });
     for (const fields of [sale, { action: "price", current_price: "70", price_date: "2026-10-01" }]) {
       const html = await (await submit(fields)).text();
       expect(text(html)).toContain("already closed");
@@ -695,5 +729,90 @@ describe("native closing submissions", () => {
     }
     expect(closePosition).not.toHaveBeenCalled();
     expect(updatePositionPrice).not.toHaveBeenCalled();
+  });
+});
+
+describe("commission result surfaces", () => {
+  const net: PositionDetail = {
+    ...gain,
+    buy_price: "100",
+    current_price: "110",
+    opening_commission: "5",
+    closing_commission: "7",
+    sell_price: "110",
+    sell_date: "2026-09-01",
+  };
+  it("carries both commissions through dashboard, detail, wallet and confrontation", async () => {
+    vi.mocked(listPositions).mockResolvedValue([net]);
+    vi.mocked(listWalletPositions).mockResolvedValue([net]);
+    vi.mocked(getPosition).mockResolvedValue(net);
+    const instance = await container();
+    const detail = await instance.renderToString(PositionPage, {
+      request: new Request(`http://localhost/dashboard/positions/${net.id}`),
+      params: { id: net.id },
+      locals,
+    });
+    expect(positionResultText(detail)).toBe("Final +8.76% · sold Sep 1, 2026");
+    expect(text(detail)).toContain("Opening commission: 5");
+    expect(text(detail)).toContain("Closing commission: 7");
+    const dashboard = await instance.renderToString(Dashboard, {
+      request: new Request("http://localhost/dashboard"),
+      locals,
+    });
+    const wallet = await instance.renderToString(WalletPage, {
+      request: new Request(`http://localhost/dashboard/wallets/${wallets[0].id}`),
+      params: { id: wallets[0].id },
+      locals,
+    });
+    for (const html of [dashboard, wallet])
+      expect(text(row(html, `/dashboard/positions/${net.id}`))).toContain("Final +8.76%");
+    expect(text(walletCard(dashboard, wallets[0].id))).toContain("1,088.00 +88.00 (+8.80%)");
+    const history = renderToStaticMarkup(
+      createElement(ConfrontationPanel, { state: { kind: "history", positions: [{ ...net, category_id: "reason" }] } }),
+    );
+    expect(text(history)).toContain("Final +8.76% · sold Sep 1, 2026");
+  });
+  it("allows a native legacy close to supply quantity and keeps all raw entries on write failure", async () => {
+    vi.mocked(getPosition).mockResolvedValue({ ...gain, quantity: null });
+    vi.mocked(closePosition).mockResolvedValue({ ok: false, error: "unexpected" });
+    const fields = {
+      action: "close",
+      sell_price: "110",
+      sell_date: "2026-09-01",
+      closing_commission: "7,00000001",
+      quantity: "0,25",
+      acknowledgement: "on",
+    };
+    const response = await (
+      await container()
+    ).renderToResponse(PositionPage, {
+      request: new Request(`http://localhost/dashboard/positions/${gain.id}`, {
+        method: "POST",
+        body: new URLSearchParams(fields),
+      }),
+      params: { id: gain.id },
+      locals,
+    });
+    const html = await response.text();
+    expect(closePosition).toHaveBeenCalledExactlyOnceWith({}, gain.id, {
+      sell_price: "110",
+      sell_date: "2026-09-01",
+      closing_commission: "7.00000001",
+      quantity: "0.25",
+    });
+    expect(html).toMatch(/name="closing_commission"[^>]*value="7,00000001"/);
+    expect(html).toMatch(/name="quantity"[^>]*value="0,25"/);
+  });
+  it("shows no net return for an unpriced holding but includes its fee in wallet totals", async () => {
+    const holding = { ...gain, current_price: null, price_date: null, opening_commission: "5" };
+    vi.mocked(listPositions).mockResolvedValue([holding]);
+    const html = await (
+      await container()
+    ).renderToString(Dashboard, { request: new Request("http://localhost/dashboard"), locals });
+    expect(text(row(html, `/dashboard/positions/${gain.id}`))).toContain("No price yet");
+    const card = text(walletCard(html, wallets[0].id));
+    expect(card).toContain("995.00 -5.00 (-0.50%)");
+    expect(card).toContain("1 not counted");
+    expect(card).toContain("valuations incomplete");
   });
 });
