@@ -1,0 +1,49 @@
+name: PR code review
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: write
+  checks: write
+
+concurrency:
+  group: pr-review-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+jobs:
+  review:
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Always load reviewer code from the trusted default branch. Never check out PR code,
+      # install PR dependencies, consume PR artifacts, or restore a PR cache here.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Install trusted reviewer dependencies
+        run: npm ci --prefix scripts/review --ignore-scripts
+      - name: Review exact PR head and publish verdict
+        run: node scripts/review/review.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_MODEL: ${{ vars.OPENROUTER_MODEL }}
+      - name: Preserve structured review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-code-review-${{ github.event.workflow_run.id }}
+          path: review-result.json
+          if-no-files-found: ignore

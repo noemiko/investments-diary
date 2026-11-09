@@ -1,0 +1,16 @@
+{
+  "name": "investments-diary-pr-review",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "test": "node --test review.test.mjs"
+  },
+  "dependencies": {
+    "@openrouter/ai-sdk-provider": "3.1.0",
+    "ai": "7.0.166",
+    "zod": "4.6.7"
+  }
+}
