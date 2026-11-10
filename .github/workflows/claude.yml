@@ -24,12 +24,33 @@ jobs:
       # Required for replies to issue comments.
       issues: write
     steps:
+      - name: Resolve trusted checkout revision
+        id: revision
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          pr_number=$(jq -r 'if .issue.pull_request then .issue.number else .pull_request.number // empty end' "$GITHUB_EVENT_PATH")
+          if [[ -n "$pr_number" ]]; then
+            pr=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$pr_number")
+            # A trusted comment must not grant a fork access to secrets.
+            if [[ "$(jq -r '.head.repo.full_name' <<< "$pr")" != "$GITHUB_REPOSITORY" ]]; then
+              echo "Refusing privileged agent execution on a fork pull request." >&2
+              exit 1
+            fi
+            revision=$(jq -r '.head.sha' <<< "$pr")
+          else
+            revision=$(jq -r '.repository.default_branch' "$GITHUB_EVENT_PATH")
+          fi
+          echo "ref=$revision" >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
           persist-credentials: false
-          # Never check out a comment-supplied ref or a pull request head.
-          ref: ${{ github.event.repository.default_branch }}
+          # Resolve PR heads through the API, never from comment text.
+          ref: ${{ steps.revision.outputs.ref }}
 
       - uses: anthropics/claude-code-action@0630ef383a451c46ccac86eb86ee7641e99c4c9a # v1.0.0
         with:
