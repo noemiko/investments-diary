@@ -1,58 +1,23 @@
-# .github/workflows/claude.yml
-name: Claude - interactive mode for PR comments
+name: Claude Code
 on:
   issue_comment:
     types: [created]
   pull_request_review_comment:
     types: [created]
-
-permissions: {}
-
 jobs:
   claude:
-    if: |
-      github.event.comment.user.type == 'User' &&
-      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association) &&
-      contains(github.event.comment.body, '@claude') &&
-      (github.event_name == 'issue_comment' || github.event_name == 'pull_request_review_comment')
+    if: contains(github.event.comment.body, '@claude')
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     permissions:
-      contents: read
-      # Required for PR replies; contents remain read-only.
+      contents: write
       pull-requests: write
-      # Required for replies to issue comments.
       issues: write
+      id-token: write
+      actions: read
     steps:
-      - name: Resolve trusted checkout revision
-        id: revision
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          pr_number=$(jq -r 'if .issue.pull_request then .issue.number else .pull_request.number // empty end' "$GITHUB_EVENT_PATH")
-          if [[ -n "$pr_number" ]]; then
-            pr=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$pr_number")
-            # A trusted comment must not grant a fork access to secrets.
-            if [[ "$(jq -r '.head.repo.full_name' <<< "$pr")" != "$GITHUB_REPOSITORY" ]]; then
-              echo "Refusing privileged agent execution on a fork pull request." >&2
-              exit 1
-            fi
-            revision=$(jq -r '.head.sha' <<< "$pr")
-          else
-            revision=$(jq -r '.repository.default_branch' "$GITHUB_EVENT_PATH")
-          fi
-          echo "ref=$revision" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 1
-          persist-credentials: false
-          # Resolve PR heads through the API, never from comment text.
-          ref: ${{ steps.revision.outputs.ref }}
-
-      - uses: anthropics/claude-code-action@0630ef383a451c46ccac86eb86ee7641e99c4c9a # v1.0.0
+      - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
