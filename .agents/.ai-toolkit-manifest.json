@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "package": "@noemiko/ai-toolkit",
+  "version": "0.1.0",
+  "files": {
+    ".agents/skills/code-review/SKILL.md": "86c76e0abdc6eef5b943c5136e143a33a3e780b18cd600d5cbc014cbb60f39cf"
+  },
+  "rules": {
+    "path": "AGENTS.md",
+    "begin": "<!-- BEGIN @noemiko/ai-toolkit -->",
+    "end": "<!-- END @noemiko/ai-toolkit -->",
+    "sha256": "3295963b41cdc59a976dc876b023fc82309df8293002c0cc8c26ad509a417011",
+    "target": "CLAUDE.md"
+  }
+}
