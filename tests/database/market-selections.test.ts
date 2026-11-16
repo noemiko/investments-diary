@@ -90,6 +90,7 @@ it("persists search selections without quotes, validates creation receipts and r
     const input = {
       instrument: "Untrusted label",
       buy_date: "2026-01-01",
+      opening_commission: "0",
       buy_price: "1",
       quantity: "2",
       broker_label: null,

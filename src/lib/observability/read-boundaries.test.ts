@@ -197,6 +197,7 @@ it("can save after a failed confrontation read", async () => {
         category_id: id,
         wallet_id: id,
         buy_date: "2026-01-01",
+        opening_commission: "0",
         buy_price: "10",
       }),
     }),

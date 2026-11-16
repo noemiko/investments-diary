@@ -70,7 +70,7 @@ if (position && form) {
     actionError = "This position is already closed. Sale corrections and reopening are not available yet.";
   } else if (action === "close") {
     closeValues = readClosePositionForm(form);
-    const parsed = parseClosePositionForm(closeValues, position.buy_date);
+    const parsed = parseClosePositionForm(closeValues, position.buy_date, position.quantity);
     if (!parsed.success) closeErrors = parsed.errors;
     else {
       const result = await closePosition(supabase, position.id, parsed.data);
@@ -150,6 +150,8 @@ const inputClass =
             </div>
             <p class="text-lg">
               <PositionResult
+                opening_commission={position.opening_commission}
+                closing_commission={position.closing_commission}
                 buy_price={position.buy_price}
                 quantity={position.quantity}
                 current_price={position.current_price}
@@ -186,6 +188,11 @@ const inputClass =
             </div>
           </dl>
 
+          <p class="text-sm text-muted-foreground">
+            Opening commission: {formatNumber(position.opening_commission)} {position.valuation?.currency}. Returns are
+            after paid commissions.
+          </p>
+
           <section class="flex flex-col gap-2">
             <h2 class="text-lg font-semibold">Reason</h2>
             {position.reason_text?.trim() ? (
@@ -203,6 +210,9 @@ const inputClass =
           {position.sell_price !== null && position.sell_date !== null ? (
             <section class="flex flex-col gap-2">
               <h2 class="text-lg font-semibold">Sale</h2>
+              <p class="text-sm text-muted-foreground">
+                Closing commission: {formatNumber(position.closing_commission)} {position.valuation?.currency}
+              </p>
               <dl class="grid grid-cols-2 gap-4">
                 <div>
                   <dt class="text-sm text-muted-foreground">Sell price</dt>
@@ -340,6 +350,48 @@ const inputClass =
                       )}
                     </div>
                   </div>
+                  <div class="flex flex-col gap-1">
+                    <label for="closing_commission" class="text-sm text-muted-foreground">
+                      Closing commission ({position.valuation?.currency})
+                    </label>
+                    <input
+                      id="closing_commission"
+                      name="closing_commission"
+                      type="text"
+                      inputmode="decimal"
+                      placeholder="0"
+                      value={closeValues.closing_commission}
+                      aria-invalid={closeErrors.closing_commission ? "true" : undefined}
+                      aria-describedby="closing_commission-help closing_commission-error"
+                      class:list={inputClass}
+                    />
+                    <p id="closing_commission-help" class="text-xs text-muted-foreground">
+                      Total fee paid when selling, not per share or a percentage. Blank means zero.
+                    </p>
+                    <p id="closing_commission-error" class="text-xs text-destructive">
+                      {closeErrors.closing_commission}
+                    </p>
+                  </div>
+                  {position.quantity === null && (
+                    <div class="flex flex-col gap-1">
+                      <label for="close_quantity" class="text-sm text-muted-foreground">
+                        Quantity (required for a nonzero commission)
+                      </label>
+                      <input
+                        id="close_quantity"
+                        name="quantity"
+                        type="text"
+                        inputmode="decimal"
+                        value={closeValues.quantity}
+                        aria-invalid={closeErrors.quantity ? "true" : undefined}
+                        aria-describedby="close_quantity-error"
+                        class:list={inputClass}
+                      />
+                      <p id="close_quantity-error" class="text-xs text-destructive">
+                        {closeErrors.quantity}
+                      </p>
+                    </div>
+                  )}
                   <div class="flex flex-col gap-1">
                     <label for="acknowledgement" class="flex items-start gap-2 text-sm">
                       <input

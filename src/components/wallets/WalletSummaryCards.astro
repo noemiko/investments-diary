@@ -60,7 +60,8 @@ const cards = wallets.map((wallet) => ({
           <p class="text-xs text-muted-foreground">{describeWalletResults(result)}</p>
           {result.notCounted > 0 && (
             <p class="text-xs text-muted-foreground" data-wallet-not-counted={result.notCounted}>
-              {result.notCounted} not counted (no quantity or no current price for an open position)
+              {result.notCounted} not counted (no quantity or no current price for an open position); paid opening
+              commissions are included
             </p>
           )}
         </li>

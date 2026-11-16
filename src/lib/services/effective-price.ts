@@ -6,6 +6,8 @@ export const EFFECTIVE_PRICE_COLUMNS =
   "selected_price::text,selected_date,selected_at,selected_source,wallet_currency,quote_state,refresh_outcome,cooldown_until,manual_price_saved_at,quote_market_at,quote_fetched_at,quote_symbol,quote_exchange,quote_currency,quote_timezone,listing_name,exchange_name,instrument_type,market_state,delay_minutes,pending_symbol,pending_name,pending_exchange,pending_exchange_name,pending_instrument_type,pending_outcome,pending_cooldown_until,pending_lease_until,pending_currency";
 export interface EffectivePriceTransport {
   buy_price: string;
+  opening_commission: string;
+  closing_commission: string;
   quantity: string | null;
   current_price: string | null;
   price_date: string | null;

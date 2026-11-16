@@ -3,7 +3,7 @@ project: "Investments Diary"
 version: 1
 status: draft
 created: 2026-09-20
-updated: 2026-11-02
+updated: 2026-11-09
 context_type: greenfield
 product_type: web-app
 target_scale:
@@ -118,6 +118,7 @@ already own and why they bought it.
   > Socrates: Counter-argument considered: "five fields plus prose is too slow for the
   > moment of buying, and slow entry kills the habit." Resolution: revised — the three
   > fields needed to compute a result are required, the rest can be completed later.
+  > Opening commission is a flat nonnegative amount in the wallet currency; blank means zero. A nonzero commission requires positive quantity. Existing entries default to zero fees, with no commission correction UI (amended 2026-11-09).
 - FR-004: User can write a free-text reason explaining why they bought. Optional. Priority: must-have
   > Socrates: Counter-argument considered: "the category alone is enough; prose will go
   > unwritten under time pressure." Resolution: revised — the category is required and the
@@ -135,7 +136,7 @@ already own and why they bought it.
   > strictly later than the correction's database-stamped save time. Equal or older market
   > timestamps do not replace it, including after an identical manual-price resubmission.
   > Earlier manual entries retain unknown save times; migration does not invent those times.
-- FR-007: User can close a position by recording sell price and sell date. Priority: must-have
+- FR-007: User can close a position by recording sell price, sell date and a separate flat nonnegative closing commission in wallet currency (blank means zero). When quantity is missing, it can be supplied during closing and is required for a nonzero fee. Sale, fee and missing quantity are saved atomically; existing quantity is never overwritten. Priority: must-have
   > Socrates: Counter-argument considered: "a long-term investor rarely sells, so this may
   > go unused for months." Resolution: kept unchanged — a diary that cannot record an
   > ending can never answer why a position won or lost.
@@ -154,6 +155,7 @@ already own and why they bought it.
   > Socrates: Counter-argument considered: "a list of instruments and numbers is the broker
   > summary again." Resolution: revised — the reason is visible in the list, so scanning it
   > means scanning the thinking rather than the holdings.
+  > All result surfaces show net return after paid commissions: profit is price change times quantity less opening commission and, only when closed, closing commission; percentage divides net profit by purchase value plus opening commission. Fee-free entries without quantity retain the price-change percentage and have no monetary result.
 - FR-011: User can open one position and read its full written reason alongside its result. Priority: must-have
   > Socrates: Counter-argument considered: "redundant if the list already shows reasons."
   > Resolution: kept — a thesis of several sentences cannot be read in a table row.
@@ -168,7 +170,7 @@ already own and why they bought it.
 
 ### Wallets
 
-- FR-013: User can keep several named wallets, each with an editable starting value, and assign every investment to one wallet. Live value is starting value plus realised results from closed positions and unrealised results from open positions, excluding deleted records. Missing quantity or an open position's missing quote is explicitly counted as excluded. Freshness uses the oldest counted open quote only. Wallets can be created and edited but not deleted.
+- FR-013: User can keep several named wallets, each with an editable starting value, and assign every investment to one wallet. Live value is starting value plus realised results from closed positions and unrealised results from open positions, excluding deleted records. Missing quantity or an open position's missing quote is explicitly counted as incomplete valuation. Paid opening commissions still reduce open results immediately, even without a quote, without making valuation coverage complete. Live results and future snapshots use net profit after paid commissions. Freshness uses the oldest counted open quote only. Wallets can be created and edited but not deleted.
   A wallet dashboard shows current realised/open results and immutable daily wallet-value observations captured at midnight UTC. Future observations use the same effective manual/automatic price selection as the application, retaining currency, source coverage and quote-time context. Capture uses the cached values available then and performs no provider downloads; prices may be old when the user has not downloaded prices recently. Users can inspect 30/90/365-day or all-time ranges and point details. Earlier unavailable values and missed days are not backfilled; later edits, sales, delete/restore and reassignment do not rewrite saved observations. Observations without a denomination inherit their wallet currency by explicit owner decision; their recorded amounts, dates and results remain unchanged and use the ordinary denominated history view. These are observations of recorded diary value, not reconstructed market-price or cash-balance history. Priority: should-have
 
 ### Automatic prices and denomination
@@ -273,7 +275,7 @@ protection does — to be confirmed when that work is planned.
   periodic browser refresh, scheduled provider polling and historical price backfill
   remain outside this change.
 - **No brokers as managed records.** A broker is a text label on an investment. There is no
-  screen for managing brokers, fees or account numbers. Wallets (FR-013) are the author's
+  screen for managing brokers, fee schedules or account numbers. Flat transaction commissions on positions are supported (FR-003/FR-007). Wallets (FR-013) are the author's
   own named groupings of investments, not broker accounts. Their USD/PLN/EUR denomination
   exists to prevent invalid mixed-currency totals (FR-015), not to model broker accounts.
 - **No sharing with anyone else.** No read-only links, no advisor access, no export for

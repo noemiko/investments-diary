@@ -102,7 +102,8 @@ try {
                   {describeWalletResults(row.result)}
                   {row.result.notCounted > 0 && (
                     <span class="block text-xs" data-wallet-not-counted={row.result.notCounted}>
-                      {row.result.notCounted} not counted (no quantity or no current price for an open position)
+                      {row.result.notCounted} not counted (no quantity or no current price for an open position); paid
+                      opening commissions are included
                     </span>
                   )}
                 </TableCell>

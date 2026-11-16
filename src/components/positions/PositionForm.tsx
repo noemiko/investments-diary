@@ -198,6 +198,9 @@ export default function PositionForm({
 
     next.buy_price = checkDecimal(values.buy_price, true, "Enter the buy price");
     next.quantity = checkDecimal(values.quantity, false, "");
+    const commission = values.opening_commission.trim() === "" ? "0" : parseDecimal(values.opening_commission);
+    if (commission === null) next.opening_commission = "Enter a number like 50.25";
+    else if (commission !== "0" && !values.quantity.trim()) next.quantity = "Enter quantity to record a commission";
 
     if (!values.buy_date) next.buy_date = "Enter the buy date";
     else if (values.buy_date > todayUtc()) next.buy_date = "The buy date cannot be in the future";
@@ -525,6 +528,25 @@ export default function PositionForm({
         icon={<Hash className="size-4" />}
         inputMode="decimal"
       />
+
+      <div>
+        <FormField
+          icon={<Wallet className="size-4" />}
+          id="opening_commission"
+          label={`Opening commission${selectedWallet ? ` (${selectedWallet.currency})` : ""}`}
+          value={values.opening_commission}
+          onChange={(value) => {
+            update("opening_commission", value);
+          }}
+          placeholder="0"
+          error={errors.opening_commission}
+          inputMode="decimal"
+        />
+        <p className="text-muted-foreground mt-1 text-xs">
+          Total fee paid when buying, not per share or a percentage. Blank means zero. Quantity is required for a
+          nonzero fee.
+        </p>
+      </div>
 
       <FormField
         id="broker_label"

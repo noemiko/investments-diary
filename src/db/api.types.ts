@@ -26,7 +26,10 @@ export type ApiDatabase = Omit<Database, "public"> & {
   public: Omit<Database["public"], "Tables" | "Functions"> & {
     Tables: Omit<Tables, "positions" | "wallets" | "wallet_snapshots" | "market_quote_cache"> & {
       positions: SelectedInsert<
-        DecimalWrites<Tables["positions"], "buy_price" | "quantity" | "current_price" | "sell_price">
+        DecimalWrites<
+          Tables["positions"],
+          "buy_price" | "quantity" | "current_price" | "sell_price" | "opening_commission" | "closing_commission"
+        >
       >;
       market_quote_cache: DecimalWrites<
         Tables["market_quote_cache"],

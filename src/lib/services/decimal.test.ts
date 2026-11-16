@@ -6,18 +6,45 @@ import { getPosition, listConfrontationPositions, listPositions } from "@/lib/se
 import { getWallet, listWalletPositions, listWallets } from "@/lib/services/wallets";
 
 it("decodes nullable text without coercing already rounded JSON numbers", () => {
-  expect(decodePosition({ sell_price: null, buy_price: "50.00000000", current_price: null, quantity: null })).toEqual({
+  expect(
+    decodePosition({
+      closing_commission: "0",
+      sell_price: null,
+      opening_commission: "0",
+      buy_price: "50.00000000",
+      current_price: null,
+      quantity: null,
+    }),
+  ).toEqual({
+    closing_commission: "0",
     sell_price: null,
+    opening_commission: "0",
     buy_price: "50",
     current_price: null,
     quantity: null,
   });
   for (const field of ["buy_price", "current_price", "quantity"] as const) {
     expect(() =>
-      decodePosition({ sell_price: null, buy_price: "50", current_price: "60", quantity: "1", [field]: 12.12345678 }),
+      decodePosition({
+        closing_commission: "0",
+        sell_price: null,
+        opening_commission: "0",
+        buy_price: "50",
+        current_price: "60",
+        quantity: "1",
+        [field]: 12.12345678,
+      }),
     ).toThrow();
     expect(() =>
-      decodePosition({ sell_price: null, buy_price: "50", current_price: "60", quantity: "1", [field]: "0" }),
+      decodePosition({
+        closing_commission: "0",
+        sell_price: null,
+        opening_commission: "0",
+        buy_price: "50",
+        current_price: "60",
+        quantity: "1",
+        [field]: "0",
+      }),
     ).toThrow();
   }
 });
@@ -25,6 +52,7 @@ it("decodes nullable text without coercing already rounded JSON numbers", () => 
 it("every service rejects corrupted decimal transport instead of displaying a partial total", async () => {
   const invalid = {
     id: "fixture",
+    opening_commission: "0",
     buy_price: 50,
     quantity: "1",
     current_price: "60",
@@ -55,8 +83,27 @@ it("every service rejects corrupted decimal transport instead of displaying a pa
 });
 
 it("accepts exact zero and maximum sale prices but refuses numeric sale transport", () => {
-  const row = { buy_price: "50", quantity: null, current_price: null };
-  expect(decodePosition({ ...row, sell_price: "0.00000000" }).sell_price).toBe("0");
-  expect(decodePosition({ ...row, sell_price: "999999999999.99999999" }).sell_price).toBe("999999999999.99999999");
-  expect(() => decodePosition({ ...row, sell_price: 0 })).toThrow("decimal text");
+  const row = { opening_commission: "0", buy_price: "50", quantity: null, current_price: null };
+  expect(decodePosition({ ...row, closing_commission: "0", sell_price: "0.00000000" }).sell_price).toBe("0");
+  expect(decodePosition({ ...row, closing_commission: "0", sell_price: "999999999999.99999999" }).sell_price).toBe(
+    "999999999999.99999999",
+  );
+  expect(() => decodePosition({ ...row, closing_commission: "0", sell_price: 0 })).toThrow("decimal text");
+});
+
+it("decodes commissions strictly as nonnegative exact decimal text", () => {
+  const row = {
+    buy_price: "1",
+    quantity: "1",
+    current_price: null,
+    sell_price: null,
+    opening_commission: "0.00000001",
+    closing_commission: "0.00000000",
+  };
+  expect(decodePosition(row)).toMatchObject({ opening_commission: "0.00000001", closing_commission: "0" });
+  for (const field of ["opening_commission", "closing_commission"] as const) {
+    for (const invalid of [0, null, undefined, "-1", "1.000000001"]) {
+      expect(() => decodePosition({ ...row, [field]: invalid })).toThrow("decimal text");
+    }
+  }
 });

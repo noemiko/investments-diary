@@ -1,10 +1,12 @@
 import { expect, it } from "vitest";
 import { composeEffectivePrice, type EffectivePriceTransport } from "./effective-price";
 const row: EffectivePriceTransport = {
+  opening_commission: "0",
   buy_price: "10",
   quantity: "2",
   current_price: "15",
   price_date: "2026-01-01",
+  closing_commission: "0",
   sell_price: null,
   selected_price: "12.12345678",
   selected_date: "2026-01-02",
@@ -43,7 +45,13 @@ it("composes exact SQL-selected open values while retaining manual input and act
   });
 });
 it("keeps zero sales distinct from the positive manual-price field", () => {
-  const actual = composeEffectivePrice({ ...row, sell_price: "0", selected_price: "0", selected_source: "sale" });
+  const actual = composeEffectivePrice({
+    ...row,
+    closing_commission: "0",
+    sell_price: "0",
+    selected_price: "0",
+    selected_source: "sale",
+  });
   expect(actual.sell_price).toBe("0");
   expect(actual.current_price).toBe("15");
   expect(actual.valuation.source).toBe("sale");

@@ -116,6 +116,7 @@ it("round-trips the full numeric range, nullable values, joins and pagination wi
       instrument: "Exact",
       market_selection_receipt_id: await selectionFor(wallet),
       buy_date: "2026-01-01",
+      opening_commission: "0",
       buy_price: "999999999999.99999998",
       quantity: max,
       category_id: category,
@@ -127,10 +128,11 @@ it("round-trips the full numeric range, nullable values, joins and pagination wi
   if (!created.data) throw new Error("Missing position");
   position = created.data.id;
   const projection =
-    "id,buy_price::text,quantity::text,current_price::text,price_date,wallets!positions_wallet_fkey(name),reason_categories(name)";
+    "id,buy_price::text,opening_commission::text,quantity::text,current_price::text,price_date,wallets!positions_wallet_fkey(name),reason_categories(name)";
   const initial = await author.from("positions").select(projection).eq("id", position).single();
   expect(initial.error).toBeNull();
   expect(initial.data).toMatchObject({
+    opening_commission: "0.00000000",
     buy_price: "999999999999.99999998",
     quantity: max,
     current_price: null,
@@ -231,6 +233,7 @@ it("preserves form digits through every production service and exact arithmetic"
     listing_query: "DECIMAL",
     instrument: "Service proof",
     buy_date: "2026-01-01",
+    opening_commission: "0",
     buy_price: "999999999999,99999998",
     quantity: "0,00000001",
     wallet_id: walletId,
@@ -245,6 +248,7 @@ it("preserves form digits through every production service and exact arithmetic"
   if (!savedPosition.ok) throw new Error("Position save failed");
   const id = savedPosition.id;
   expect(await getPosition(author, id)).toMatchObject({
+    opening_commission: "0",
     buy_price: "999999999999.99999998",
     quantity: min,
     current_price: null,
@@ -261,7 +265,13 @@ it("preserves form digits through every production service and exact arithmetic"
   expect(await updatePositionPrice(author, id, parsedPrice.data)).toEqual({ ok: true });
   const detail = await getPosition(author, id);
   if (!detail) throw new Error("Missing service position");
-  const expected = { buy_price: "999999999999.99999998", current_price: max, quantity: min, price_date: "2026-10-01" };
+  const expected = {
+    opening_commission: "0",
+    buy_price: "999999999999.99999998",
+    current_price: max,
+    quantity: min,
+    price_date: "2026-10-01",
+  };
   expect(detail).toMatchObject(expected);
   expect(detail).toMatchObject({
     reason_text: "Keep these digits",
@@ -317,6 +327,7 @@ it("enforces sale pair, nonnegative and buy-date constraints without changing an
     listing_receipt_id: await selectionFor(wallet),
     instrument: "Sale constraints",
     buy_date: "2026-01-01",
+    opening_commission: "0",
     buy_price: "50",
     quantity: "10",
     broker_label: null,
@@ -328,33 +339,43 @@ it("enforces sale pair, nonnegative and buy-date constraints without changing an
   if (!created.ok) throw new Error("Fixture insert failed");
   const id = created.id;
   expect(await getPosition(author, id)).toMatchObject({
+    closing_commission: "0",
     sell_price: null,
     sell_date: null,
+    opening_commission: "0",
     buy_price: "50",
     reason_text: "Keep",
   });
   for (const [input, constraint] of [
-    [{ sell_price: "60" }, "positions_sale_pair"],
+    [{ closing_commission: "0", sell_price: "60" }, "positions_sale_pair"],
     [{ sell_date: "2026-01-02" }, "positions_sale_pair"],
-    [{ sell_price: "-1", sell_date: "2026-01-02" }, "positions_sell_price_nonnegative"],
-    [{ sell_price: "60", sell_date: "2025-12-31" }, "positions_sell_date_after_buy"],
+    [{ closing_commission: "0", sell_price: "-1", sell_date: "2026-01-02" }, "positions_sell_price_nonnegative"],
+    [{ closing_commission: "0", sell_price: "60", sell_date: "2025-12-31" }, "positions_sell_date_after_buy"],
   ] as const) {
     const result = await author.from("positions").update(input).eq("id", id);
     expect(result.error?.code).toBe("23514");
     expect(result.error?.message).toContain(constraint);
   }
   expect(await getPosition(author, id)).toMatchObject({
+    closing_commission: "0",
     sell_price: null,
     sell_date: null,
+    opening_commission: "0",
     buy_price: "50",
     reason_text: "Keep",
   });
-  expect(await closePosition(foreign, id, { sell_price: "0", sell_date: "2026-01-01" })).toEqual({
+  expect(
+    await closePosition(foreign, id, { closing_commission: "0", sell_price: "0", sell_date: "2026-01-01" }),
+  ).toEqual({
     ok: false,
     error: "not_found",
   });
-  expect(await closePosition(author, id, { sell_price: "0", sell_date: "2026-01-01" })).toEqual({ ok: true });
-  expect(await closePosition(author, id, { sell_price: "60", sell_date: "2026-01-02" })).toEqual({
+  expect(
+    await closePosition(author, id, { closing_commission: "0", sell_price: "0", sell_date: "2026-01-01" }),
+  ).toEqual({ ok: true });
+  expect(
+    await closePosition(author, id, { closing_commission: "0", sell_price: "60", sell_date: "2026-01-02" }),
+  ).toEqual({
     ok: false,
     error: "not_found",
   });
@@ -363,9 +384,11 @@ it("enforces sale pair, nonnegative and buy-date constraints without changing an
     error: "not_found",
   });
   expect(await getPosition(author, id)).toMatchObject({
+    closing_commission: "0",
     sell_price: "0",
     sell_date: "2026-01-01",
     current_price: null,
+    opening_commission: "0",
     buy_price: "50",
     reason_text: "Keep",
   });
@@ -376,6 +399,7 @@ it.each([max, min, "0"])("transports sale %s through every position service with
     listing_receipt_id: await selectionFor(wallet),
     instrument: `Sale ${sellPrice}`,
     buy_date: "2026-01-01",
+    opening_commission: "0",
     buy_price: "50",
     quantity: null,
     broker_label: null,
@@ -386,12 +410,18 @@ it.each([max, min, "0"])("transports sale %s through every position service with
   });
   if (!created.ok) throw new Error("Fixture insert failed");
   const parsed = parseClosePositionForm(
-    { sell_price: sellPrice.replace(".", ","), sell_date: "2026-01-01", acknowledgement: "on" },
+    {
+      closing_commission: "0",
+      sell_price: sellPrice.replace(".", ","),
+      sell_date: "2026-01-01",
+      quantity: "",
+      acknowledgement: "on",
+    },
     "2026-01-01",
   );
   if (!parsed.success) throw new Error("Invalid close fixture");
   expect(await closePosition(author, created.id, parsed.data)).toEqual({ ok: true });
-  const expected = { sell_price: sellPrice, sell_date: "2026-01-01", current_price: null };
+  const expected = { closing_commission: "0", sell_price: sellPrice, sell_date: "2026-01-01", current_price: null };
   expect(await getPosition(author, created.id)).toMatchObject(expected);
   expect((await listPositions(author)).find((row) => row.id === created.id)).toMatchObject(expected);
   expect((await listPositions(author, wallet)).find((row) => row.id === created.id)).toMatchObject(expected);
@@ -407,6 +437,7 @@ it("allows exactly one competing complete sale and preserves the winning facts",
     listing_receipt_id: await selectionFor(wallet),
     instrument: "Competing sale",
     buy_date: "2026-01-01",
+    opening_commission: "0",
     buy_price: "50",
     quantity: "10",
     broker_label: "Keep broker",
@@ -421,8 +452,8 @@ it("allows exactly one competing complete sale and preserves the winning facts",
     ok: true,
   });
   const submissions = [
-    { sell_price: "60.00000001", sell_date: "2026-02-01" },
-    { sell_price: "0", sell_date: "2026-03-01" },
+    { closing_commission: "0", sell_price: "60.00000001", sell_date: "2026-02-01" },
+    { closing_commission: "0", sell_price: "0", sell_date: "2026-03-01" },
   ];
   const results = await Promise.all(submissions.map((input) => closePosition(author, id, input)));
   expect(results.filter((result) => result.ok)).toHaveLength(1);
@@ -431,6 +462,7 @@ it("allows exactly one competing complete sale and preserves the winning facts",
   const saved = await getPosition(author, id);
   expect(saved).toMatchObject({
     ...winner,
+    opening_commission: "0",
     buy_price: "50",
     quantity: "10",
     current_price: "80",
@@ -443,7 +475,9 @@ it("allows exactly one competing complete sale and preserves the winning facts",
     ok: false,
     error: "not_found",
   });
-  expect(await closePosition(author, id, { sell_price: "100", sell_date: "2026-04-01" })).toEqual({
+  expect(
+    await closePosition(author, id, { closing_commission: "0", sell_price: "100", sell_date: "2026-04-01" }),
+  ).toEqual({
     ok: false,
     error: "not_found",
   });
@@ -461,6 +495,7 @@ it("keeps missing, deleted and foreign ids indistinguishable for reads and guard
     listing_receipt_id: await selectionFor(wallet),
     instrument: "Unavailable sale",
     buy_date: "2026-01-01",
+    opening_commission: "0",
     buy_price: "50",
     quantity: "10",
     broker_label: null,
@@ -477,7 +512,13 @@ it("keeps missing, deleted and foreign ids indistinguishable for reads and guard
     [author, randomUUID()],
   ] as const) {
     expect(await getPosition(client, unavailableId)).toBeNull();
-    expect(await closePosition(client, unavailableId, { sell_price: "60", sell_date: "2026-02-01" })).toEqual({
+    expect(
+      await closePosition(client, unavailableId, {
+        closing_commission: "0",
+        sell_price: "60",
+        sell_date: "2026-02-01",
+      }),
+    ).toEqual({
       ok: false,
       error: "not_found",
     });
@@ -488,7 +529,9 @@ it("keeps missing, deleted and foreign ids indistinguishable for reads and guard
   expect(await getPosition(author, id)).toEqual(before);
   expect(await deletePosition(author, id)).toEqual({ ok: true });
   expect(await getPosition(author, id)).toBeNull();
-  expect(await closePosition(author, id, { sell_price: "60", sell_date: "2026-02-01" })).toEqual({
+  expect(
+    await closePosition(author, id, { closing_commission: "0", sell_price: "60", sell_date: "2026-02-01" }),
+  ).toEqual({
     ok: false,
     error: "not_found",
   });
@@ -512,6 +555,7 @@ it("restores every sale fact and the realised wallet contribution after deletion
     createPosition(author, owner, {
       listing_receipt_id: await selectionFor(walletId),
       instrument,
+      opening_commission: "0",
       buy_price,
       quantity,
       buy_date: "2026-01-01",
@@ -524,7 +568,9 @@ it("restores every sale fact and the realised wallet contribution after deletion
   const closed = await create("Realised", "50", "10");
   const open = await create("Open", "10", "20");
   if (!closed.ok || !open.ok) throw new Error("Fixture position failed");
-  expect(await closePosition(author, closed.id, { sell_price: "60", sell_date: "2026-02-01" })).toEqual({ ok: true });
+  expect(
+    await closePosition(author, closed.id, { closing_commission: "0", sell_price: "60", sell_date: "2026-02-01" }),
+  ).toEqual({ ok: true });
   expect(await updatePositionPrice(author, open.id, { current_price: "12", price_date: "2026-10-01" })).toEqual({
     ok: true,
   });
@@ -539,6 +585,7 @@ it("restores every sale fact and the realised wallet contribution after deletion
   expect(await getPosition(author, closed.id)).toEqual(sale);
   expect(formatAmount((await value()).value)).toBe("1,140.00");
   expect((await listConfrontationPositions(author)).find((row) => row.id === closed.id)).toMatchObject({
+    closing_commission: "0",
     sell_price: "60",
     sell_date: "2026-02-01",
   });

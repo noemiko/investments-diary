@@ -43,6 +43,16 @@ export const requiredDecimal = (emptyMessage: string) =>
     return toPositive(raw, ctx);
   });
 
+export const commissionDecimal = z.string().transform((raw, ctx) => {
+  if (raw.trim() === "") return "0";
+  const value = parseDecimal(raw);
+  if (value === null) {
+    ctx.addIssue({ code: "custom", message: NUMBER_MESSAGE });
+    return z.NEVER;
+  }
+  return value;
+});
+
 const optionalDecimal = z.string().transform((raw, ctx) => (raw.trim() === "" ? null : toPositive(raw, ctx)));
 
 function optionalText(max: number, message: string, trim: boolean) {
@@ -72,6 +82,7 @@ const positionFormSchema = z
     instrument: z.string().trim().min(1, "Search and select a stock listing").max(100, "Use at most 100 characters"),
     listing_receipt_id: z.string().trim().refine(isUuid, "Search and select a stock listing"),
     buy_price: requiredDecimal("Enter the buy price"),
+    opening_commission: commissionDecimal,
     buy_date: buyDate,
     wallet_id: z.string().trim().min(1, "Choose a wallet").refine(isUuid, "Choose a wallet from your list"),
     // Checked together below: exactly one of the two must be given. The "New category…" choice
@@ -86,7 +97,10 @@ const positionFormSchema = z
     broker_label: optionalText(60, "Use at most 60 characters", true),
   })
   .superRefine(
-    ({ category_id, new_category_name }, ctx) => {
+    ({ category_id, new_category_name, opening_commission, quantity }, ctx) => {
+      if (opening_commission !== "0" && quantity === null) {
+        ctx.addIssue({ code: "custom", path: ["quantity"], message: "Enter quantity to record a commission" });
+      }
       if (category_id && new_category_name) {
         ctx.addIssue({
           code: "custom",

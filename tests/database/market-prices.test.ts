@@ -62,6 +62,7 @@ it("transports exact quote decimals through owner-authenticated RPCs and the eff
         instrument: "Original label",
         market_selection_receipt_id: await selectionReceipt(author, owner, wallet.id, "TEST.DE", "GER"),
         buy_date: "2026-01-01",
+        opening_commission: "0",
         buy_price: "0.00000001",
         quantity: "1",
       })
@@ -150,6 +151,7 @@ it("transports exact quote decimals through owner-authenticated RPCs and the eff
         instrument: "Other position",
         market_selection_receipt_id: await selectionReceipt(author, owner, wallet.id, "OTHER"),
         buy_date: "2026-01-01",
+        opening_commission: "0",
         buy_price: "1",
       })
       .select("id,market_listing_id")

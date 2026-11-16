@@ -13,8 +13,10 @@ function fixture(count: number, cap = 1000, failAfter?: number) {
   const rows = Array.from({ length: count }, (_, index) => ({
     id: String(index).padStart(6, "0"),
     wallet_id: index % 2 === 0 ? "one" : "two",
+    closing_commission: "0",
     sell_price: null,
     sell_date: null,
+    opening_commission: "0",
     buy_price: "10",
     current_price: "12",
     quantity: index === count - 1 ? null : "1",
