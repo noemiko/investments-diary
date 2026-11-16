@@ -1,6 +1,5 @@
 name: CI
 
-# Docs-only changes (docs/, *.md) skip CI. Operator SQL under context/ is code.
 # Keep in sync with scripts/deployment/vercel-ignore-build.sh.
 
 on:
