@@ -1,0 +1,41 @@
+name: Manual AI review
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number to review
+        required: true
+        type: number
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Review pull request
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: |
+            REPOSITORY: ${{ github.repository }}
+            PR NUMBER: ${{ inputs.pr_number }}
+
+            Read .agents/skills/code-review/SKILL.md.
+            Follow that skill to review the specified pull request.
+            Use GitHub tools to fetch its diff and relevant files.
+
+            Report actionable bugs and regressions with file locations.
+            Post the findings as a pull request comment.
+            If there are no findings, say so briefly.
+            Do not modify files or commit changes.
+          claude_args: |
+            --max-turns 10
+            --allowedTools "Read,Glob,Grep,Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr comment:*)"

@@ -151,3 +151,14 @@ Run it only for code covered by the current change or a risk from test-plan.md,
 prefer narrowed scope with --mutate "path/to/file.ts:start-end", and do not chase
 100% mutation score. Survived mutants should be reviewed one by one: add an
 assertion only when the mutant represents a user-visible or business-relevant bug.
+<!-- BEGIN @noemiko/ai-toolkit -->
+## Example team rules
+
+These are customizable starter rules, not approved team policy.
+
+- Read applicable repository instructions and relevant callers before editing.
+- Preserve unrelated user work; keep changes focused on the requested outcome.
+- Verify changed behavior with the relevant project checks when available.
+- Report what changed, which checks ran, and any remaining limitations accurately.
+- Keep credentials out of source files, logs, and committed configuration.
+<!-- END @noemiko/ai-toolkit -->
