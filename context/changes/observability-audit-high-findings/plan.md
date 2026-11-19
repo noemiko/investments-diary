@@ -97,7 +97,7 @@ Use the current database signatures. Deployment and rollback are application-onl
 
 #### Manual
 
-- [ ] 1.3 Inspect a synthetic market event and confirm the provider, stage, reason, and count are visible without diary or provider data.
+- [x] 1.3 Inspect a synthetic market event and confirm the provider, stage, reason, and count are visible without diary or provider data.
 
 ### Phase 2: Report unexpected investment save rejections
 
@@ -109,4 +109,4 @@ Use the current database signatures. Deployment and rollback are application-onl
 
 #### Manual
 
-- [ ] 2.4 Confirm a rejected receipt returns the form to stock selection and preserves the other draft fields.
+- [x] 2.4 Confirm a rejected receipt returns the form to stock selection and preserves the other draft fields.
