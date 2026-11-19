@@ -1,7 +1,7 @@
 ---
 change_id: observability-audit-high-findings
 title: Address high-severity observability findings in Investments Diary
-status: implementing
+status: implemented
 created: 2026-11-19
 updated: 2026-11-19
 archived_at: null

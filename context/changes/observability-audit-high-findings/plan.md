@@ -103,9 +103,9 @@ Use the current database signatures. Deployment and rollback are application-onl
 
 #### Automated
 
-- [x] 2.1 Investment save and telemetry regression tests pass: `npx vitest run src/lib/observability/write-failures.test.ts src/components/positions/new-position.test.ts src/lib/observability/reporter.test.ts src/lib/observability/privacy.test.ts`
-- [x] 2.2 Local database contract tests pass with the local Supabase stack running: `npm run test:decimal-db`
-- [x] 2.3 Repository verification passes: `npx astro sync && npm run lint && npx astro check && npm run build && npm test`
+- [x] 2.1 Investment save and telemetry regression tests pass: `npx vitest run src/lib/observability/write-failures.test.ts src/components/positions/new-position.test.ts src/lib/observability/reporter.test.ts src/lib/observability/privacy.test.ts` — e70cf60
+- [x] 2.2 Local database contract tests pass with the local Supabase stack running: `npm run test:decimal-db` — e70cf60
+- [x] 2.3 Repository verification passes: `npx astro sync && npm run lint && npx astro check && npm run build && npm test` — e70cf60
 
 #### Manual
 
