@@ -1,0 +1,190 @@
+---
+import InvestmentDashboardPreview from "@/components/auth/InvestmentDashboardPreview.astro";
+---
+
+<aside class="brand-panel" aria-label="Investment Diary">
+  <div class="brand-lockup">
+    <span class="brand-mark" aria-hidden="true">
+      <svg width="23" height="23" viewBox="0 0 24 24" fill="none">
+        <path d="M5 17V12M12 17V8M19 17V4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
+        <path
+          d="M4 7L10 3L15 5L21 1"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    </span>
+    <span>
+      Investment<span class="brand-diary">Diary</span>
+    </span>
+  </div>
+  <div class="brand-story">
+    <p class="eyebrow">
+      <span aria-hidden="true"></span> A MORE THOUGHTFUL WAY TO INVEST
+    </p>
+    <h2>
+      Every investment
+      <br />
+      tells a <em>story.</em>
+    </h2>
+    <p class="brand-description">
+      Track your decisions, understand your performance, and build better investing habits — all in one place.
+    </p>
+    <div class="dashboard-illustration">
+      <InvestmentDashboardPreview />
+    </div>
+  </div>
+  <p class="brand-footer">
+    <span aria-hidden="true">↗</span> Invest with clarity. Grow with discipline.
+  </p>
+</aside>
+
+<style>
+  .brand-panel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 45px clamp(32px, 5vw, 84px) 32px;
+    border-right: 1px solid #ffffff08;
+    background: radial-gradient(ellipse at 25% 50%, #163c3529, transparent 65%), #0c1a23;
+    overflow: hidden;
+  }
+  .brand-lockup {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: -0.6px;
+  }
+  .brand-mark {
+    display: grid;
+    place-items: center;
+    width: 39px;
+    height: 39px;
+    border: 1px solid #34d39933;
+    border-radius: 11px;
+    background: #34d3990d;
+    color: #6ee7b7;
+  }
+  .brand-diary {
+    color: #b3c2ca;
+    font-weight: 400;
+    margin-left: 4px;
+  }
+  .brand-story {
+    padding: 52px 0 38px;
+    max-width: 530px;
+  }
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 21px;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    font-weight: 500;
+    color: #99b3b8;
+  }
+  .eyebrow span {
+    width: 18px;
+    height: 1px;
+    background: #55cba2;
+  }
+  h2 {
+    margin: 0;
+    font-size: clamp(38px, 4.05vw, 59px);
+    letter-spacing: -0.055em;
+    font-weight: 500;
+    line-height: 1.12;
+    color: #edf4f6;
+  }
+  h2 em {
+    font-style: normal;
+    color: #6ee7b7;
+  }
+  .brand-description {
+    margin: 20px 0 30px;
+    max-width: 380px;
+    color: #a6b8c1;
+    font-size: 13px;
+    line-height: 1.85;
+  }
+  .brand-footer {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 0;
+    color: #8ba3ae;
+    font-size: 10px;
+  }
+  .brand-footer span {
+    color: #66caaa;
+  }
+  @media (min-width: 1440px) {
+    .brand-story {
+      align-self: center;
+      width: 100%;
+    }
+  }
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .brand-panel {
+      padding: 35px 28px;
+    }
+    .brand-lockup {
+      font-size: 16px;
+      gap: 8px;
+    }
+    .brand-story {
+      padding: 55px 0;
+    }
+    h2 {
+      font-size: 40px;
+    }
+    .eyebrow {
+      font-size: 8px;
+      letter-spacing: 0.08em;
+    }
+    .brand-description {
+      font-size: 12px;
+    }
+  }
+  @media (max-width: 767px) {
+    .brand-panel {
+      padding: 30px 26px 0;
+      border: 0;
+      background: transparent;
+    }
+    .brand-lockup {
+      font-size: 18px;
+    }
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+    }
+    .brand-story {
+      padding: 36px 0 0;
+    }
+    .eyebrow,
+    .dashboard-illustration,
+    .brand-footer {
+      display: none;
+    }
+    h2 {
+      font-size: 32px;
+      line-height: 1.15;
+    }
+    h2 br {
+      display: none;
+    }
+    .brand-description {
+      max-width: 360px;
+      font-size: 12px;
+      line-height: 1.75;
+      margin: 14px 0 0;
+    }
+  }
+</style>

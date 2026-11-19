@@ -1,0 +1,251 @@
+<section class="portfolio-preview" aria-label="Illustrative portfolio">
+  <div class="preview-topline">
+    <span class="preview-label">
+      <span class="live-dot" aria-hidden="true"></span> Illustrative portfolio
+    </span>
+    <span class="preview-period">THIS YEAR</span>
+  </div>
+  <div class="balance-row">
+    <div>
+      <p class="balance-label">Portfolio value</p>
+      <p class="balance">
+        $124,580<span>.00</span>
+      </p>
+    </div>
+    <span class="performance">↗ 12.8%</span>
+  </div>
+  <svg class="performance-chart" viewBox="0 0 480 150" fill="none" aria-hidden="true">
+    <defs>
+      <linearGradient id="portfolio-fill" x1="0" y1="0" x2="0" y2="150" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#34d399" stop-opacity=".19" />
+        <stop offset="1" stop-color="#34d399" stop-opacity="0" />
+      </linearGradient>
+    </defs>
+    <path d="M0 35H480M0 80H480M0 125H480" stroke="currentColor" stroke-dasharray="3 7" />
+    <path
+      d="M0 128L20 124L39 130L58 108L78 114L98 99L117 106L137 83L156 91L176 77L195 85L215 57L235 67L254 49L274 58L294 35L313 44L333 25L352 33L372 15L392 23L411 8L431 17L450 5L480 0V150H0Z"
+      fill="url(#portfolio-fill)"
+      transform="translate(0 12)"
+    />
+    <path
+      d="M0 128L20 124L39 130L58 108L78 114L98 99L117 106L137 83L156 91L176 77L195 85L215 57L235 67L254 49L274 58L294 35L313 44L333 25L352 33L372 15L392 23L411 8L431 17L450 5L480 0"
+      stroke="#34d399"
+      stroke-width="2.5"
+      stroke-linejoin="round"
+      stroke-linecap="round"
+      transform="translate(0 12)"
+    />
+  </svg>
+  <div class="chart-months" aria-hidden="true">
+    <span>JAN</span>
+    <span>MAR</span>
+    <span>MAY</span>
+    <span>JUL</span>
+    <span>SEP</span>
+    <span>NOV</span>
+  </div>
+  <div class="preview-activity">
+    <p class="activity-heading">A little more intentional, every day.</p>
+    <div class="activity-row">
+      <span class="asset-icon" aria-hidden="true">
+        A
+      </span>
+      <div class="asset-description">
+        <strong>Apple Inc.</strong>
+        <span>Long-term conviction</span>
+      </div>
+      <div class="asset-value">
+        <strong>+8.42%</strong>
+        <span>Recorded decision</span>
+      </div>
+    </div>
+  </div>
+  <div class="insight-cards">
+    <div>
+      <span class="insight-icon" aria-hidden="true">
+        ↗
+      </span>
+      <span>Track your progress</span>
+      <strong>See the bigger picture.</strong>
+    </div>
+    <div>
+      <span class="insight-icon" aria-hidden="true">
+        ≡
+      </span>
+      <span>Remember your why</span>
+      <strong>Build on every decision.</strong>
+    </div>
+  </div>
+</section>
+
+<style>
+  .portfolio-preview {
+    position: relative;
+    width: 100%;
+    max-width: 510px;
+    border: 1px solid #ffffff14;
+    border-radius: 18px;
+    padding: 25px 26px 0;
+    background: linear-gradient(145deg, #14262d, #102027);
+    box-shadow: 0 24px 65px #00000026;
+  }
+  .preview-topline,
+  .balance-row,
+  .activity-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .preview-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #b5c4ca;
+    font-size: 11px;
+  }
+  .live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #34d399;
+  }
+  .preview-period {
+    font-size: 9px;
+    letter-spacing: 0.11em;
+    color: #91a5ae;
+  }
+  .balance-row {
+    margin-top: 25px;
+  }
+  .balance-label {
+    margin: 0 0 5px;
+    color: #a5b7c0;
+    font-size: 11px;
+  }
+  .balance {
+    margin: 0;
+    font-size: clamp(23px, 2.5vw, 32px);
+    font-weight: 600;
+    letter-spacing: -0.05em;
+    color: #f3f7fa;
+  }
+  .balance span {
+    color: #8fa5ae;
+  }
+  .performance {
+    padding: 6px 9px;
+    border: 1px solid #34d39925;
+    border-radius: 6px;
+    background: #34d3990d;
+    color: #6ee7b7;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  .performance-chart {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin-top: 14px;
+    overflow: visible;
+    color: #ffffff0b;
+  }
+  .chart-months {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+    color: #8da3ad;
+    font-size: 8px;
+    letter-spacing: 0.07em;
+  }
+  .preview-activity {
+    margin-top: 23px;
+    padding-top: 18px;
+    border-top: 1px solid #ffffff0c;
+  }
+  .activity-heading {
+    margin: 0 0 15px;
+    font-size: 10px;
+    color: #a8bbc3;
+  }
+  .asset-icon {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid #ffffff12;
+    border-radius: 9px;
+    color: #dce9ed;
+    font-size: 12px;
+    background: #ffffff04;
+  }
+  .asset-description {
+    display: grid;
+    gap: 4px;
+    flex: 1;
+  }
+  .asset-description strong,
+  .asset-value strong {
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .asset-description span,
+  .asset-value span {
+    font-size: 9px;
+    color: #94aab4;
+  }
+  .asset-value {
+    display: grid;
+    gap: 4px;
+    text-align: right;
+  }
+  .asset-value strong {
+    color: #6ee7b7;
+  }
+  .insight-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 22px -26px 0;
+    padding: 17px 26px;
+    border-top: 1px solid #ffffff0c;
+    background: #07151b30;
+    border-radius: 0 0 18px 18px;
+  }
+  .insight-cards > div {
+    display: grid;
+    grid-template-columns: 22px 1fr;
+    gap: 5px;
+  }
+  .insight-icon {
+    grid-row: span 2;
+    color: #6ee7b7;
+    font-size: 18px;
+  }
+  .insight-cards span:not(.insight-icon) {
+    color: #c1d1d7;
+    font-size: 9px;
+  }
+  .insight-cards strong {
+    color: #8da5af;
+    font-size: 8px;
+    font-weight: 400;
+  }
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .portfolio-preview {
+      padding: 21px 18px;
+    }
+    .insight-cards,
+    .preview-activity {
+      display: none;
+    }
+    .preview-period {
+      display: none;
+    }
+    .balance-row {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 8px;
+    }
+  }
+</style>

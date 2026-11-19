@@ -1,17 +1,227 @@
 ---
 import Layout from "@/layouts/Layout.astro";
 import SignInForm from "@/components/auth/SignInForm";
+import BrandPanel from "@/components/auth/BrandPanel.astro";
 
 const error = Astro.url.searchParams.get("error");
 ---
 
-<Layout title="Sign in">
-  <div class="bg-cosmic flex min-h-screen items-center justify-center p-4">
-    <div class="w-full max-w-sm rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl">
-      <h1 class="mb-6 bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-center text-2xl font-bold text-transparent">
-        Sign in
-      </h1>
-      <SignInForm serverError={error} client:load />
-    </div>
-  </div>
+<Layout title="Sign in | Investment Diary">
+  <main class="login-page">
+    <BrandPanel />
+    <section class="login-panel" aria-labelledby="signin-heading">
+      <div class="login-form-container">
+        <div class="welcome-icon" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M7 10V7a5 5 0 0110 0v3M6 10h12a1 1 0 011 1v9a1 1 0 01-1 1H6a1 1 0 01-1-1v-9a1 1 0 011-1z"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linejoin="round"
+            />
+            <path d="M12 14v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
+        </div>
+        <p class="form-eyebrow">YOUR NEXT CHAPTER STARTS HERE</p>
+        <h1 id="signin-heading">Welcome back</h1>
+        <p class="form-description">Sign in to your Investment Diary account.</p>
+        <SignInForm serverError={error} client:load />
+        <p class="private-note">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3z" stroke="currentColor" stroke-width="1.5" />
+            <path d="M8 12l3 3 5-6" stroke="currentColor" stroke-width="1.5" />
+          </svg>{" "}
+          Your journal. Your decisions. Always private.
+        </p>
+      </div>
+      <p class="login-footer">A space for thoughtful investing.</p>
+    </section>
+  </main>
 </Layout>
+
+<style>
+  @font-face {
+    font-family: "Inter Login";
+    src: url("/fonts/inter/InterVariable.woff2") format("woff2");
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+  }
+  .login-page {
+    --background: #0b141e;
+    --foreground: #edf4f7;
+    --muted-foreground: #9aadb9;
+    --primary: #6ee7b7;
+    --primary-foreground: #08241c;
+    --ring: #6ee7b7;
+    --input: #2a3946;
+    --destructive: #fca5a5;
+    display: grid;
+    grid-template-columns: 1.06fr 1fr;
+    min-height: 100svh;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: "Inter Login", Inter, ui-sans-serif, system-ui, sans-serif;
+  }
+  .login-panel {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 90px 40px;
+  }
+  .login-form-container {
+    width: 100%;
+    max-width: 360px;
+  }
+  .welcome-icon {
+    display: grid;
+    place-items: center;
+    height: 48px;
+    width: 48px;
+    margin-bottom: 27px;
+    border: 1px solid #ffffff0d;
+    border-radius: 13px;
+    background: #ffffff03;
+    color: #a6bfcb;
+  }
+  .form-eyebrow {
+    color: #8da8b6;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    margin: 0 0 12px;
+  }
+  h1 {
+    margin: 0;
+    font-size: 32px;
+    line-height: 1.25;
+    letter-spacing: -0.045em;
+    font-weight: 550;
+  }
+  .form-description {
+    margin: 12px 0 35px;
+    color: #9aadb9;
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  .login-form-container :global(form) {
+    --spacing: 0.25rem;
+  }
+  .login-form-container :global(label) {
+    color: #c3cfd7;
+    font-size: 12px;
+    font-weight: 500;
+    margin-bottom: 9px;
+  }
+  .login-form-container :global(input:not([type="hidden"])) {
+    min-height: 48px;
+    padding-right: 48px;
+    border-radius: 8px;
+    background: #111e2a;
+    font-size: 13px;
+  }
+  .login-form-container :global(input::placeholder) {
+    color: #7f94a3;
+  }
+  .login-form-container :global(button[type="submit"]) {
+    min-height: 48px;
+    margin-top: 9px;
+    border: 1px solid #6ee7b733;
+    border-radius: 8px;
+    background: #6ee7b7;
+    color: #09271e;
+    font-size: 13px;
+    box-shadow: 0 4px 20px #34d3990a;
+    transition:
+      background 160ms,
+      box-shadow 160ms;
+  }
+  .login-form-container :global(button[type="submit"]:hover) {
+    background: #9aefce;
+    box-shadow: 0 4px 24px #34d39915;
+  }
+  .login-form-container :global(button[type="submit"]:active) {
+    background: #50dca4;
+  }
+  .login-form-container :global(button:focus-visible) {
+    outline: 2px solid #6ee7b7;
+    outline-offset: 4px;
+  }
+  .private-note {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    margin: 27px 0 0;
+    padding-top: 23px;
+    border-top: 1px solid #ffffff0b;
+    color: #8fa5b3;
+    font-size: 10px;
+    line-height: 1.6;
+  }
+  .private-note svg {
+    color: #75b39e;
+    flex-shrink: 0;
+  }
+  .login-footer {
+    position: absolute;
+    bottom: 31px;
+    color: #8299a8;
+    font-size: 10px;
+  }
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .login-page {
+      grid-template-columns: 0.95fr 1.05fr;
+    }
+    .login-panel {
+      padding: 70px 30px;
+    }
+    h1 {
+      font-size: 29px;
+    }
+  }
+  @media (max-width: 767px) {
+    .login-page {
+      display: flex;
+      flex-direction: column;
+    }
+    .login-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      padding: 36px 26px 24px;
+    }
+    .login-form-container {
+      max-width: 420px;
+    }
+    .welcome-icon,
+    .form-eyebrow {
+      display: none;
+    }
+    h1 {
+      font-size: 27px;
+    }
+    .form-description {
+      margin: 10px 0 27px;
+      font-size: 12px;
+    }
+    .login-footer {
+      position: static;
+      margin: auto 0 0;
+      padding-top: 45px;
+    }
+    .private-note {
+      font-size: 9px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .login-page :global(*),
+    .login-page :global(*::before),
+    .login-page :global(*::after) {
+      animation: none !important;
+      transition: none !important;
+      scroll-behavior: auto !important;
+    }
+  }
+</style>
