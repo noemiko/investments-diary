@@ -47,6 +47,12 @@ const PROVIDER_CODES = new Set([
   "23505",
   "23503",
   "23514",
+  "23502",
+  "22001",
+  "22003",
+  "22P02",
+  "22007",
+  "22008",
   "42501",
   "PGRST116",
   "PGRST301",
@@ -128,6 +134,15 @@ export function safeTags(tags: Event["tags"]): Record<string, string> {
       const count = typeof tags.affected_count === "number" ? String(tags.affected_count) : tags.affected_count;
       if (typeof count === "string" && /^(?:[1-9]|[1-4][0-9]|50)$/.test(count)) result.affected_count = count;
     }
+  }
+  if (
+    result.operation === "createPosition" &&
+    (tags?.save_stage === "category_insert" || tags?.save_stage === "position_insert") &&
+    (tags.save_category === "constraint_rejection" || tags.save_category === "database_error")
+  ) {
+    result.save_stage = tags.save_stage;
+    result.save_category = tags.save_category;
+    delete result.entity_id;
   }
   return result;
 }

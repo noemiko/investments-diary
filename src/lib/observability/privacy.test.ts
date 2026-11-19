@@ -192,3 +192,36 @@ it.each(["provider", "provider_stage", "provider_reason"])("rejects unrecognized
   });
   expect(event.tags).toEqual({ operation: "marketPrices" });
 });
+
+it("keeps bounded investment save context and drops private database details", () => {
+  const event = scrubEvent({
+    tags: {
+      operation: "createPosition",
+      code: "23502",
+      save_stage: "category_insert",
+      save_category: "constraint_rejection",
+      entity_id: "b8181cb8-2d6b-4dd4-99a4-f59fc01225f2",
+    },
+    exception: { values: [{ type: "Error", value: "PRIVATE_SENTINEL" }] },
+    extra: { details: "PRIVATE_SENTINEL" },
+  });
+  expect(event.tags).toEqual({
+    operation: "createPosition",
+    code: "23502",
+    save_stage: "category_insert",
+    save_category: "constraint_rejection",
+  });
+  expect(JSON.stringify(event)).not.toContain("PRIVATE_SENTINEL");
+});
+
+it("drops unknown investment save fields and SQLSTATEs", () => {
+  const event = scrubEvent({
+    tags: {
+      operation: "createPosition",
+      code: "23ZZZ",
+      save_stage: "PRIVATE_SENTINEL",
+      save_category: "constraint_rejection",
+    },
+  });
+  expect(event.tags).toEqual({ operation: "createPosition" });
+});

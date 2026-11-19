@@ -171,6 +171,16 @@ it.each(["save", "select_listing"])(
     expect(createYahooMarketData).not.toHaveBeenCalled();
   },
 );
+it("preserves the draft and asks for reselection after the insert rejects a previously valid receipt", async () => {
+  vi.mocked(createPosition).mockResolvedValue({ ok: false, error: "selection_invalid" });
+  const html = await (await render({ ...fields, action: "save" })).text();
+  expect(createPosition).toHaveBeenCalledOnce();
+  expect(html).toContain("Search and select the stock listing again");
+  expect(html).toContain('value="50,12345678"');
+  expect(html).toContain("Preserve my reasoning");
+  expect(html).toContain('value="Apple"');
+  expect(html).not.toContain(receiptId);
+});
 const unverifiedHeaders: Record<string, string>[] = [
   {},
   { origin: "https://attacker.test" },

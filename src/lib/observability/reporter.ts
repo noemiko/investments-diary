@@ -8,6 +8,10 @@ export interface ReportContext {
   route?: string;
   requestId?: string;
   entityId?: string;
+  investmentSave?: {
+    stage: "category_insert" | "position_insert";
+    category: "constraint_rejection" | "database_error";
+  };
   market?: {
     stage: "listing_search" | "quote_batch" | "listing_confirm";
     reason: MarketDataFailure["reason"];
@@ -52,6 +56,10 @@ export function reportUnexpected(error: unknown, context: ReportContext): void {
         provider_stage: context.market.stage,
         provider_reason: context.market.reason,
         affected_count: context.market.affectedCount,
+      }),
+      ...(context.investmentSave && {
+        save_stage: context.investmentSave.stage,
+        save_category: context.investmentSave.category,
       }),
       ...diagnostics,
     });

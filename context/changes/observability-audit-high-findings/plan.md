@@ -92,8 +92,8 @@ Use the current database signatures. Deployment and rollback are application-onl
 
 #### Automated
 
-- [x] 1.1 Market service and telemetry regression tests pass: `npx vitest run src/lib/services/market-prices.test.ts src/lib/services/market-selections.test.ts src/lib/observability/reporter.test.ts src/lib/observability/privacy.test.ts`
-- [x] 1.2 Repository verification passes: `npx astro sync && npm run lint && npx astro check && npm run build && npm test`
+- [x] 1.1 Market service and telemetry regression tests pass: `npx vitest run src/lib/services/market-prices.test.ts src/lib/services/market-selections.test.ts src/lib/observability/reporter.test.ts src/lib/observability/privacy.test.ts` — 5f9a988
+- [x] 1.2 Repository verification passes: `npx astro sync && npm run lint && npx astro check && npm run build && npm test` — 5f9a988
 
 #### Manual
 
@@ -103,9 +103,9 @@ Use the current database signatures. Deployment and rollback are application-onl
 
 #### Automated
 
-- [ ] 2.1 Investment save and telemetry regression tests pass: `npx vitest run src/lib/observability/write-failures.test.ts src/components/positions/new-position.test.ts src/lib/observability/reporter.test.ts src/lib/observability/privacy.test.ts`
-- [ ] 2.2 Local database contract tests pass with the local Supabase stack running: `npm run test:decimal-db`
-- [ ] 2.3 Repository verification passes: `npx astro sync && npm run lint && npx astro check && npm run build && npm test`
+- [x] 2.1 Investment save and telemetry regression tests pass: `npx vitest run src/lib/observability/write-failures.test.ts src/components/positions/new-position.test.ts src/lib/observability/reporter.test.ts src/lib/observability/privacy.test.ts`
+- [x] 2.2 Local database contract tests pass with the local Supabase stack running: `npm run test:decimal-db`
+- [x] 2.3 Repository verification passes: `npx astro sync && npm run lint && npx astro check && npm run build && npm test`
 
 #### Manual
 

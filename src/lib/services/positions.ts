@@ -41,6 +41,9 @@ const FOREIGN_KEY_VIOLATION = "23503";
 export const UNIQUE_VIOLATION = "23505";
 // Named in 20261019112848_create_wallets.sql; the category FK shares the same error code.
 const WALLET_FOREIGN_KEY = "positions_wallet_fkey";
+const CATEGORY_FOREIGN_KEY = "positions_category_id_user_id_fkey";
+// This literal pairs with the 23514 emitted by guard_position_selection for an invalid receipt.
+const RECEIPT_REJECTION = "Choose a valid stock selection for this wallet";
 // check_violation, not_null_violation, string_data_right_truncation, numeric_value_out_of_range,
 // invalid_text_representation, invalid_datetime_format: the database refused a value the form let through.
 export const VALIDATION_CODES = new Set(["23514", "23502", "22001", "22003", "22P02", "22007", "22008"]);
@@ -50,13 +53,27 @@ export function logUnexpected(where: string, error: unknown) {
   reportUnexpected(error, { operation: where });
 }
 
-function failure(error: PostgrestError): CreatePositionResult {
-  if (error.code === FOREIGN_KEY_VIOLATION) {
-    return { ok: false, error: error.message.includes(WALLET_FOREIGN_KEY) ? "wallet_not_found" : "category_not_found" };
-  }
-  if (VALIDATION_CODES.has(error.code)) return { ok: false, error: "validation" };
-  logUnexpected("createPosition", error);
+function unexpectedCreateRejection(stage: "category_insert" | "position_insert", code?: string): CreatePositionResult {
+  const category = code && /^(?:22|23)[0-9A-Z]{3}$/.test(code) ? "constraint_rejection" : "database_error";
+  reportUnexpected(Object.assign(new Error("Investment insert rejected"), { code }), {
+    operation: "createPosition",
+    investmentSave: { stage, category },
+  });
   return { ok: false, error: "unexpected" };
+}
+
+function positionInsertFailure(error: PostgrestError): CreatePositionResult {
+  if (error.code === "23514" && error.message === RECEIPT_REJECTION) {
+    return { ok: false, error: "selection_invalid" };
+  }
+  if (error.code === FOREIGN_KEY_VIOLATION) {
+    const constraint = /^insert or update on table "positions" violates foreign key constraint "([^"]+)"$/.exec(
+      error.message,
+    )?.[1];
+    if (constraint === WALLET_FOREIGN_KEY) return { ok: false, error: "wallet_not_found" };
+    if (constraint === CATEGORY_FOREIGN_KEY) return { ok: false, error: "category_not_found" };
+  }
+  return unexpectedCreateRejection("position_insert", error.code);
 }
 
 /** The author's non-deleted categories, ordered by name. */
@@ -267,9 +284,7 @@ export async function createPosition(
       return { ok: false, error: "unexpected" };
     }
     if ("error" in category) {
-      if (category.error) return failure(category.error);
-      logUnexpected("findOrCreateCategory", { message: "unique violation, but no matching category on re-select" });
-      return { ok: false, error: "unexpected" };
+      return unexpectedCreateRejection("category_insert", category.error?.code ?? UNIQUE_VIOLATION);
     }
     categoryId = category.id;
   } else {
@@ -293,7 +308,7 @@ export async function createPosition(
     })
     .select("id")
     .single();
-  if (error) return failure(error);
+  if (error) return positionInsertFailure(error);
   return { ok: true, id: data.id };
 }
 
