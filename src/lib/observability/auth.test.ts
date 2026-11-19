@@ -51,7 +51,7 @@ const handlers = [
     method: "POST",
     operation: "auth.signIn",
     path: "/api/auth/signin",
-    target: "/auth/signin?error=private",
+    target: "/auth/signin?error=signin_failed",
   },
   { handler: signOut, method: "POST", operation: "auth.signOut", path: "/api/auth/signout", target: "/" },
   {
@@ -59,7 +59,7 @@ const handlers = [
     method: "GET",
     operation: "auth.exchangeCode",
     path: "/auth/callback?code=secret",
-    target: "/auth/signin?error=",
+    target: "/auth/signin?error=link_failed",
   },
 ];
 it.each(handlers)(

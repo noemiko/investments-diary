@@ -230,7 +230,7 @@ No database migration or hosted setting change is required. Existing sessions sh
 
 #### Automated
 
-- [x] 1.1 Static verification passes: `npx astro sync`, `npm run lint`, `npx astro check`, `npm run build`.
+- [x] 1.1 Static verification passes: `npx astro sync`, `npm run lint`, `npx astro check`, `npm run build`. — 74cbaf2
 
 #### Manual
 
@@ -240,8 +240,8 @@ No database migration or hosted setting change is required. Existing sessions sh
 
 #### Automated
 
-- [ ] 2.1 Unit tests pass for server validation, fixed errors, return-destination validation and cookie options.
-- [ ] 2.2 Static verification passes in the prescribed order.
+- [x] 2.1 Unit tests pass for server validation, fixed errors, return-destination validation and cookie options.
+- [x] 2.2 Static verification passes in the prescribed order.
 
 #### Manual
 
