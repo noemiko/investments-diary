@@ -2,6 +2,7 @@ import type { createClient } from "@/lib/supabase";
 import { createYahooMarketData } from "@/lib/market-data/yahoo";
 import { providerBudget, quoteBatches } from "@/lib/market-data/refresh-policy";
 import { reportUnexpected } from "@/lib/observability/reporter";
+import { safeStatus } from "@/lib/observability/privacy";
 import { createPriceRepository, type PriceCache, type PriceRepository } from "./market-price-repository";
 import { createTargetRepository, type TargetRepository } from "./market-target-repository";
 import type {
@@ -49,11 +50,17 @@ function cachedQuote(row: PriceCache): MarketQuote | null {
 function quoteFailure(result: MarketDataFailure): MarketDataFailure {
   return result.reason === "invalid_request" ? { ok: false, reason: "invalid_quote" } : result;
 }
-function report(result: MarketDataFailure) {
+function report(
+  stage: "quote_batch" | "listing_confirm",
+  reason: MarketDataFailure["reason"],
+  status?: number | string,
+  affectedCount?: number,
+) {
   // Never pass provider errors, URLs or response payloads to logging/Sentry.
-  if (result.reason === "cancelled") return;
-  reportUnexpected(Object.assign(new Error("Market data operation failed"), { status: result.status }), {
+  if (reason === "cancelled" || reason === "not_found") return;
+  reportUnexpected(Object.assign(new Error("Market data operation failed"), { status }), {
     operation: "marketPrices",
+    market: { stage, reason, affectedCount },
   });
 }
 /**
@@ -126,12 +133,27 @@ export function createMarketPriceService(
           ),
         );
         const outcome = response.ok ? response.value : response;
-        if (!outcome.ok) report(outcome);
-        for (const { row, token } of claimed) {
+        const members = claimed.map(({ row, token }) => {
           const member: MarketQuoteOutcome = outcome.ok
             ? (outcome.quotes[row.symbol] ?? { ok: false, reason: "not_found" })
             : quoteFailure(outcome);
-          if (!member.ok && outcome.ok) report(member);
+          return { row, token, member };
+        });
+        if (outcome.ok) {
+          const summaries = new Map<MarketDataFailure["reason"], { count: number; status: string | undefined }>();
+          for (const { member } of members) {
+            if (member.ok || member.reason === "cancelled" || member.reason === "not_found") continue;
+            const status = safeStatus(member.status);
+            const summary = summaries.get(member.reason);
+            if (summary) {
+              summary.count++;
+              if (summary.status !== status) summary.status = undefined;
+            } else summaries.set(member.reason, { count: 1, status });
+          }
+          for (const [reason, { status, count }] of summaries) report("quote_batch", reason, status, count);
+        } else report("quote_batch", outcome.reason, outcome.status, claimed.length);
+
+        for (const { row, token, member } of members) {
           const accepted = await repository.finish(row.id, token, member);
           const persisted = !member.ok || !accepted ? await repository.cache(row.id) : null;
           const item: MarketPriceDownloadItem = {
@@ -204,8 +226,8 @@ export function createMarketPriceService(
           )
             member = { ok: false, reason: "invalid_quote" };
           if (!member.ok) {
+            report(cached ? "quote_batch" : "listing_confirm", member.reason, member.status, cached ? 1 : undefined);
             member = quoteFailure(member);
-            report(member);
           }
           if (member.ok) {
             cached ??= await repository.ensureCache(member.quote);

@@ -1,11 +1,22 @@
 import * as Sentry from "@sentry/astro";
 import { safeCode, safeOperation, safeStatus, safeTags } from "./privacy";
 
+import type { MarketDataFailure } from "@/types";
+
 export interface ReportContext {
   operation: string;
   route?: string;
   requestId?: string;
   entityId?: string;
+  investmentSave?: {
+    stage: "category_insert" | "position_insert";
+    category: "constraint_rejection" | "database_error";
+  };
+  market?: {
+    stage: "listing_search" | "quote_batch" | "listing_confirm";
+    reason: MarketDataFailure["reason"];
+    affectedCount?: number;
+  };
 }
 
 /** Keep the original diagnostic chain until the final privacy boundary. */
@@ -40,6 +51,16 @@ export function reportUnexpected(error: unknown, context: ReportContext): void {
       ...(context.route ? { route: context.route } : {}),
       ...(context.requestId ? { request_id: context.requestId } : {}),
       ...(context.entityId ? { entity_id: context.entityId } : {}),
+      ...(context.market && {
+        provider: "yahoo",
+        provider_stage: context.market.stage,
+        provider_reason: context.market.reason,
+        affected_count: context.market.affectedCount,
+      }),
+      ...(context.investmentSave && {
+        save_stage: context.investmentSave.stage,
+        save_category: context.investmentSave.category,
+      }),
       ...diagnostics,
     });
     // Preserve the existing platform-log signal without serializing provider/form data.

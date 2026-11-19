@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { reportUnexpected } from "@/lib/observability/reporter";
 import type { createClient } from "@/lib/supabase";
 import type { MarketQuote, MarketQuoteOutcome } from "@/types";
 import { createMarketPriceService, type MarketDataProvider } from "./market-prices";
@@ -173,6 +174,10 @@ describe("explicit quote download orchestration", () => {
     await vi.advanceTimersByTimeAsync(5_000);
     expect(await result).toMatchObject({ ok: true, results: [{ outcome: "timeout" }, { outcome: "due" }] });
     expect(provider.confirmListing).toHaveBeenCalledOnce();
+    expect(reportUnexpected).toHaveBeenCalledExactlyOnceWith(expect.any(Error), {
+      operation: "marketPrices",
+      market: { stage: "listing_confirm", reason: "timeout", affectedCount: undefined },
+    });
   });
   it("deduplicates mapped identities, batches at 50 and allows another click immediately after success", async () => {
     const rows = Array.from({ length: 103 }, (_, i) => listing(i));
@@ -195,10 +200,14 @@ describe("explicit quote download orchestration", () => {
     ]);
   });
   it("matches partial responses by symbol, retains good members and retains cached values on failures", async () => {
-    const { service, provider, repository, caches } = fixture([listing(0), listing(1), listing(2)]);
+    const { service, provider, repository, caches } = fixture([listing(0), listing(1), listing(2), listing(3)]);
     vi.mocked(provider.fetchQuotes).mockResolvedValue({
       ok: true,
-      quotes: { STOCK2: { ok: true, quote: quote(listing(2)) }, STOCK0: { ok: false, reason: "invalid_quote" } },
+      quotes: {
+        STOCK0: { ok: false, reason: "invalid_quote", status: 502 },
+        STOCK2: { ok: true, quote: quote(listing(2)) },
+        STOCK3: { ok: false, reason: "invalid_quote", status: 503 },
+      },
     });
     const result = await service.download();
     expect(result).toMatchObject({
@@ -207,12 +216,18 @@ describe("explicit quote download orchestration", () => {
         { symbol: "STOCK0", outcome: "invalid_quote" },
         { symbol: "STOCK1", outcome: "not_found" },
         { symbol: "STOCK2", outcome: "success" },
+        { symbol: "STOCK3", outcome: "invalid_quote" },
       ],
     });
     expect(caches.get("cache-0")?.price).toBe("10");
     expect(caches.get("cache-1")?.price).toBe("10");
     expect(caches.get("cache-2")?.price).toBe("12.12345678");
-    expect(repository.finish).toHaveBeenCalledTimes(3);
+    expect(caches.get("cache-3")?.price).toBe("10");
+    expect(repository.finish).toHaveBeenCalledTimes(4);
+    expect(reportUnexpected).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ status: undefined }), {
+      operation: "marketPrices",
+      market: { stage: "quote_batch", reason: "invalid_quote", affectedCount: 2 },
+    });
   });
   it("honors atomic claim cooldowns before provider work, without using successful fetch age", async () => {
     const row = { ...listing(), cooldownUntil: "2026-10-30T13:00:00Z" };
@@ -250,6 +265,10 @@ describe("explicit quote download orchestration", () => {
       results: [{ outcome: "provider_unavailable", retryAfter: failure.retryAfter }],
     });
     expect(repository.finish).toHaveBeenCalledWith("cache-0", "token-cache-0", failure);
+    expect(reportUnexpected).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ status: 429 }), {
+      operation: "marketPrices",
+      market: { stage: "quote_batch", reason: "provider_unavailable", affectedCount: 1 },
+    });
   });
   it("bounds sequential batches by one five-second budget and leaves unattempted symbols due", async () => {
     vi.useFakeTimers();
@@ -322,6 +341,7 @@ describe("explicit quote download orchestration", () => {
     expect(signals[0].aborted).toBe(true);
     expect(signals[1].aborted).toBe(false);
     expect(signals[0]).not.toBe(signals[1]);
+    expect(reportUnexpected).not.toHaveBeenCalled();
   });
   it("rejects foreign or ineligible requested positions before any provider work", async () => {
     const { service, provider, repository } = fixture();

@@ -146,6 +146,10 @@ it("retains market-price operations and safe route patterns while excluding quot
       operation: "marketPrices",
       route: "/dashboard/market-prices/listings/download",
       status: 429,
+      provider: "yahoo",
+      provider_stage: "quote_batch",
+      provider_reason: "provider_unavailable",
+      affected_count: "2",
       symbol: "PRIVATE_SYMBOL",
     },
     message: "PRIVATE_QUOTE_AND_CRUMB",
@@ -155,6 +159,69 @@ it("retains market-price operations and safe route patterns while excluding quot
     operation: "marketPrices",
     route: "/dashboard/market-prices/listings/download",
     status: "429",
+    provider: "yahoo",
+    provider_stage: "quote_batch",
+    provider_reason: "provider_unavailable",
+    affected_count: "2",
   });
   expect(JSON.stringify(event)).not.toContain("PRIVATE");
+});
+
+it.each([0, 51, 2.5, "01", "PRIVATE_COUNT"])("rejects invalid affected count %s", (affected_count) => {
+  const event = scrubEvent({
+    tags: {
+      operation: "marketPrices",
+      provider: "yahoo",
+      provider_stage: "quote_batch",
+      provider_reason: "invalid_quote",
+      affected_count,
+    },
+  });
+  expect(event.tags).not.toHaveProperty("affected_count");
+});
+
+it.each(["provider", "provider_stage", "provider_reason"])("rejects unrecognized market %s", (field) => {
+  const event = scrubEvent({
+    tags: {
+      operation: "marketPrices",
+      provider: "yahoo",
+      provider_stage: "quote_batch",
+      provider_reason: "invalid_quote",
+      [field]: "PRIVATE_SENTINEL",
+    },
+  });
+  expect(event.tags).toEqual({ operation: "marketPrices" });
+});
+
+it("keeps bounded investment save context and drops private database details", () => {
+  const event = scrubEvent({
+    tags: {
+      operation: "createPosition",
+      code: "23502",
+      save_stage: "category_insert",
+      save_category: "constraint_rejection",
+      entity_id: "b8181cb8-2d6b-4dd4-99a4-f59fc01225f2",
+    },
+    exception: { values: [{ type: "Error", value: "PRIVATE_SENTINEL" }] },
+    extra: { details: "PRIVATE_SENTINEL" },
+  });
+  expect(event.tags).toEqual({
+    operation: "createPosition",
+    code: "23502",
+    save_stage: "category_insert",
+    save_category: "constraint_rejection",
+  });
+  expect(JSON.stringify(event)).not.toContain("PRIVATE_SENTINEL");
+});
+
+it("drops unknown investment save fields and SQLSTATEs", () => {
+  const event = scrubEvent({
+    tags: {
+      operation: "createPosition",
+      code: "23ZZZ",
+      save_stage: "PRIVATE_SENTINEL",
+      save_category: "constraint_rejection",
+    },
+  });
+  expect(event.tags).toEqual({ operation: "createPosition" });
 });

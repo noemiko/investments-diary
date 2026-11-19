@@ -48,6 +48,43 @@ describe("nonthrowing reporter", () => {
     expect(JSON.stringify(log.mock.calls)).not.toContain("PRIVATE_SENTINEL");
   });
 
+  it("emits identical bounded market tags to logs and capture", () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const error = Object.assign(new Error("Market data operation failed"), { status: 429, query: "PRIVATE_SENTINEL" });
+    reportUnexpected(error, {
+      operation: "marketPrices",
+      market: { stage: "quote_batch", reason: "provider_unavailable", affectedCount: 2 },
+    });
+    const tags = {
+      operation: "marketPrices",
+      provider: "yahoo",
+      provider_stage: "quote_batch",
+      provider_reason: "provider_unavailable",
+      affected_count: "2",
+      status: "429",
+    };
+    expect(log).toHaveBeenCalledExactlyOnceWith("Unexpected application failure", tags);
+    expect(Sentry.captureException).toHaveBeenCalledExactlyOnceWith(error, { tags });
+  });
+
+  it("emits the same bounded investment save tags in the log and capture", () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const error = Object.assign(new Error("Investment insert rejected"), { code: "22003" });
+    reportUnexpected(error, {
+      operation: "createPosition",
+      entityId: "b8181cb8-2d6b-4dd4-99a4-f59fc01225f2",
+      investmentSave: { stage: "position_insert", category: "constraint_rejection" },
+    });
+    const tags = {
+      operation: "createPosition",
+      code: "22003",
+      save_stage: "position_insert",
+      save_category: "constraint_rejection",
+    };
+    expect(log).toHaveBeenCalledExactlyOnceWith("Unexpected application failure", tags);
+    expect(Sentry.captureException).toHaveBeenCalledExactlyOnceWith(error, { tags });
+  });
+
   it("contains SDK failures and hostile exception getters", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     vi.mocked(Sentry.captureException).mockImplementation(() => {

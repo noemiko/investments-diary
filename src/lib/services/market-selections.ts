@@ -85,8 +85,12 @@ export async function searchMarketSelections(
   if (!wallet.data) return { ok: false, reason: "not_found" };
   const result = await provider.searchListings(query.trim(), { signal });
   if (!result.ok) {
-    if (result.reason !== "cancelled")
-      reportUnexpected(new Error("Market search failed"), { operation: "marketPrices" });
+    if (result.reason !== "cancelled" && result.reason !== "not_found") {
+      reportUnexpected(Object.assign(new Error("Market search failed"), { status: result.status }), {
+        operation: "marketPrices",
+        market: { stage: "listing_search", reason: result.reason },
+      });
+    }
     return result;
   }
   const choices: MarketSelectionChoice[] = [];

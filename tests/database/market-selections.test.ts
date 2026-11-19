@@ -118,6 +118,18 @@ it("persists search selections without quotes, validates creation receipts and r
       listing_receipt_id: plChoice.receiptId,
     });
     if (!usPosition.ok || !plPosition.ok) throw new Error("Saved selection fixture failed");
+    // An existing unconfirmed position reaches the FK on update, even though the receipt guard
+    // would reject a nonexistent wallet before the FK could be checked during insert.
+    for (const [change, name] of [
+      [{ wallet_id: randomUUID() }, "positions_wallet_fkey"],
+      [{ category_id: randomUUID() }, "positions_category_id_user_id_fkey"],
+    ] as const) {
+      const { error } = await admin.from("positions").update(change).eq("id", usPosition.id);
+      expect(error).toMatchObject({
+        code: "23503",
+        message: `insert or update on table "positions" violates foreign key constraint "${name}"`,
+      });
+    }
     expect(
       (
         await author
@@ -210,6 +222,20 @@ it("persists search selections without quotes, validates creation receipts and r
       ).error,
     ).toBeNull();
     expect(await createPosition(author, owner, input)).toEqual({ ok: false, error: "selection_invalid" });
+    const { error: expiredInsert } = await author.from("positions").insert({
+      user_id: owner,
+      instrument: usChoice.symbol,
+      buy_date: input.buy_date,
+      buy_price: input.buy_price,
+      quantity: input.quantity,
+      category_id: input.category_id,
+      wallet_id: usd,
+      market_selection_receipt_id: usChoice.receiptId,
+    });
+    expect(expiredInsert).toMatchObject({
+      code: "23514",
+      message: "Choose a valid stock selection for this wallet",
+    });
     // A saved target survives its original form receipt expiry; incompatible manual amounts stay unchanged.
     expect(
       (await author.from("positions").update({ current_price: "9", price_date: "2026-01-02" }).eq("id", plPosition.id))
