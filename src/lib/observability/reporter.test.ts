@@ -48,6 +48,25 @@ describe("nonthrowing reporter", () => {
     expect(JSON.stringify(log.mock.calls)).not.toContain("PRIVATE_SENTINEL");
   });
 
+  it("emits identical bounded market tags to logs and capture", () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const error = Object.assign(new Error("Market data operation failed"), { status: 429, query: "PRIVATE_SENTINEL" });
+    reportUnexpected(error, {
+      operation: "marketPrices",
+      market: { stage: "quote_batch", reason: "provider_unavailable", affectedCount: 2 },
+    });
+    const tags = {
+      operation: "marketPrices",
+      provider: "yahoo",
+      provider_stage: "quote_batch",
+      provider_reason: "provider_unavailable",
+      affected_count: "2",
+      status: "429",
+    };
+    expect(log).toHaveBeenCalledExactlyOnceWith("Unexpected application failure", tags);
+    expect(Sentry.captureException).toHaveBeenCalledExactlyOnceWith(error, { tags });
+  });
+
   it("contains SDK failures and hostile exception getters", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     vi.mocked(Sentry.captureException).mockImplementation(() => {

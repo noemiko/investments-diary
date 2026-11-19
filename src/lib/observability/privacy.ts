@@ -81,6 +81,8 @@ const ROUTES = new Set([
   "/api/auth/signout",
   "/dev/kitchen-sink",
 ]);
+const MARKET_STAGES = new Set(["listing_search", "quote_batch", "listing_confirm"]);
+const MARKET_REASONS = new Set(["invalid_request", "invalid_quote", "provider_unavailable", "timeout"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function safeOperation(value: unknown): string {
@@ -111,6 +113,22 @@ export function safeTags(tags: Event["tags"]): Record<string, string> {
   if (code) result.code = code;
   const status = safeStatus(tags?.status);
   if (status) result.status = status;
+  if (result.operation === "marketPrices" && tags?.provider === "yahoo") {
+    const stage = tags.provider_stage;
+    const reason = tags.provider_reason;
+    if (
+      typeof stage === "string" &&
+      MARKET_STAGES.has(stage) &&
+      typeof reason === "string" &&
+      MARKET_REASONS.has(reason)
+    ) {
+      result.provider = "yahoo";
+      result.provider_stage = stage;
+      result.provider_reason = reason;
+      const count = typeof tags.affected_count === "number" ? String(tags.affected_count) : tags.affected_count;
+      if (typeof count === "string" && /^(?:[1-9]|[1-4][0-9]|50)$/.test(count)) result.affected_count = count;
+    }
+  }
   return result;
 }
 
