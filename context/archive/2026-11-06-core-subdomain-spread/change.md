@@ -1,10 +1,10 @@
 ---
 change_id: core-subdomain-spread
 title: Trace Core subdomain across application layers
-status: preparing
+status: archived
 created: 2026-11-06
-updated: 2026-11-06
-archived_at: null
+updated: 2026-11-20
+archived_at: 2026-11-20T15:11:49Z
 ---
 
 ## Notes

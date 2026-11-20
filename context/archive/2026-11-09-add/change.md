@@ -1,10 +1,10 @@
 ---
 change_id: add
 title: Add separate opening and closing commissions to positions
-status: implementing
+status: archived
 created: 2026-11-09
-updated: 2026-11-09
-archived_at: null
+updated: 2026-11-20
+archived_at: 2026-11-20T15:11:49Z
 ---
 
 ## Notes
