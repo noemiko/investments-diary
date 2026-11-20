@@ -246,7 +246,9 @@ How it works:
 
 ## Demo data
 
-With local Supabase running, enter a password (zsh) and seed the demo account:
+The seed script loads the project root `.env` automatically. Set `DEMO_USER_PASSWORD` there (at least 12 characters),
+then run `npm run seed:demo` with local Supabase running. Existing environment variables take precedence.
+Alternatively, enter the password in your shell (zsh):
 
 ```zsh
 read -s "DEMO_USER_PASSWORD?Demo password (at least 12 characters): "
