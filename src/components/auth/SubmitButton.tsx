@@ -8,10 +8,19 @@ interface SubmitButtonProps {
   children: ReactNode;
   name?: string;
   value?: string;
+  pending?: boolean;
 }
 
-export function SubmitButton({ pendingText, icon, children, name, value }: SubmitButtonProps) {
-  const { pending } = useFormStatus();
+export function SubmitButton({
+  pendingText,
+  icon,
+  children,
+  name,
+  value,
+  pending: explicitPending,
+}: SubmitButtonProps) {
+  const { pending: actionPending } = useFormStatus();
+  const pending = explicitPending ?? actionPending;
 
   return (
     <Button

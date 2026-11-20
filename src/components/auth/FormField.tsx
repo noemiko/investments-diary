@@ -1,4 +1,4 @@
-import type { HTMLAttributes, ReactNode } from "react";
+import type { HTMLAttributes, ReactNode, Ref } from "react";
 import { CircleAlert } from "lucide-react";
 
 // Token-based so it reads the same on the glass sign-in card and inside a Card; aria-invalid drives the error state.
@@ -20,6 +20,9 @@ interface FormFieldProps {
   autoFocus?: boolean;
   inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
   max?: string;
+  required?: boolean;
+  autoComplete?: string;
+  inputRef?: Ref<HTMLInputElement>;
 }
 
 export function FormField({
@@ -37,6 +40,9 @@ export function FormField({
   autoFocus,
   inputMode,
   max,
+  required,
+  autoComplete,
+  inputRef,
 }: FormFieldProps) {
   return (
     <div>
@@ -46,6 +52,7 @@ export function FormField({
       <div className="relative">
         <span className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2">{icon}</span>
         <input
+          ref={inputRef}
           id={id}
           name={name ?? id}
           type={type}
@@ -57,13 +64,16 @@ export function FormField({
           autoFocus={autoFocus}
           inputMode={inputMode}
           max={max}
+          required={required}
+          autoComplete={autoComplete}
+          aria-describedby={error ? `${id}-error` : undefined}
           aria-invalid={error ? true : undefined}
           className={inputBase}
         />
         {endContent}
       </div>
       {error ? (
-        <p className="text-destructive mt-1 flex items-center gap-1 text-xs">
+        <p id={`${id}-error`} className="text-destructive mt-1 flex items-center gap-1 text-xs">
           <CircleAlert className="size-3" />
           {error}
         </p>

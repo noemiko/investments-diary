@@ -31,7 +31,7 @@ it("reports getUser failure and preserves the protected redirect", async () => {
   const response = await onRequest(context("/dashboard"), next);
   if (!(response instanceof Response)) throw new Error("Expected middleware response");
   expect(response.status).toBe(302);
-  expect(response.headers.get("location")).toBe("/auth/signin");
+  expect(response.headers.get("location")).toBe("/auth/signin?returnTo=%2Fdashboard");
   expect(next).not.toHaveBeenCalled();
   expect(reportUnexpected).toHaveBeenCalledExactlyOnceWith(error, { operation: "auth.getUser" });
 });

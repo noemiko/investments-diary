@@ -6,18 +6,22 @@ import { createClient } from "@/lib/supabase";
 // either ?code=<pkce-code> (success) or ?error=...&error_description=... (failure). Failures go to
 // sign-in: a reused link, a mail scanner's pre-click, or a link opened on another device (no PKCE
 // verifier cookie) all fail here although the link itself may already have taken effect.
-const LINK_FAILED = "This link was already used or has expired. Try signing in.";
+const LINK_FAILED = "/auth/signin?error=link_failed";
 
 export const GET: APIRoute = async (context) => {
   const code = context.url.searchParams.get("code");
 
   if (!code) {
-    return context.redirect(`/auth/signin?error=${encodeURIComponent(LINK_FAILED)}`);
+    return context.redirect(LINK_FAILED);
   }
 
-  const supabase = createClient(context.request.headers, context.cookies);
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
-  reportAuthError(error, "auth.exchangeCode");
-  const redirectUrl = error ? `/auth/signin?error=${encodeURIComponent(LINK_FAILED)}` : "/dashboard";
-  return context.redirect(redirectUrl);
+  try {
+    const supabase = createClient(context.request.headers, context.cookies);
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    reportAuthError(error, "auth.exchangeCode");
+    return context.redirect(error ? LINK_FAILED : "/dashboard");
+  } catch (error) {
+    reportAuthError(error, "auth.exchangeCode");
+    return context.redirect(LINK_FAILED);
+  }
 };

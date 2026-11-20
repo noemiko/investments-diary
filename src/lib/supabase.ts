@@ -1,6 +1,7 @@
 import { createServerClient, parseCookieHeader } from "@supabase/ssr";
 import type { AstroCookies } from "astro";
 import { SUPABASE_URL, SUPABASE_KEY } from "astro:env/server";
+import { sessionCookieOptions } from "@/lib/auth-cookies";
 import type { ApiDatabase } from "@/db/api.types";
 
 // Dev must never talk to the hosted (production) project — run `npx supabase start` instead.
@@ -16,6 +17,7 @@ export function createClient(requestHeaders: Headers, cookies: AstroCookies) {
     throw new Error("SUPABASE_URL and SUPABASE_KEY must be non-empty, see README.");
   }
   return createServerClient<ApiDatabase>(SUPABASE_URL, SUPABASE_KEY, {
+    cookieOptions: sessionCookieOptions(import.meta.env.PROD),
     cookies: {
       getAll() {
         return parseCookieHeader(requestHeaders.get("Cookie") ?? "");

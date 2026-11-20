@@ -4,6 +4,8 @@ import { reportAuthError } from "@/lib/observability/auth";
 import { defineMiddleware } from "astro:middleware";
 import { createClient } from "@/lib/supabase";
 
+import { safeReturnTo, signInLocation } from "@/lib/auth-return";
+
 const PROTECTED_ROUTES = ["/dashboard"];
 
 export const onRequest = defineMiddleware((context, next) =>
@@ -21,7 +23,9 @@ export const onRequest = defineMiddleware((context, next) =>
 
     if (PROTECTED_ROUTES.some((route) => context.url.pathname.startsWith(route))) {
       if (!context.locals.user) {
-        return context.redirect("/auth/signin");
+        return context.redirect(
+          context.request.method === "GET" ? signInLocation(context.url.pathname + context.url.search) : "/auth/signin",
+        );
       }
     }
 
@@ -30,7 +34,7 @@ export const onRequest = defineMiddleware((context, next) =>
     }
 
     if (context.url.pathname === "/auth/signin" && user) {
-      return context.redirect("/dashboard");
+      return context.redirect(safeReturnTo(context.url.searchParams.get("returnTo")));
     }
 
     return next();

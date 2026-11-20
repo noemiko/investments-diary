@@ -6,8 +6,8 @@ test.use({ storageState: { cookies: [], origins: [] } });
 
 test("auth-gate-redirect: signed-out dashboard visitor reaches the login form", async ({ page }) => {
   await page.goto("/dashboard");
-  await expect(page).toHaveURL(new RegExp("/auth/signin$"));
-  await expect(page.getByRole("heading", { name: "Sign in", exact: true })).toBeVisible();
+  await expect(page).toHaveURL("/auth/signin?returnTo=%2Fdashboard");
+  await expect(page.getByRole("heading", { name: "Welcome back", exact: true })).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Email", exact: true })).toBeVisible();
   await expect(page.getByLabel("Password", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();

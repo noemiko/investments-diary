@@ -5,6 +5,7 @@
 // Zero dependencies on purpose. Run against a live server: BASE_URL=http://localhost:4321 node scripts/testing/smoke.mjs
 // Creates two accounts per run through the local Auth admin API — never point it at production.
 
+import { Buffer } from "node:buffer";
 import { randomBytes, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
 
@@ -158,7 +159,7 @@ function storeCookies(jar, response) {
   }
 }
 
-async function request(who, path, { method = "GET", form } = {}) {
+async function request(who, path, { method = "GET", form, origin = BASE_URL } = {}) {
   if (
     method === "POST" &&
     path === "/dashboard/new" &&
@@ -174,14 +175,25 @@ async function request(who, path, { method = "GET", form } = {}) {
     redirect: "manual",
     headers: {
       Cookie: cookieHeader(who.jar),
-      Origin: BASE_URL,
+      Origin: origin,
       ...(form ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
     },
     body: form ? new URLSearchParams(form).toString() : undefined,
   });
   storeCookies(who.jar, response);
   const body = await response.text();
-  return { status: response.status, location: response.headers.get("location") ?? "", body };
+  const sessionCookies = response.headers
+    .getSetCookie()
+    .filter((cookie) => /^sb-.*-auth-token(?:\.\d+)?=/.test(cookie));
+  const sessionCookiesProtected =
+    sessionCookies.length > 0 &&
+    sessionCookies.every(
+      (cookie) =>
+        /;\s*HttpOnly(?:;|$)/i.test(cookie) &&
+        /;\s*SameSite=Lax(?:;|$)/i.test(cookie) &&
+        /;\s*Path=\/(?:;|$)/i.test(cookie),
+    );
+  return { status: response.status, location: response.headers.get("location") ?? "", body, sessionCookiesProtected };
 }
 
 function decodeEntities(html) {
@@ -292,9 +304,75 @@ function sectionBody(result, kind) {
 // an entry (or `location`) may be a function, read when the step runs, to use an id captured earlier.
 // `excludesIds` names captured ids that must not appear in the body; `requiresIds` names ids that must
 // have been captured. `location` is a prefix match unless `exactLocation` is set.
+const signinFor = (destination, error) => {
+  const query = new URLSearchParams();
+  if (error) query.set("error", error);
+  query.set("returnTo", destination);
+  return `/auth/signin?${query}`;
+};
+// Only a disposable local account is altered. No cookie contents are logged.
+function localSession(who) {
+  const chunks = [...who.jar.entries()]
+    .filter(([name]) => /-auth-token(?:\.\d+)?$/.test(name))
+    .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }));
+  const encoded = chunks.map(([, value]) => value).join("");
+  if (!encoded.startsWith("base64-")) throw new Error("Expected local SSR session encoding");
+  return { chunks, session: JSON.parse(Buffer.from(encoded.slice(7), "base64url").toString("utf8")) };
+}
+async function refreshLocalSession(who) {
+  const { chunks, session } = localSession(who);
+  session.expires_at = Math.floor(Date.now() / 1000) - 60;
+  const encoded = "base64-" + Buffer.from(JSON.stringify(session)).toString("base64url");
+  const baseName = chunks[0][0].replace(/\.\d+$/, "");
+  for (const [name] of chunks) who.jar.delete(name);
+  if (encoded.length <= 3000) who.jar.set(baseName, encoded);
+  else
+    for (let offset = 0; offset < encoded.length; offset += 3000)
+      who.jar.set(`${baseName}.${offset / 3000}`, encoded.slice(offset, offset + 3000));
+  const response = await request(who, "/dashboard");
+  return { ...response, refreshed: localSession(who).session.expires_at > Math.floor(Date.now() / 1000) };
+}
 const steps = [
+  [
+    "anonymous nested GET preserves pathname and query",
+    () => request(anonymous, "/dashboard/wallets?range=30&sort=name"),
+    { status: 302, location: signinFor("/dashboard/wallets?range=30&sort=name"), exactLocation: true },
+  ],
+  [
+    "cross-origin signin form POST is rejected by Astro",
+    () =>
+      request(anonymous, "/api/auth/signin", {
+        method: "POST",
+        origin: "https://attacker.example",
+        form: { email: "nobody@example.test", password: "invalid" },
+      }),
+    { status: 403 },
+  ],
+  [
+    "malformed signin is rejected with a fixed input code",
+    () => request(anonymous, "/api/auth/signin", { method: "POST", form: { email: "bad", password: "" } }),
+    { status: 302, location: signinFor("/dashboard", "invalid_input"), exactLocation: true },
+  ],
+  [
+    "unknown query error renders only generic local copy",
+    () => request(anonymous, "/auth/signin?error=private-provider-detail"),
+    {
+      status: 200,
+      includes: ["Unable to sign in. Check your email and password and try again."],
+      excludes: ["private-provider-detail"],
+    },
+  ],
+  [
+    "callback failure uses the fixed link code",
+    () => request(anonymous, "/auth/callback?error=private-provider-detail"),
+    { status: 302, location: "/auth/signin?error=link_failed", exactLocation: true },
+  ],
   ...["/dashboard/wallets", "/dashboard/wallets/new", `/dashboard/wallets/${randomUUID()}`].flatMap((path) => [
-    [`anonymous wallet GET ${path}`, () => request(anonymous, path), { status: 302, location: "/auth/signin" }],
+    [
+      `anonymous wallet GET ${path}`,
+      () => request(anonymous, path),
+      { status: 302, location: signinFor(path), exactLocation: true },
+    ],
     [
       `anonymous wallet POST ${path}`,
       () =>
@@ -310,7 +388,11 @@ const steps = [
     () => request(a, "/"),
     { status: 302, location: "/auth/signin", exactLocation: true },
   ],
-  ["dashboard redirects anonymous user", () => request(a, "/dashboard"), { status: 302, location: "/auth/signin" }],
+  [
+    "dashboard redirects anonymous user",
+    () => request(a, "/dashboard"),
+    { status: 302, location: signinFor("/dashboard"), exactLocation: true },
+  ],
   [
     "app has no signup endpoint",
     () => request(a, "/api/auth/signup", { method: "POST", form: { email: a.email, password } }),
@@ -319,13 +401,21 @@ const steps = [
   ["owner creates account A", () => createAccount(a), { status: 200 }],
   [
     "signin rejects wrong password",
-    () => request(a, "/api/auth/signin", { method: "POST", form: { email: a.email, password: "wrong" } }),
-    { status: 302, location: "/auth/signin?error=" },
+    () =>
+      request(a, "/api/auth/signin", {
+        method: "POST",
+        form: { email: a.email, password: "wrong", returnTo: "/dashboard/wallets?range=30" },
+      }),
+    { status: 302, location: signinFor("/dashboard/wallets?range=30", "signin_failed"), exactLocation: true },
   ],
   [
-    "signin accepts correct password",
-    () => request(a, "/api/auth/signin", { method: "POST", form: { email: a.email, password } }),
-    { status: 302, location: "/dashboard", exactLocation: true },
+    "signin accepts correct password and restores a nested destination",
+    () =>
+      request(a, "/api/auth/signin", {
+        method: "POST",
+        form: { email: a.email, password, returnTo: "/dashboard/wallets?range=30" },
+      }),
+    { status: 302, location: "/dashboard/wallets?range=30", exactLocation: true, cookiePolicy: true },
   ],
   [
     "home opens dashboard after signin",
@@ -343,6 +433,21 @@ const steps = [
     { status: 200, includes: ["Your positions", "Wallets"], excludes: ["10x Astro Starter"] },
   ],
   ["dashboard renders for signed-in user", () => request(a, "/dashboard"), { status: 200 }],
+  [
+    "expired local session metadata triggers refresh with private cookies",
+    () => refreshLocalSession(a),
+    { status: 200, cookiePolicy: true, refreshed: true },
+  ],
+  [
+    "authenticated signin restores only a safe dashboard destination",
+    () => request(a, "/auth/signin?returnTo=" + encodeURIComponent("/dashboard/wallets?range=30#discard")),
+    { status: 302, location: "/dashboard/wallets?range=30", exactLocation: true },
+  ],
+  [
+    "authenticated signin rejects an external return destination",
+    () => request(a, "/auth/signin?returnTo=" + encodeURIComponent("//attacker.example")),
+    { status: 302, location: "/dashboard", exactLocation: true },
+  ],
 
   // Account A records a position under a new category.
   ["A: dashboard shows empty state", () => request(a, "/dashboard"), { status: 200, includes: [EMPTY_STATE] }],
@@ -1100,6 +1205,8 @@ function maskIds(html) {
 function bodyProblems(actual, expected) {
   const body = decodeEntities(actual.body);
   const problems = [];
+  if (expected.cookiePolicy && !actual.sessionCookiesProtected) problems.push("session cookie protection missing");
+  if (expected.refreshed && !actual.refreshed) problems.push("session expiry was not refreshed");
   for (const text of (expected.includes ?? []).map(resolve)) {
     if (!body.includes(text)) problems.push(`missing "${text}"`);
   }
