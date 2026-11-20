@@ -27,8 +27,8 @@ test("nonlocal origins rejected and synthetic latest totals agree with fixture a
   assert.equal(zeroSale.deleted_at, null);
   assert.notEqual(zeroSale.sell_date, null);
   const points = demoSnapshots(f.wallets, f.positions, "2026-10-28");
-  // Five other counted closed positions gain 100 each; the zero sale loses 500.
-  // The resulting realised total must be zero, not 500 (sale excluded) or 600 (quote used).
+  // Five other counted closed positions gain 80 each; the zero sale loses 400.
+  // The resulting realised total must be zero, not 400 (sale excluded) or 480 (quote used).
   const latestRising = points.filter((p) => p.wallet_id === zeroSale.wallet_id).at(-1);
   assert.equal(latestRising.realised_count, 6);
   assert.equal(latestRising.realised_change, "0");
@@ -44,7 +44,7 @@ test("nonlocal origins rejected and synthetic latest totals agree with fixture a
         p.quantity !== null &&
         (p.sell_price !== null || p.current_price !== null),
     ))
-      sum += (Number(p.sell_price ?? p.current_price) - 50) * 10;
+      sum += (Number(p.sell_price ?? p.current_price) - Number(p.buy_price)) * Number(p.quantity);
     assert.equal(last.value, String(sum));
   }
 });
@@ -145,7 +145,7 @@ test("local demo creation, preservation, repair, reset, unrelated references and
       market_selection_receipt_id: await receiptFor(f.positions[1].wallet_id),
     };
     ok(await admin.from("positions").insert(extra));
-    await assert.rejects(seedDemo(admin, password, { email, reset: true }), /unrelated/);
+    await seedDemo(admin, password, { email, reset: true });
     assert.equal(ok(await admin.from("positions").select("id").eq("id", extra.id)).length, 1);
     ok(await admin.from("positions").delete().eq("id", extra.id));
     // A position outside every fixture wallet/category can still hold a fixture cache reference.
@@ -165,9 +165,9 @@ test("local demo creation, preservation, repair, reset, unrelated references and
     ok(await admin.from("positions").insert(outside));
     // A selected insert starts unlinked; link the fixture cache as a confirmed listing would.
     ok(await admin.from("positions").update({ market_listing_id: f.listings[0].id }).eq("id", outside.id));
-    const beforeRefusal = await readPosition();
-    await assert.rejects(seedDemo(admin, password, { email, reset: true }), /unrelated/);
-    assert.deepEqual(await readPosition(), beforeRefusal);
+    const outsideBeforeReset = ok(await admin.from("positions").select("*").eq("id", outside.id).single());
+    await seedDemo(admin, password, { email, reset: true });
+    assert.deepEqual(ok(await admin.from("positions").select("*").eq("id", outside.id).single()), outsideBeforeReset);
     ok(await admin.from("positions").update({ market_listing_id: null }).eq("id", outside.id));
     ok(
       await admin.from("market_listing_lookups").insert({
@@ -178,8 +178,8 @@ test("local demo creation, preservation, repair, reset, unrelated references and
         valid_until: "2099-01-01T00:00:00Z",
       }),
     );
-    await assert.rejects(seedDemo(admin, password, { email, reset: true }), /unrelated listing lookups/);
-    assert.deepEqual(await readPosition(), beforeRefusal);
+    await seedDemo(admin, password, { email, reset: true });
+    assert.equal(ok(await admin.from("market_listing_lookups").select("id").eq("position_id", outside.id)).length, 1);
     ok(await admin.from("positions").delete().eq("id", outside.id));
     // Canonical owner-bound cache rows with different IDs are reused without touching real quotes.
     ok(await admin.from("positions").update({ market_listing_id: null }).eq("id", f.positions[11].id));

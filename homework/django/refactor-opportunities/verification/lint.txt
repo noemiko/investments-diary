@@ -1,0 +1,6 @@
+Checks executed before final tests, all passed without rewriting files:
+black 26.5.1 --check django/db/models/base.py tests/update_only_fields/tests.py
+Output: 2 files would be left unchanged.
+isort 8.0.1 --check-only django/db/models/base.py tests/update_only_fields/tests.py
+flake8 7.3.0 django/db/models/base.py tests/update_only_fields/tests.py
+git diff --check

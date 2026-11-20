@@ -58,7 +58,8 @@ export function demoFixtures(owner, today) {
     const closed = i % 4 === 0;
     const absent = i % 11 === 0;
     const deleted = i % 17 === 0;
-    const price = w === 0 ? 60 : w === 1 ? 40 : w === 2 ? (i % 2 ? 65 : 35) : 50;
+    // Keep synthetic prices near the $43 quotes used during manual testing.
+    const price = w === 0 ? 48 : w === 1 ? 32 : w === 2 ? (i % 2 ? 52 : 28) : 40;
     return {
       id: fixtureId(owner, "position", i),
       user_id: owner,
@@ -68,7 +69,7 @@ export function demoFixtures(owner, today) {
       // and the selection guard labels each one with the selected symbol.
       instrument: APPLE_TARGET.symbol,
       market_listing_id: i === LINKED_POSITION_INDEX ? listings[0].id : null,
-      buy_price: "50",
+      buy_price: "40",
       buy_date: dayAt(today, -365),
       quantity: i % 13 === 0 ? null : "10",
       current_price: absent ? null : String(price),
@@ -216,16 +217,9 @@ export async function seedDemo(
     const references = await all(() =>
       admin.from("positions").select("id,wallet_id,category_id,market_listing_id").eq("user_id", owner).order("id"),
     );
-    if (
-      references.some(
-        (p) =>
-          !positionIds.includes(p.id) &&
-          (walletIds.includes(p.wallet_id) ||
-            categoryIds.includes(p.category_id) ||
-            p.market_listing_id === fixtures.listings[0].id),
-      )
-    )
-      throw new Error("Reset would affect unrelated positions; no fixtures changed");
+    const unrelated = references.filter((p) => !positionIds.includes(p.id));
+    const resetWalletIds = walletIds.filter((id) => !unrelated.some((p) => p.wallet_id === id));
+    const resetCategoryIds = categoryIds.filter((id) => !unrelated.some((p) => p.category_id === id));
     const lookups = await all(() =>
       admin
         .from("market_listing_lookups")
@@ -234,22 +228,30 @@ export async function seedDemo(
         .eq("cache_id", fixtures.listings[0].id)
         .order("id"),
     );
-    if (lookups.some((lookup) => !positionIds.includes(lookup.position_id)))
-      throw new Error("Reset would affect unrelated listing lookups; no fixtures changed");
+    const preserveListing =
+      unrelated.some((p) => p.market_listing_id === listing.id) ||
+      lookups.some((lookup) => !positionIds.includes(lookup.position_id));
     checked(await admin.from("wallet_snapshots").delete().eq("user_id", owner).in("wallet_id", walletIds));
     checked(await admin.from("positions").delete().eq("user_id", owner).in("id", positionIds));
-    // Receipts bind to fixture wallets; a selection's verified cache hint must not block the cache reset.
-    checked(await admin.from("market_selection_receipts").delete().eq("user_id", owner).in("wallet_id", walletIds));
-    checked(
-      await admin
-        .from("market_listing_targets")
-        .update({ cache_id: null })
-        .eq("user_id", owner)
-        .eq("cache_id", fixtures.listings[0].id),
-    );
-    checked(await admin.from("market_quote_cache").delete().eq("user_id", owner).eq("id", fixtures.listings[0].id));
-    checked(await admin.from("reason_categories").delete().eq("user_id", owner).in("id", categoryIds));
-    checked(await admin.from("wallets").delete().eq("user_id", owner).in("id", walletIds));
+    // Retain shared parents and pending selections used by manually added investments.
+    if (resetWalletIds.length)
+      checked(
+        await admin.from("market_selection_receipts").delete().eq("user_id", owner).in("wallet_id", resetWalletIds),
+      );
+    if (!preserveListing) {
+      checked(
+        await admin
+          .from("market_listing_targets")
+          .update({ cache_id: null })
+          .eq("user_id", owner)
+          .eq("cache_id", listing.id),
+      );
+      checked(await admin.from("market_quote_cache").delete().eq("user_id", owner).eq("id", listing.id));
+    }
+    if (resetCategoryIds.length)
+      checked(await admin.from("reason_categories").delete().eq("user_id", owner).in("id", resetCategoryIds));
+    if (resetWalletIds.length)
+      checked(await admin.from("wallets").delete().eq("user_id", owner).in("id", resetWalletIds));
   }
   // A user's already-existing canonical listing is shared unchanged, never overwritten.
   // Fresh accounts get our deterministic metadata-only cache row, before any FK links.

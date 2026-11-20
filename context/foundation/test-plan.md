@@ -1,25 +1,20 @@
 # Test Plan
 
-> Phased test rollout for this project. Strategy is frozen at the top
-> (§1–§5); cookbook patterns at the bottom (§6) fill in as phases ship.
-> Read before writing any new test.
->
-> Refresh: re-run `/10x-test-plan --refresh` when stale (see §8).
->
-> Last updated: 2026-10-21
+> Risk-led testing guide. Read before adding tests.
+> Strategy and response guidance refreshed with user authorization on 2026-11-20.
+> Source research: `context/changes/test-plan-refresh-2026-11-20/research.md`.
+> Local execution results are recorded below; remote CI and branch protection remain unverified.
 
 ## 1. Strategy
 
-Tests follow three non-negotiable principles for this project:
-
-1. **Cost × signal.** The cheapest test that gives a real signal for the
-   risk wins. Do not promote to e2e because e2e "feels safer." Do not put a
-   vision model on top of a deterministic visual diff that already catches
-   the regression.
-2. **User concerns are first-class evidence.** Risks anchored in "the
-   author is worried the displayed result is quietly wrong, and the failure
-   would surface wherever a result is shown" carry the same weight as PRD
-   lines or hot-spot data.
+1. **Cost × signal.** The cheapest test that gives a real signal for the risk wins.
+   Use database tests for real policies and SQL boundaries, HTTP tests for request/HTML
+   contracts, and browser tests for behavior that depends on hydration or interaction.
+   Do not add visual AI over a deterministic assertion that already catches the regression.
+2. **User concerns are first-class evidence.** The current priorities are “data leaking”
+   and past decisions failing to appear during investment creation. The author explicitly
+   requested an E2E test showing previous investments' written reasons. No past incident
+   or frequently changed area lacking confidence was reported in the refresh interview.
 3. **Risks are scenarios, not code locations.** This plan documents _what
    could fail_ and _why we believe it's likely_ — drawn from documents,
    interview, and codebase _signal_ (churn, structure, test base). It does
@@ -28,197 +23,262 @@ Tests follow three non-negotiable principles for this project:
    research disagree about where the failure lives, research is the
    ground truth.
 
-Expected values come from an independent source — the PRD, a hand-computed
-example, or the interview — never from the implementation under test.
+Expected values come from the PRD, an independent hand calculation or the interview,
+not from production helpers. A comparison between two production calculations checks
+consistency; it does not independently establish arithmetic correctness.
 
-Hot-spot scope used for likelihood weighting: `src/`, `supabase/migrations/`,
-`scripts/` (excluding generated `src/db/database.types.ts`, `.astro/`, `dist/`,
-`node_modules/`, `context/`). 26 in-scope commits in the 30 days to 2026-10-16.
+The confirmed discovery scopes were `src/`, `supabase/migrations/` and `scripts/`,
+excluding docs, fixtures, tests, generated types and build output. Discovery found usable
+recent history, including dashboard, service and database-tooling churn. Use this as
+likelihood evidence, not proof of a defect or a claim about failure location.
+The linked research provides implementation anchors separately from this risk map.
 
 ## 2. Risk Map
 
-The top failure scenarios this project must protect against, ordered by
-risk = impact × likelihood. Risks are failure scenarios in user / business
-terms, not test names. The Source column cites the _evidence that surfaced
-this risk_ — never a specific file as "where the failure lives" (that is
-research's job, see §1 principle #3).
+Priority reflects current user concerns and impact, tempered by existing protection.
+The risk map combines inspected assertions with the bounded local execution evidence in §6.6.
 
-| #   | Risk (failure scenario)                                                                                                                                                                                                                          | Impact | Likelihood | Source (evidence — not anchor)                                                                                                                                                                                                                                                                  |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | A position's displayed result (percent, amount, sign, price date) is silently wrong — rounding, comma-decimal parsing, precision loss, or a date that is not the date of the price used — and the author decides on a false number.              | High   | High       | interview Q1; PRD NFR "every displayed result states the date of the price"; PRD FR-006; archive `2026-10-15-position-detail-and-price`; hot-spot dirs `src/lib/validation/` (5 commits/30d), `src/components/positions/` (12 commits/30d); roadmap S-03 reuses the result in the confrontation |
-| 2   | The confrontation shows the wrong history: another account's positions, deleted positions, other categories, or misses a matching one; or shows a blank area instead of the empty state.                                                         | High   | High       | PRD US-01 acceptance criteria; PRD FR-012; roadmap S-05 risk "hidden entries still leak into the confrontation"; roadmap S-03 in flight                                                                                                                                                         |
-| 3   | Abuse: a second account (owner-created; public sign-up is closed) reads or changes another account's position or category by id (view, price update, delete, restore), or a new table ships without per-operation RLS and its rows are readable. | High   | Medium     | PRD Access Control and privacy guardrail; CLAUDE.md RLS tripwire ("a missing policy fails silently"); roadmap S-06; roadmap S-04, S-07, S-08 add schema                                                                                                                                         |
-| 4   | A migration applies cleanly on the incrementally migrated local database but behaves differently in production (RLS, column defaults).                                                                                                           | High   | Medium     | interview Q2; archive `2026-10-15-recoverable-delete` follow-up F9b (needs a migration); hot-spot dir `supabase/migrations/` (2 commits/30d) with further schema slices on the roadmap                                                                                                          |
-| 5   | Auth wiring drifts between local and hosted: a confirmation or redirect URL points at the wrong origin, or the callback fails to exchange its code, and the author is locked out of the diary.                                                   | High   | Medium     | interview Q2; archive `2026-10-14-auth-email-callback`; hot-spot dir `src/pages/api/auth/` (3 commits/30d)                                                                                                                                                                                      |
-| 6   | Silent data loss: a deleted position cannot be restored, comes back altered, or an update overwrites fields it should not touch.                                                                                                                 | High   | Medium     | PRD guardrail "no silent data loss"; PRD FR-009; archive `2026-10-15-recoverable-delete` (rollback note, follow-up F9b)                                                                                                                                                                         |
+| #   | Risk (failure scenario)                                                                                                                                                                   | Impact | Likelihood | Source (evidence, not code anchors)                                                                                                     |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ---------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Another account or an anonymous visitor reads private diary information or changes someone else's records, including data serialized into a page but hidden in the UI                     | High   | Medium     | Refresh interview Q1; PRD access control/privacy guardrails; roadmap S-06; archived database-contract consolidation                     |
+| 2   | Choosing a reason category while creating an investment fails to show matching past investments, their written reasons and results before saving, or leaves stale history after switching | High   | Medium     | Refresh interview Q1/Q4 and explicit E2E request; PRD US-01/FR-012; archived reason-confrontation; discovery dashboard churn            |
+| 3   | A result or wallet total silently misstates net commissions, denomination, effective price or its date, leading the author to judge a false outcome                                       | High   | Medium     | PRD FR-003/006/007/010/013–016; archived result-correctness and automatic-stock-prices; refreshed requirements                          |
+| 4   | Delete/restore, closing, reassignment or later edits corrupt saved facts or rewrite historical wallet observations                                                                        | High   | Medium     | PRD FR-007/009/013/016; no-silent-data-loss guardrail; archived close-position, recoverable-delete and wallet-performance-dashboard     |
+| 5   | Local checks pass while production migration privileges or hosted auth settings prevent private diary access or behave differently                                                        | High   | Medium     | Prior interview migration/auth concerns retained from the October guide; archived database-contract consolidation; deployment checklist |
 
-High-impact × low-likelihood scenarios kept out of this map: a Vercel or
-Supabase outage. It belongs to observability and platform configuration, not tests. Sign-up
-floods no longer apply: public sign-up is closed (`close-public-signup`).
+These likelihood labels are qualitative judgments, not measured defect rates.
+Platform outages remain operational/observability concerns. Closing public sign-up
+does not replace ownership tests; hosted sign-up settings still need human evidence.
 
 ### Risk Response Guidance
 
-| Risk | What would prove protection                                                                                                                                                                                 | Must challenge                                                                                      | Context `/10x-research` must ground                                                                                     | Likely cheapest layer                      | Anti-pattern to avoid                                                                               |
-| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------- |
-| #1   | Hand-computed expected results for gain and loss sign, two-decimal rounding edges, `,` vs `.` input, 8-decimal precision, an unpriced position, and a shown price date equal to the date of the price used. | "It looked right on the dashboard, so the arithmetic is right."                                     | Where the result is computed and formatted; every surface that displays it (list, detail, confrontation); input parsing | unit                                       | Oracle problem — expected value computed with the production formula instead of written out by hand |
-| #2   | With two real accounts' data: only the author's own, non-deleted, same-category positions appear; the empty state appears when none match.                                                                  | "The list already filters deleted rows, so the confrontation does too."                             | The query behind the confrontation, its filters, and the RLS policies it relies on                                      | integration against local Supabase         | Mocking the Supabase client, so no filter or policy ever executes                                   |
-| #3   | Account B receives nothing and changes nothing for every operation on account A's ids, verified at the database/RLS level and not only over HTTP.                                                           | "Redirect to sign-in means the data is private" and "RLS enabled means every operation is covered." | Per-operation, per-role policies; every mutation entry point that takes an id                                           | integration with two real sessions         | Testing only reads, or only one account's happy path                                                |
-| #4   | A database built from zero out of every migration applies cleanly, and the #3 ownership tests pass on it, in CI on every pull request.                                                                      | "Works on my local stack means works in production."                                                | How migrations are applied locally, in CI, and in production; defaults and triggers that differ between them            | CI gate plus a manual pre-production check | Running tests against an incrementally migrated development database                                |
-| #5   | Confirmation and redirect URLs are built from the request's origin, and the callback turns a valid code into a session or fails with a clean error, not a silent drop.                                      | "Supabase handles it" — that tests the library, not this project's wiring (§7).                     | How redirect URLs are built; the callback route; hosted auth settings that live outside the repo                        | integration plus a manual hosted checklist | Asserting Supabase internals, or hardcoding a localhost origin                                      |
-| #6   | A delete-then-restore round trip returns the position with every field unchanged; an edit leaves untouched fields exactly as they were.                                                                     | "A success response means the row is intact."                                                       | Soft-delete columns, the restore path, which fields each update writes                                                  | integration                                | Checking only the response status, not the persisted row                                            |
+| Risk | What would prove protection                                                                                                                                         | Must challenge                                                                             | Context research must ground                                                                                     | Cheapest useful layer                                                                                                   | Anti-pattern to avoid                                                                                               |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| #1   | Owner access succeeds; foreign/anonymous attempts reveal no private rows, reasons or serialized IDs and change no foreign state                                     | “Hidden in the browser means private”; “RLS enabled covers RPCs and views too”             | Request identity, real policy/view/RPC boundaries, serialized props, valid preconditions for negative attempts   | Retain catalog SQL, real PostgREST and raw-response HTTP checks; add targeted cases only after a concrete assertion gap | Mocked policy checks; a negative request rejected for an unrelated invalid selection                                |
+| #2   | With real local history, selecting A reveals exact earlier reasons and results before Save; selecting B removes A and shows B; an empty category has an explanation | “Creation succeeded, so earlier decisions were visible”; “SSR proves hydrated interaction” | Preloaded eligible history, category state, panel wiring, open/closed/deleted cases and read-failure distinction | Focused Playwright interaction; reuse existing DB/HTTP protection                                                       | Checking only category selection/status; using DOM invisibility as a privacy proof; inventing a category-fetch race |
+| #3   | Literal independent values protect net results, missing coverage and price dates; real SQL proves any selected timestamp boundary                                   | “Two production helpers agreeing proves correctness”                                       | Existing exact-decimal, fee/rendering tests, SQL effective-price decisions and accepted omitted assertions       | Existing unit/SSR/DB suites; narrowly scoped DB additions if an accepted gap is reopened                                | Rebuilding broad fee coverage or using provider calls/sleeps as the oracle                                          |
+| #4   | Restored facts and permitted move changes match saved originals; selected immutability cases leave earlier observations intact                                      | “Success response means unchanged persisted state”                                         | Existing restoration/move/capture assertions and the consolidation's accepted omissions                          | Real DB persisted-state comparisons                                                                                     | Treating position-row preservation as proof about snapshots; silently reinstating deliberately removed tests        |
+| #5   | Fresh replay and grant/ownership contracts run on qualifying PRs; auth wiring has safe redirects; hosted settings have dated human evidence                         | “Green local SQL is hosted parity”; “workflow configured means required and green”         | Separate SQL fake-auth, real local transport, cron infrastructure and hosted settings                            | Existing CI/database checks plus manual hosted checklist                                                                | Claiming deployed-runtime parity from build-then-dev browser serving                                                |
 
 ## 3. Phased Rollout
 
-Each row is a discrete rollout phase that will open its own change folder
-via `/10x-new`. Status moves left-to-right through the values below; the
-orchestrator updates Status as artifacts appear on disk.
+Statuses describe the remaining rollout, not whether a related feature exists.
+Vocabulary: `not started` → `change opened` → `researched` → `planned` →
+`implementing` → `complete`.
 
-| #   | Phase name                   | Goal (one line)                                                                                                                                 | Risks covered | Test types                             | Status       | Change folder      |
-| --- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | -------------------------------------- | ------------ | ------------------ |
-| 1   | Result correctness           | Prove every displayed result against independent values, including its price date; preserve exact decimal transport                             | #1            | unit, SSR, decimal transport           | implementing | result-correctness |
-| 2   | Private data integration     | Prove confrontation membership, cross-account ownership on every operation, and an intact delete/restore round trip against real local Supabase | #2, #3, #6    | integration                            | not started  | —                  |
-| 3   | Environment parity           | Prove migrations apply from zero with ownership intact on every pull request, and auth redirects and callback hold under hosted-like settings   | #4, #5        | CI gate, integration, manual checklist | not started  | —                  |
-| 4   | Quality gates and agent loop | Lock the floor: unit tests at edit time through an agent hook, integration and parity gates required on pull requests                           | cross-cutting | hook, gates                            | not started  | —                  |
+| #   | Phase name                                   | Goal                                                                                                                                            | Risks covered | Test types                                     | Status       | Change folder                                  |
+| --- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ---------------------------------------------- | ------------ | ---------------------------------------------- |
+| 1   | Result correctness                           | Preserve shipped exact-decimal arithmetic, transport and result rendering protection                                                            | #3            | unit, SSR, real database                       | complete     | context/archive/2026-10-19-result-correctness/ |
+| 2   | Private decision history                     | Protect hydrated past-reason display while retaining existing privacy contracts; remote CI passed; human confirmation remains pending           | #1, #2        | browser; existing DB/HTTP privacy protection   | implementing | test-plan-refresh-2026-11-20                   |
+| 3   | Environment evidence and accepted-gap review | Reconcile remaining hosted/manual evidence; explicitly decide whether any previously accepted financial/persistence omission warrants reopening | #3, #4, #5    | manual checklist; targeted DB only if selected | not started  | —                                              |
+| 4   | Quality gates and cookbook                   | Retain the configured focused browser gate and cookbook; separately scope remaining hook/gate decisions                                         | cross-cutting | CI gate, documentation; test hook if justified | not started  | —                                              |
 
-Order rationale: #1 is the top risk and builds on the existing unit runner.
-Result correctness now also has narrow SSR wiring checks and a real local
-PostgREST decimal round trip: mocks cannot prove that JSON preserves the digits.
-Phase 2 still owns comprehensive confrontation membership, ownership and restore
-coverage. Phase 3 runs those ownership tests on a database built from zero.
-Phase 4 adds the remaining quality gates and agent hooks.
+Phase 1 completion comes from its archived checked Progress, including manual and
+remote CI items; it is not a new test run. Phases 2–4 were previously labelled
+“not started” broadly, despite shipped ownership, migration and auth tests.
+Those existing components are credited in §4–§6; the refreshed rows describe what remains.
+The approved refresh plan is being implemented. The local history scenario and focused CI job exist;
+Phase 2 remains implementing pending human confirmation of the recorded PR result. The focused
+browser gate contributes to Phase 4 without completing its remaining scope.
 
-Phase 1 remains in progress until the change's manual verification and remote
-CI criteria are confirmed; later rollout phases remain not started.
+Order: prioritize the author's requested browser behavior, retain shipped privacy
+contracts, then address evidence/gating decisions. Do not automatically create a broad
+financial-testing phase: §7 records accepted omissions. Later phases need their own
+scope/decision before change IDs are assigned. Archived wallet-dashboard human checks
+remain pending and are not satisfied by this document update.
 
-## 4. Stack
+## 4. Stack and Existing Protection
 
-The classic test base for this project. AI-native tools (if any) carry a
-`checked:` date so future readers can see which lines need re-verification.
-Recommendations in this section must be grounded in local manifests/configs
-plus the MCP/tools actually exposed in the current session. If a useful docs
-or search MCP such as Context7 or Exa.ai is not available, say that instead
-of assuming access.
+**Test-base profile, checked 2026-11-20:** meaningful, distributed unit/SSR, database,
+browser and script suites. The discovery inventory counted 57 test/setup files;
+that count includes setup and separate runners and is not a runnable test count or
+coverage measure. Implementation has since passed 548 unit/SSR tests in 40 files and
+the focused history browser scenario twice consecutively. Other suites were inspected,
+not freshly executed; see §6.6 for verification boundaries.
 
-Test-base profile (2026-10-21): **Vitest configured and running** — 134 unit/SSR
-tests in 10 files under `src/`, plus 3 real local database transport/service tests
-under `tests/database/`. `npm test` uses `vitest.config.ts`; `npm run test:decimal-db`
-uses `vitest.database.config.ts` through a launcher that discovers only the local
-stack and keeps credentials out of command arguments and output. The existing
-HTTP smoke walk and wallet migration checks still run on pushes to `master`.
+| Layer                 | Existing tool/surface                         | Execution and bounded protection                                                                                                                                    |
+| --------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unit, handler and SSR | Vitest through Astro `getViteConfig`          | `npm test`; application `*.test.ts` plus script TypeScript tests; decimal/fee arithmetic, validation, result rendering, auth wiring, error privacy                  |
+| Real local database   | Separate Vitest database config               | `npm run test:decimal-db`; local PostgREST/service numeric transport, ownership, prices, commissions, moves, restore and snapshots                                  |
+| Catalog contract      | Disposable SQL database                       | `npm run test:contract-db`; ordinary public-table RLS/owner fixtures, foreign operations and fingerprints; policy/grant checks and anonymous table/view privileges  |
+| Cron and recovery     | Local SQL runners                             | `npm run test:wallet-cron`, `npm run test:recovery-db`; infrastructure registration and recovery-template contracts                                                 |
+| HTTP smoke            | Node HTTP walk                                | `npm run smoke` against a local running app; auth, raw-body privacy, selected-category SSR history, delete/restore and other user flows                             |
+| Browser               | Playwright Test, existing Chromium/auth setup | `npx playwright test`; existing login/session, creation, wallet, price and commission specs; `--project=decision-history` isolates the new pre-save reason scenario |
+| Script-specific tests | Node test runner                              | Review-script tests are explicitly invoked in CI; demo-data tests have their own `test:demo-db` command                                                             |
 
-The decimal transport job is configured for qualifying PRs and master pushes.
-Workflow wiring does not establish that branch protection requires the job;
-remote run results are tracked in the change plan.
+The catalog contract is table-centric; it does not automatically exercise ownership
+through each view/RPC. Real transport suites supply additional view/RPC coverage.
+The disposable SQL harness uses fake auth/JWT-subject functions and excludes the cron
+migration; cron is checked separately in its configured local database. This is useful
+production-like privilege evidence, not a complete hosted-environment replica.
 
-| Layer              | Tool                                                        | Version                                   | Notes                                                                                                                                                                |
-| ------------------ | ----------------------------------------------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| unit + integration | Vitest (via Astro's `getViteConfig`, per `health-check.md`) | 5.0.5 (installed, checked: 2026-10-21)    | Unit contracts and Astro Container/React SSR now wired; broad integration remains Phase 2                                                                            |
-| database           | Supabase CLI local stack                                    | from `devDependencies` (`supabase` ^2.23) | Real Postgres + RLS for integration tests; never the hosted project                                                                                                  |
-| HTTP smoke         | `scripts/testing/smoke.mjs` (zero-dependency)               | n/a                                       | Existing; runs against a live dev server; creates two accounts per run through the local Auth admin API and checks sign-up is refused — never point it at production |
-| e2e (browser)      | not planned                                                 | n/a                                       | Server-rendered flows are covered more cheaply by HTTP smoke plus integration; revisit via `--refresh`                                                               |
+Current manifest ranges include Astro ^7.3.2, Vitest ^5.0.5 and Playwright ^1.64.1.
+These are manifest declarations, not fresh installed-version verification.
+Playwright builds then serves Astro dev because this adapter has no Astro preview
+entrypoint. That browser run does not prove deployed SSR parity.
+The existing Chromium project uses shared local test credentials. The separate
+`decision-history` project has empty storage state and no setup dependency: its scenario
+creates and signs in a disposable account, and checks app/local-stack agreement. The
+focused CI job provisions local Supabase and Chromium without persistent E2E credentials.
 
-**Stack grounding tools (current session):**
+**Stack grounding tools (current session; checked 2026-11-20):**
 
-- Docs: none (no Context7 or framework-docs MCP exposed) — Vitest/Astro setup to be checked against `docs.astro.build` and `vitest.dev` during Phase 1 research; checked: 2026-10-16
-- Search: built-in web search only (no Exa.ai MCP) — not used for this plan; checked: 2026-10-16
-- Runtime/browser: none (no Playwright MCP exposed) — not used; checked: 2026-10-16
-- Provider/platform: GitHub MCP present but not authorized; no Supabase or Vercel MCP — not used; checked: 2026-10-16
+- Docs: Context7/framework-docs MCP not available in current session; no API/setup changes proposed.
+- Search: Exa and built-in web tools exposed; not needed for this local source investigation.
+- Runtime/browser: computer/browser control exposed; not used. Repository Playwright configuration was inspected.
+- Provider/platform: project GitHub/Supabase/Vercel MCPs not available in current session; no hosted inspection performed.
 
-Use docs MCPs for current framework/library APIs and setup details. Use
-search MCPs for discovery or current status only, then prefer official docs
-as the evidence. Do not use MCP docs/search to infer code failure anchors;
-those belong in per-phase `/10x-research`.
+No new tool or library is recommended by this refresh. Source research, rather than
+external documentation, grounds the existing execution contracts described here.
 
 ## 5. Quality Gates
 
-The full set of gates that must pass before a change reaches production.
-"Required for §3 Phase <N>" means the gate is enforced once that rollout
-phase lands; before that, the gate is `planned`.
+| Gate                                                                                | Current location/status                             | Signal and remaining work                                                                                                               |
+| ----------------------------------------------------------------------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Lint                                                                                | pre-commit; CI                                      | Wired; pre-commit runs whole-repo lint                                                                                                  |
+| Unit/SSR, review-script tests, Astro check, build                                   | `ci` on qualifying master PRs/pushes                | Wired; docs-only changes skip this workflow                                                                                             |
+| Real DB transport/services, cron, recovery, account provisioning, SQL access/grants | `decimal-transport` on qualifying master PRs/pushes | Wired; already ships substantial former Phase 2/3 scope                                                                                 |
+| HTTP smoke                                                                          | master push                                         | Wired after merge, not a PR gate                                                                                                        |
+| Playwright decision history                                                         | `decision-history` on qualifying master PRs/pushes  | Configured focused Chromium job with local Supabase and seven-day diagnostics; remote run pending. The full browser suite remains local |
+| Hosted auth/schema review                                                           | deployment checklist                                | Human evidence required; this refresh did not inspect hosted settings                                                                   |
+| Edit-time hook                                                                      | existing Claude settings                            | Formats with Prettier; does not run unit tests. A test hook remains a separate decision                                                 |
 
-| Gate                                        | Where                                  | Required?                       | Catches                                                    |
-| ------------------------------------------- | -------------------------------------- | ------------------------------- | ---------------------------------------------------------- |
-| lint + `astro check` + build                | pre-commit (lint) + CI                 | required (wired)                | syntactic / type drift, broken build                       |
-| HTTP smoke walk                             | CI on push to `master`                 | required (wired)                | broken auth flow, cross-account leaks over HTTP            |
-| unit + SSR result tests                     | local + CI on PR                       | configured (wired)              | wrong result arithmetic, parsing, formatting               |
-| exact decimal transport/service round trips | local + CI on PR (`decimal-transport`) | configured (remote run pending) | digit loss in JSON, wrong numeric service projection/write |
-| integration tests against local Supabase    | CI on PR                               | required after §3 Phase 2       | wrong confrontation set, ownership gaps, data loss         |
-| migrations from zero + ownership tests      | CI on PR                               | required after §3 Phase 3       | schema and RLS drift between environments                  |
-| hosted auth and schema checklist            | between merge and prod                 | required after §3 Phase 3       | settings that live outside the repo                        |
-| post-edit unit-test hook                    | local (agent loop)                     | recommended after §3 Phase 4    | regressions at edit time                                   |
+“Wired” describes inspected workflow/configuration, not branch protection, current green
+runs or human signoff. Branch protection and hosted state remain unverified.
+Do not treat automated AI review workflows as substitutes for executable test gates.
 
 ## 6. Cookbook Patterns
 
-How to add new tests in this project. Each sub-section is filled in once
-the relevant rollout phase ships; before that, the sub-section reads
-"TBD — see §3 Phase <N>."
+### 6.1 Unit and SSR contracts
 
-### 6.1 Adding a unit test
+- Put application `*.test.ts` beside the module; `npm test` uses `vitest.config.ts`.
+- Use literal expected values from an independent calculation. Fee-free buy 50, quote 60,
+  quantity 10 yields amount 100 and +20.00%. Canonical decimal strings and exact units
+  preserve the financial contract; do not substitute floating-point tolerances.
+- Include rounding ties, losses, rounded zero, missing quantity/price, commission and date
+  boundaries when relevant. Freeze and restore time for date-sensitive validation.
+- For render wiring, use Astro Container/React SSR with real arithmetic and formatting;
+  mock only I/O. Assert a named record's result/date rather than whole-page snapshots.
+- Examples: `src/components/positions/result-surfaces.test.ts`,
+  `src/lib/result.test.ts`, `src/lib/wallet.test.ts`.
+- For a changed test, deliberately break the protected behavior, observe the focused
+  failure and restore the source unconditionally. Do not run mutation tests without
+  a concrete current risk; follow repository mutation guidance.
 
-- Add `*.test.ts` beside the pure module; `npm test` discovers `src/**/*.test.ts`.
-- Write expected values literally from an independent hand calculation. Example:
-  buy `"50"`, current `"60"`, quantity `"10"` gives `+20.00%` and exact amount 100.
-  Never use a production formula/helper to calculate the expected value.
-- Financial DTOs use canonical decimal strings. Assert exact BigInt units for
-  arithmetic contracts; do not replace exactness with a floating-point tolerance.
-- Test boundaries on both sides and exactly at a rounding tie, including losses
-  and rounded zero. Freeze and restore the clock for date-dependent schemas.
-- For wiring risks, use Astro Container with the installed React renderer, or
-  React SSR. Mock only services/client I/O; retain real arithmetic and formatters.
-  Assert in the specific record's row/result section with distinct dates and
-  outcomes on adjacent records. No whole-page snapshots.
-- `src/components/positions/result-surfaces.test.ts` is the rendering example;
-  `tests/astro.d.ts` declares the Vite-compiled `.astro` server factory contract.
-- When adding or changing a test, temporarily break the protected production
-  behavior, confirm the focused test fails, and unconditionally restore the code.
+### 6.2 Real local Supabase integration and privacy
 
-### 6.2 Adding an integration test against local Supabase
+- Add real transport/service cases under `tests/database/`; run `npm run test:decimal-db`.
+  The launcher discovers local credentials without printing them and rejects nonlocal URLs.
+- Use disposable accounts and clean up in `finally`. Keep privileged setup separate from
+  requests/assertions made as the actual owner, foreign user or anonymous caller.
+- Assert exact persisted facts as well as refusal. For a negative case, make unrelated
+  inputs valid so an earlier validation error cannot masquerade as ownership protection.
+- Examples: `tests/database/decimal.test.ts`, `effective-valuations.test.ts`,
+  `market-selections.test.ts`, `commissions.test.ts`.
+- Retain raw HTTP privacy checks: reasons can leak in serialized props even when not
+  visibly rendered. `scripts/testing/smoke.mjs` checks foreign new-form HTML.
 
-- TBD — see §3 Phase 2 for the two-account ownership and confrontation-membership pattern.
+### 6.3 Tables, migrations and infrastructure
 
-### 6.3 Adding a test for a new table or migration
+- Run `npm run test:contract-db` after migration/RLS/grant changes. A new ordinary public
+  table needs an access fixture; check owner read, foreign attempts and unchanged rows.
+- Do not add grants to the SQL harness to make tests pass: migration privileges are part
+  of the behavior being tested.
+- The catalog contract covers tables and privilege invariants, not a complete RPC/view
+  behavior matrix. Add targeted real transport assertions for an exposed new boundary.
+- Cron runs separately with `npm run test:wallet-cron`; recovery-template/view changes may
+  need `npm run test:recovery-db`. Follow the repository verify skill for changed code.
 
-- TBD — see §3 Phase 3 for the migrations-from-zero plus per-operation ownership pattern.
+### 6.4 Auth-adjacent routes
 
-### 6.4 Adding a test for an auth-adjacent route
+- Existing examples: `src/lib/auth-signin.test.ts`, `auth-return.test.ts`,
+  `auth-cookies.test.ts` and the HTTP smoke walk.
+- Check validated internal return destinations, fixed safe failure messages, callback
+  success/rejection/exception and request-cookie behavior at the appropriate boundary.
+- Mocking the auth provider proves handler decisions, not library internals or hosted
+  settings. Retain the manual deployment checklist; do not infer its completion locally.
 
-- TBD — see §3 Phase 3 for the redirect-origin and callback-failure pattern.
+### 6.5 Browser protection for past decisions
 
-### 6.5 Per-rollout-phase notes
+- Run `npx playwright test --project=decision-history` against local Supabase. The
+  project selects `tests/e2e/decision-history.spec.ts` without running shared auth setup.
+- The implemented fixture creates a confirmed disposable account, one USD wallet,
+  categories A/B/Empty, valid stock-selection receipts and four saved records: open and
+  closed A, open B, and deleted A. Setup and assertions use fixed past dates and short reasons.
+- After hydration, the test selects A and checks the exact visible reasons, record IDs,
+  independent percentage values and dates; it switches to B and checks A disappears;
+  Empty has an explanatory notice. Deleted A stays excluded. A before/after saved-row
+  comparison proves that category interaction creates or changes no position.
+- This path filters preloaded history synchronously; do not invent category-request races.
+  Stock/provider search is unnecessary for the pre-save observation.
+- If testing long-reason readability, exercise “Show full reason”; text merely existing
+  in the DOM does not prove it is readable after clamping.
+- The account is deleted in `finally`, including partial setup failures; cleanup errors
+  fail the scenario. Keep policy and raw-response privacy assertions in their existing layers.
+- During planning, the user explicitly declined additional privacy tests because those
+  boundaries are already tested. No new privacy or pure-state unit cases are part of this change.
+- The CI job uses the repository's Node pin and Supabase CLI pin, installs Chromium,
+  writes local-only app configuration without printing credentials, runs this project,
+  preserves browser reports/failure diagnostics for seven days, and always stops Supabase.
+  Qualifying PR/master triggers and docs-only exclusions match the existing workflow.
+- The browser scenario passed twice locally without shared E2E credentials. CI job
+  configuration is implemented and syntax-checked; the remote result is recorded in §6.6.
 
-### Result correctness — 2026-10-21
+### 6.6 Evidence and maintenance
 
-- Reused the existing Vitest runner and `ci` job; no new arithmetic dependency.
-- Full `numeric(20,8)` digits remain text across forms, database transport and
-  React props. BigInt arithmetic keeps products/sums exact and percentages as
-  ratios. Round only for display, ties away from zero; rounded zero has no sign.
-- The parser accepts comma/dot decimals and correctly grouped thousands using
-  space/NBSP/narrow NBSP; ambiguous `1 2` and internal tabs are errors.
-- The local transport suite creates two disposable accounts, proves insert/update,
-  text projections, nullable fields, joins, pagination and all changed service
-  reads/writes, then cleans up accounts. Its ownership assertions are narrow
-  regression checks, not completion of rollout Phase 2 or a full RLS audit.
-- Existing database values are read exactly as stored. Digits lost before an
-  earlier save cannot be reconstructed; corrections require the source record.
+The result-correctness archive records its original verification. The later consolidation
+ships access/grant contracts and explicitly retains accepted gaps. Wallet-dashboard
+archival still includes pending human acceptance. Use the refresh research for precise
+source anchors; record new run dates/results when implementation actually executes checks.
+
+Local implementation evidence on 2026-11-20: `npm test` passed 548 tests in 40 files;
+whole-repo lint passed; `astro check` examined 184 files with zero errors, warnings or
+hints. The focused browser scenario passed twice consecutively with shared E2E credentials
+empty. Discovery selected its single scenario and retained the existing Chromium
+project's 23 discovered tests including setup. These local results do not establish hosted parity or branch protection.
+Remote CI evidence is recorded separately below; human confirmation remains pending.
+The production build and the focused browser run with CI settings also passed. Removing
+the panel deliberately failed the expected two-entry assertion; the source was restored
+byte-for-byte before the passing CI-mode run. See the change verification log for details.
+
+Remote evidence: [PR #40 CI run](https://github.com/noemiko/investments-diary/actions/runs/44743252626)
+passed for code commit `0be31f0`: main static/unit checks, local database contracts and
+the focused history job. The browser log records one test and one pass; report upload
+and Supabase teardown succeeded. HTTP smoke was skipped for the PR. The private-history
+rollout remains implementing until the plan’s manual confirmation is recorded.
 
 ## 7. What We Deliberately Don't Test
 
-Exclusions agreed during the rollout (Phase 2 interview, Q5). Future
-contributors should respect these unless the underlying assumption changes.
+Existing exclusions remain in force:
 
-- **`/dev/kitchen-sink` and UI-token styling** — visual polish, checked by eye. Re-evaluate if tokens start carrying meaning (e.g. gain/loss colour is the only signal). (Source: Phase 2 interview Q5.)
-- **Pixel or snapshot tests of the dashboard** — break on every restyle and catch nothing. Re-evaluate if a rendering regression reaches production unnoticed. (Source: Phase 2 interview Q5.)
-- **Supabase auth internals** — trust the library; test this project's wiring around it. Re-evaluate if the pre-1.0 `@supabase/ssr` pin changes behaviour on upgrade. (Source: Phase 2 interview Q5.)
-- **Reason lock (S-07) and category rename/removal (S-08)** — not built yet; testing them now means inventing code. Add risks via `--refresh` when they ship. (Source: Phase 3 challenger pass.)
+- **`/dev/kitchen-sink` and UI-token styling:** visual polish checked by eye; revisit if
+  styling becomes the sole carrier of meaning.
+- **Pixel/snapshot tests of the dashboard:** avoid broad visual snapshots; revisit if a
+  specific rendering failure warrants a focused assertion.
+- **Supabase auth internals:** test this project's wiring, not the vendor's implementation.
+- **Reason lock (S-07) and category rename/removal (S-08):** do not invent unbuilt behavior;
+  revisit against the actual shipped feature and current requirements.
+
+**Accepted omissions, separate from the above exclusions:** database consolidation
+explicitly dropped some price-timestamp and historical-observation assertions.
+Current tests protect a manual override, capture after close and recovery preservation,
+but do not establish the full manual/quote equality/resubmission matrix or observation
+preservation across move/delete/restore/baseline edits. These are documented candidates,
+not automatically reopened commitments. See the consolidation assertion map and refresh
+research before spending test effort. A future decision must name the regression and
+independent oracle it buys.
 
 ## 8. Freshness Ledger
 
-- Strategy (§1–§5) last reviewed: 2026-10-16
-- Test-runner version last verified: 2026-10-21 (local manifest and installed runner); other stack versions: 2026-10-16
-- AI-native tool references last verified: 2026-10-16
+- Strategy, risk response and shipped-evidence reconciliation: 2026-11-20.
+- Local implementation checks: 2026-11-20; unit/SSR, lint, Astro check, build, deliberate-break and focused browser runs passed as bounded in §6.6. Broader database/browser suites were not rerun.
+- Manifest declarations checked: 2026-11-20; installed tool versions not freshly verified.
+- Current-session tool availability checked: 2026-11-20; Playwright CI/project guidance is linked in the approved implementation plan.
+- Remote CI: PR #40 run 44743252626 passed for code commit 0be31f0 on 2026-11-20. Hosted settings and branch protection: not checked.
+- Related documentation follow-up: `test-stack.md` contains an outdated sign-in landing
+  note; current auth setup expects `/dashboard`. Update through its owning E2E setup
+  workflow when that document is next maintained.
 
-Refresh (`/10x-test-plan --refresh`) when:
-
-- a new top-3 risk surfaces from the roadmap or archive,
-- a recommended tool's `checked:` date is older than three months,
-- the project's tech stack changes (new framework, new test runner),
-- §7 negative-space no longer matches what the team believes.
+Refresh when a new priority risk appears, stack/tool behavior changes, accepted omissions
+are reconsidered, exclusions stop matching the team's intent, or dated tooling guidance
+is more than three months old.

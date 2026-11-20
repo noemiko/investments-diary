@@ -1,6 +1,12 @@
 import { execFileSync } from "node:child_process";
+import { loadEnvFile } from "node:process";
 import { createClient } from "@supabase/supabase-js";
 import { assertLocal, seedDemo } from "./lib/demo-data.mjs";
+try {
+  loadEnvFile(new URL("../../.env", import.meta.url));
+} catch (error) {
+  if (error.code !== "ENOENT") throw error;
+}
 const args = process.argv.slice(2);
 if (args.some((arg) => arg !== "--reset")) throw new Error("Usage: npm run seed:demo -- [--reset]");
 const status = JSON.parse(

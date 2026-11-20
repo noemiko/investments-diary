@@ -385,7 +385,7 @@ Export `DEMO_USER_PASSWORD` (at least 12 characters), then run `npm run seed:dem
 
 The five `Demo · …` wallets are Rising, Falling, Mixed, Flat and Empty; 100 synthetic investments occupy the first four and synthetic history spans roughly a year with gaps. The first seed anchors dates, so reruns repair missing fixtures without fabricating new days. The open AAPL fixture is already linked using metadata only; its first real price still requires Download prices, unless a real quote already exists in the canonical owner cache.
 
-`npm run seed:demo -- --reset` restores recognised fixtures only and refuses unrelated position/lookup references to their wallets, categories or fixture cache. Never use `supabase db reset` for demo setup. `npm run test:demo-db` creates and cleans a marked disposable account. All demo/test work is local.
+`npm run seed:demo -- --reset` restores recognised fixtures while preserving added positions and the wallets, categories and fixture cache referenced by those positions or their lookups. Never use `supabase db reset` for demo setup. `npm run test:demo-db` creates and cleans a marked disposable account. All demo/test work is local.
 
 ### Deterministic release checks
 

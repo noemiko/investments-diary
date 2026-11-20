@@ -1,212 +1,254 @@
-# 10x Astro Starter
+# Investments Diary
 
-![](./public/template.png)
+A private, single-user investment journal. It records the **reason** behind every buy and sell, and when you record a
+new investment it shows you your earlier positions bought for the same kind of reason, with how each one turned out.
+The aim is to help you understand your own decisions and stick to a strategy.
 
-A modern, opinionated starter template for building fast, accessible web applications.
+The app never writes or suggests the reason text, and every position is visible only to its owner.
 
-## Tech Stack
+## What it does
 
-- [Astro](https://astro.build/) v7 - Modern web framework with server-first rendering
-- [React](https://react.dev/) v19 - UI library for interactive components
-- [TypeScript](https://www.typescriptlang.org/) v6 - Type-safe JavaScript
-- [Tailwind CSS](https://tailwindcss.com/) v4 - Utility-first CSS framework
-- [Supabase](https://supabase.com/) - Authentication and backend-as-a-service
-- [Vercel](https://vercel.com/) - Serverless deployment platform
+- **Record investments** — pick a Yahoo stock/ETF listing from search, then enter buy price, buy date, and optionally
+  quantity, commission, broker label and a free-text reason.
+- **Reason categories** — define and edit your own list and assign one to each investment.
+- **Confrontation** — while recording, see your existing positions in the same category with their results.
+- **Close, edit, delete, restore** — close a position with sell price and commission; edit factual fields (the reason
+  locks shortly after it is written); deleted entries are recoverable.
+- **Wallets** — several named wallets in USD, PLN or EUR (no FX conversion), with live value and daily snapshots
+  captured at 00:00 UTC.
+- **Prices** — quotes download only when you click **Download prices** (Yahoo via `yahoo-finance2`); manual prices
+  remain available as a fallback.
+- **Owner-created accounts only** — public sign-up is closed.
 
-## Prerequisites
+Requirements live in [context/foundation/prd.md](context/foundation/prd.md); the stack rationale is in
+[context/foundation/tech-stack.md](context/foundation/tech-stack.md).
 
-- Node.js v24.21.0 (as specified in `.nvmrc`)
-- npm (comes with Node.js)
+## Tech stack
 
-## Getting Started
+- [Astro](https://astro.build/) 7 (SSR, `output: "server"`) with [React](https://react.dev/) 19 islands
+- [TypeScript](https://www.typescriptlang.org/) 6, [Tailwind CSS](https://tailwindcss.com/) 4, shadcn/ui
+- [Supabase](https://supabase.com/) — auth and Postgres (with RLS on every table)
+- [Vercel](https://vercel.com/) serverless functions on Node 24
+- Vitest, Stryker (mutation testing), Playwright, Sentry
 
-1. Clone the repository:
+## Architecture (C4)
 
-```bash
-git clone https://github.com/przeprogramowani/10x-astro-starter.git
-cd 10x-astro-starter
+### Level 1 — System context
+
+```mermaid
+flowchart TB
+    owner["<b>Owner</b><br/>[Person]<br/>Private investor, the only user.<br/>Account is created by the owner;<br/>no public sign-up."]
+    diary["<b>Investments Diary</b><br/>[Software system]<br/>Records the reason behind each buy/sell,<br/>shows past positions with the same reason,<br/>tracks wallets."]
+    yahoo["<b>Yahoo Finance</b><br/>[External system]<br/>Listing search and delayed<br/>US/Polish stock and ETF quotes."]
+    sentry["<b>Sentry</b><br/>[External system]<br/>Error tracking for server and browser."]
+
+    owner -->|"Records investments,<br/>reviews positions and wallets<br/>[HTTPS]"| diary
+    diary -->|"Searches listings; downloads quotes<br/>only on 'Download prices'<br/>[HTTPS]"| yahoo
+    diary -->|"Reports sanitized errors<br/>[HTTPS]"| sentry
+
+    classDef person fill:#08427b,stroke:#052e56,color:#fff
+    classDef system fill:#1168bd,stroke:#0b4884,color:#fff
+    classDef ext fill:#999,stroke:#6b6b6b,color:#fff
+    class owner person
+    class diary system
+    class yahoo,sentry ext
 ```
 
-2. Install dependencies:
+### Level 2 — Containers
+
+```mermaid
+flowchart TB
+    owner["<b>Owner</b><br/>[Person]<br/>Private investor"]
+
+    subgraph boundary["Investments Diary"]
+        direction TB
+        browser["<b>React islands</b><br/>[React 19, Tailwind 4, shadcn/ui]<br/>Interactive forms and views;<br/>auth forms are native POSTs."]
+        app["<b>Web app</b><br/>[Astro 7 SSR on Vercel, Node 24]<br/>Pages, form endpoints, middleware<br/>(session + route protection), services in<br/>src/lib: decimal math, wallets,<br/>confrontation, market data."]
+        auth[("<b>Supabase Auth</b><br/>[GoTrue]<br/>Email/password accounts;<br/>sign-up disabled.")]
+        db[("<b>Postgres</b><br/>[Supabase, RLS on every table]<br/>Positions, categories, wallets,<br/>price cache, immutable wallet snapshots.")]
+        cron["<b>Daily snapshot job</b><br/>[pg_cron]<br/>capture_wallet_snapshots() at 00:00 UTC<br/>from cached prices; no provider calls."]
+    end
+
+    yahoo["<b>Yahoo Finance</b><br/>[External system]<br/>Listing search and quotes"]
+    sentry["<b>Sentry</b><br/>[External system]<br/>Error tracking"]
+
+    owner -->|"Uses [HTTPS]"| browser
+    browser -->|"Page loads, form POSTs<br/>[HTTPS]"| app
+    app -->|"Signs users in/out, resolves session<br/>[supabase-js / @supabase/ssr]"| auth
+    app -->|"Reads and writes owner-scoped rows<br/>[PostgREST / RPC]"| db
+    cron -->|"Inserts snapshots<br/>[SQL]"| db
+    app -->|"Search and quotes, user-triggered<br/>[yahoo-finance2]"| yahoo
+    app -->|"Reports errors<br/>[@sentry/astro]"| sentry
+    browser -.->|"Reports errors<br/>[HTTPS]"| sentry
+
+    classDef person fill:#08427b,stroke:#052e56,color:#fff
+    classDef container fill:#438dd5,stroke:#2e6295,color:#fff
+    classDef ext fill:#999,stroke:#6b6b6b,color:#fff
+    class owner person
+    class browser,app,auth,db,cron container
+    class yahoo,sentry ext
+    style boundary fill:none,stroke:#444,stroke-dasharray:5 5
+```
+
+## Getting started
+
+Prerequisites: Node.js 24 (see `.nvmrc`), npm, and Docker (~7 GB RAM) for local Supabase.
 
 ```bash
 npm install
-```
-
-3. Set up Supabase and configure environment variables — see [Supabase Configuration](#supabase-configuration) below.
-
-4. Run the development server:
-
-```bash
-npm run dev
-```
-
-## Agent research tools
-
-Repository-scoped MCP connections provide Exa for web discovery and Context7 for library
-documentation in Codex and Claude Code. See [Research tools](context/foundation/research-tools.md)
-for activation, connection checks, fallback behavior and acceptance scenarios.
-
-## Available Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production into `.vercel/output/`
-- `npm run lint` - Run ESLint with type-checked rules
-- `npm run lint:fix` - Auto-fix ESLint issues
-- `npm run format` - Run Prettier
-- `npm run smoke` - Smoke test the auth flow against a running server (`BASE_URL`, defaults to `http://localhost:4321`)
-
-## Project Structure
-
-```md
-.
-├── src/
-│ ├── layouts/ # Astro layouts
-│ ├── pages/ # Astro pages
-│ │ └── api/ # API endpoints
-│ ├── components/ # UI components (Astro & React)
-│ └── assets/ # Static assets
-├── public/ # Public assets
-```
-
-## Supabase Configuration
-
-This project uses [Supabase](https://supabase.com/) for authentication. Environment variables are declared via Astro's `astro:env` schema and are treated as **server-only secrets** — they are never exposed to the client.
-
-### First-time setup (local, no cloud project needed)
-
-Requires [Docker](https://www.docker.com/) and ~7 GB RAM.
-
-1. Create your `.env` file:
-
-```bash
 cp .env.example .env
+npx supabase start          # first run downloads Docker images
 ```
 
-2. Initialize the local Supabase project (creates a `supabase/` config folder):
-
-```bash
-npx supabase init
-```
-
-3. Start the local stack (downloads Docker images on first run):
-
-```bash
-npx supabase start
-```
-
-4. Copy the local URL and publishable key printed by the CLI into your ignored `.env`.
+Copy the local API URL and publishable key printed by the CLI into `.env`:
 
 ```
 SUPABASE_URL=http://127.0.0.1:54321
 SUPABASE_KEY=<your-local-publishable-key>
 ```
 
-5. To stop the stack when done:
+Then generate types, create an account and start the app:
 
 ```bash
-npx supabase stop
-```
-
-The local Studio UI is available at `http://localhost:54323`.
-
-No database tables or migrations are required — this project uses Supabase Auth's built-in `auth.users` table only.
-
-### Hosted Supabase project (production only)
-
-The hosted project is the production database. Its values go into Vercel environment variables (Production/Preview scope), never into a local `.env` — `npm run dev` throws if `SUPABASE_URL` is not a local address.
-
-| Variable       | Description                                                |
-| -------------- | ---------------------------------------------------------- |
-| `SUPABASE_URL` | Project URL from Supabase dashboard → Settings → API       |
-| `SUPABASE_KEY` | `anon` public key from Supabase dashboard → Settings → API |
-
-```
-SUPABASE_URL=https://<project-ref>.supabase.co
-SUPABASE_KEY=<anon-key>
-```
-
-### Creating an account
-
-Public sign-up is closed; the owner creates each account from the terminal. With local Supabase running:
-
-```sh
-npm run user:create -- --email you@example.com
-```
-
-Type a password of at least 12 characters twice at the hidden prompt (it runs `psql` in the local database container, so nothing else is needed). The account is already confirmed, so you can sign in at [local sign-in](http://localhost:4321/auth/signin) straight away. An email that already has an account is refused.
-
-For the hosted project the owner needs Docker and the tools image (`npm run tools:build`, once) instead of a host `psql`, and adds `--production --db-url <connection string without the password>`. The script runs `psql` in that image, asks the owner to type the project ref to confirm, and `psql` asks for the database password at its own hidden prompt. The password is never stored in a file or environment variable, and agents never run this mode. See [Project scripts](scripts/README.md#accounts).
-
-### Auth routes
-
-| Route          | Description                                                             |
-| -------------- | ----------------------------------------------------------------------- |
-| `/auth/signin` | Email/password sign-in form                                             |
-| `/dashboard`   | Example protected page (redirects to `/auth/signin` if unauthenticated) |
-
-Route protection is handled in `src/middleware.ts`. Add paths to the `PROTECTED_ROUTES` array there to require authentication.
-
-## Deployment
-
-This project deploys to [Vercel](https://vercel.com/).
-
-1. Link the project (first time only):
-
-```bash
-npx vercel link
-```
-
-2. Set the production secrets:
-
-```bash
-npx vercel env add SUPABASE_URL production
-npx vercel env add SUPABASE_KEY production
-```
-
-3. Deploy:
-
-```bash
-npx vercel deploy --prod
-```
-
-Pushing to the connected GitHub repository deploys automatically — the commands above are the manual path. Do not pull production values into a local env file: local development uses the local Supabase stack (see above), and the dev server refuses to start against a hosted Supabase URL.
-
-## Smoke test
-
-`scripts/testing/smoke.mjs` is a dependency-free Node script that walks the whole auth flow (sign-in, protected page, sign-out) over HTTP and checks that public sign-up is refused, both by the app (no sign-up route) and by local Supabase Auth. Run it against the local dev server after dependency upgrades:
-
-```bash
+npx astro sync
+npm run user:create -- --email you@example.com   # prompts for a password (12+ characters)
 npm run dev
-BASE_URL=http://localhost:4321 npm run smoke
 ```
 
-It requires local Supabase and the Supabase CLI available. It creates two persistent test accounts through the local Auth admin API, and owner-bound listing-choice fixtures without contacting Yahoo; native selection/save validation and financial reads remain real. Never point it at production.
+Sign in at <http://localhost:4321/auth/signin>. Local Supabase Studio is at <http://localhost:54323>; stop the stack
+with `npx supabase stop`.
 
-> **Note:** this script exists primarily to guard the development of the starter itself — it is a fast sanity check that dependency upgrades did not break the build or the Supabase auth flow. It is **not** a substitute for a real test suite. Once you build your own product on top of this starter, add proper tests (unit, integration, end-to-end) suited to your application.
+> Dev runs against **local Supabase only**: `npm run dev` throws if `SUPABASE_URL` is not a local address. Production
+> keys live only in Vercel, never in a local env file.
 
-## CI
+## Commands
 
-GitHub Actions runs two jobs on every push and PR to `master`:
+Run everything from the repository root.
 
-- **ci** — lint, `astro check` and build. Configure `SUPABASE_URL` and `SUPABASE_KEY` as repository secrets for the build step.
-- **smoke** — starts a local Supabase via the Supabase CLI, builds, serves the app with `npm run dev` and runs `npm run smoke` against it. No secrets required.
+### App and code quality
 
-## License
+| Command                  | Use it to                                                                                  |
+| ------------------------ | ------------------------------------------------------------------------------------------ |
+| `npm run dev`            | Start the dev server at <http://localhost:4321> (needs local Supabase running)             |
+| `npm run stop`           | Stop the dev server                                                                        |
+| `npm run build`          | Production SSR build into `.vercel/output/` (there is no preview server with this adapter) |
+| `npx astro sync`         | Regenerate `.astro/` types — run on a fresh checkout and after changing `env.schema`       |
+| `npx astro check`        | Type-check `.astro` files (CI runs it; no npm script)                                      |
+| `npm run lint`           | ESLint with type-checked rules (also runs on pre-commit)                                   |
+| `npm run lint:fix`       | Auto-fix ESLint issues                                                                     |
+| `npm run lint:sh`        | Shellcheck the shell scripts (needs the tools image, see `tools:build`)                    |
+| `npm run format`         | Format everything with Prettier                                                            |
+| `npm run verify`         | `astro sync` + ESLint + unit tests in one go — the quick "am I done?" check                |
+| `npm test`               | Run unit tests (Vitest)                                                                    |
+| `npm run test:mutation`  | Stryker mutation tests on financial modules; pass a key, e.g. `-- result`, to narrow scope |
 
-MIT
+### Database and integration tests
 
-## Wallet history and manual-test demo
+These need Docker and `npx supabase start`. They refuse to target production.
 
-When recording a new investment, choose a wallet, search Yahoo listings and select the intended stock/ETF before saving. Search, selection and Save retain your other entries and do not download a price. Click **Download prices** on Positions afterward; this verifies trading currency/timezone and saves a usable quote. A currency mismatch leaves your recorded values unchanged. Existing investments keep their labels and manual-price support.
+| Command                       | Use it to                                                                              |
+| ----------------------------- | -------------------------------------------------------------------------------------- |
+| `npm run smoke`               | Walk sign-in, protected pages, diary flows and cross-account isolation against `BASE_URL` (default `http://localhost:4321`); the dev server must be running. Creates test accounts — never point at production |
+| `npm run test:decimal-db`     | Exact decimal transport, snapshot pagination and ownership                             |
+| `npm run test:contract-db`    | Replay all migrations and check every table is readable only by its owner              |
+| `npm run test:wallet-cron`    | Verify the daily wallet-snapshot job registration (00:00 UTC)                          |
+| `npm run test:recovery-db`    | Rehearse the manual price recovery template in a disposable database                   |
+| `npm run test:user-create-db` | Verify `user:create` accounts can really sign in through Supabase Auth                 |
+| `npm run test:demo-db`        | Test the demo-data loader                                                              |
+| `npm run probe:market-data -- --live` | Check that public Yahoo search/quotes work for `AAPL` and `PKO.WA`             |
 
-Run these commands from the project directory with local Supabase running:
+### Accounts, demo data and operations
 
-```sh
-npx supabase start
+| Command                                  | Use it to                                                                          |
+| ---------------------------------------- | ---------------------------------------------------------------------------------- |
+| `npm run user:create -- --email <email>` | Create a confirmed account on local Supabase (hidden password prompt, twice)       |
+| `npm run seed:demo`                      | Load a demo account with 5 wallets and 100 investments (see [Demo data](#demo-data)) |
+| `npm run seed:demo -- --reset`           | Restore the original demo fixtures                                                 |
+| `npm run configure:wallet-cron`          | Re-apply the daily snapshot job on local Supabase (repair helper)                  |
+| `npm run tools:build`                    | Build the Docker tools image (psql, shellcheck, jq, curl) — needed for production `user:create` and `lint:sh` |
+| `npm run test:sentry-probe`              | Exercise Sentry error handling against a fake local ingest endpoint                |
+| `npm run check:sentry-build`             | After `npm run build`, check public assets for source maps and leaked secrets      |
+
+Every script's prerequisites and data effects are documented in [scripts/README.md](scripts/README.md).
+
+## Project structure
+
+```
+.
+├── src/
+│   ├── pages/          # Astro pages and endpoints (dashboard, auth, wallets, market-prices)
+│   ├── components/     # Astro and React components; shadcn/ui primitives in ui/
+│   ├── lib/            # Business logic: decimal math, wallets, confrontation, market data, auth
+│   ├── db/             # Generated database types
+│   └── middleware.ts   # Session handling and PROTECTED_ROUTES
+├── supabase/           # config.toml and SQL migrations
+├── scripts/            # Testing, demo, accounts, observability, automation, deployment helpers
+├── tests/              # Database and end-to-end tests
+├── context/            # PRD, roadmap, deployment plan and per-change plans
+└── public/             # Static assets
 ```
 
-Copy and paste this block into **zsh** (the default macOS shell). Type a password of at least 12 characters when prompted, then press Enter. Your password stays hidden and is not written into shell history.
+Routes: `/auth/signin` (sign-in), `/dashboard` (positions), `/dashboard/new` (record an investment),
+`/dashboard/positions/[id]`, `/dashboard/wallets`, `/dashboard/deleted`. Protection is in `src/middleware.ts` — add
+paths to `PROTECTED_ROUTES` to require authentication.
+
+## Configuration
+
+Environment variables are declared in the `astro:env` schema in `astro.config.mjs` and are server-only. Read them via
+`astro:env/server`, never `process.env`. To add one: edit `env.schema`, then `.env`, then run `npx astro sync`.
+
+| Variable                                                  | Purpose                                              |
+| --------------------------------------------------------- | ---------------------------------------------------- |
+| `SUPABASE_URL`, `SUPABASE_KEY`                            | Required. Local stack in dev; hosted project in Vercel |
+| `PUBLIC_SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN` | Optional error tracking                |
+| `E2E_USERNAME`, `E2E_PASSWORD`                            | Credentials for end-to-end tests                     |
+
+## End-to-end tests
+
+Browser tests use [Playwright](https://playwright.dev/) and live in `tests/e2e/`. They run against **local Supabase
+only**; some specs create their own fixtures through the local Auth admin API and refuse a remote backend.
+
+One-time setup:
+
+```bash
+npm install
+npx playwright install chromium                  # download the browser
+npx supabase start                               # Docker must be running
+npm run user:create -- --email e2e@example.com   # dedicated test account
+```
+
+Put that account's credentials in `.env` (see `.env.example`):
+
+```
+E2E_USERNAME=e2e@example.com
+E2E_PASSWORD=<the password you chose>
+```
+
+Run the tests:
+
+```bash
+npx playwright test                              # full suite
+npx playwright test tests/e2e/login.spec.ts      # a single spec
+npx playwright test --ui                         # interactive UI mode
+npx playwright test --headed                     # watch the browser
+npx playwright show-report                       # open the HTML report of the last run
+```
+
+How it works:
+
+- Playwright starts the app itself (`npm run build && npm run dev` on `127.0.0.1:4321`) and reuses a server that is
+  already running. Set `E2E_PORT` if port 4321 is taken.
+- A `setup` project ([tests/e2e/auth.setup.ts](tests/e2e/auth.setup.ts)) signs in once with `E2E_USERNAME` and
+  `E2E_PASSWORD` and saves the session to `playwright/.auth/user.json` (gitignored); the `chromium` project reuses it.
+- Failures keep screenshots, and traces are recorded on the first retry, in `test-results/` and `playwright-report/`.
+- The build is served through Astro dev because the Vercel adapter has no preview server, so these tests don't prove
+  parity with the deployed runtime. Details: [context/foundation/test-stack.md](context/foundation/test-stack.md).
+
+## Demo data
+
+The seed script loads the project root `.env` automatically. Set `DEMO_USER_PASSWORD` there (at least 12 characters),
+then run `npm run seed:demo` with local Supabase running. Existing environment variables take precedence.
+Alternatively, enter the password in your shell (zsh):
 
 ```zsh
 read -s "DEMO_USER_PASSWORD?Demo password (at least 12 characters): "
@@ -215,33 +257,40 @@ export DEMO_USER_PASSWORD
 npm run seed:demo
 ```
 
-Start the app if it is not already running:
+Sign in with `wallet-demo@example.test` and that password. The demo has 100 investments across five wallets with
+synthetic daily history; reruns preserve your edits. Click **Download prices** on Positions to fetch a real quote for
+the Apple holding in **Demo · Rising**. Details: [scripts/README.md](scripts/README.md#local-demo).
 
-```sh
-npm run dev
+## Deployment
+
+Deploys to Vercel; pushing to `master` deploys automatically. Manual path:
+
+```bash
+npx vercel link                                  # first time only
+npx vercel env add SUPABASE_URL production
+npx vercel env add SUPABASE_KEY production
+npx vercel deploy --prod
 ```
 
-Open [local sign-in](http://localhost:4321/auth/signin) and use:
+Do not pull production values into a local env file. Procedure, rollback and wallet-cron operations are in
+[context/deployment/deploy-plan.md](context/deployment/deploy-plan.md).
 
-- **Email:** `wallet-demo@example.test`
-- **Password:** the password you entered above
+## CI
 
-The demo provides 100 investments across five wallets with synthetic daily history. Normal reruns preserve your edits and keep the original account password. In the same terminal, run `npm run seed:demo` again without re-entering the password. In a new terminal, repeat the password-prompt block using the original password.
+GitHub Actions runs on every push and PR to `master` (docs-only changes are skipped):
 
-Every demo holding selects Apple (**AAPL**), as investments saved before stock selections existed do. The open twelfth holding in **Demo · Rising** is already linked to Apple on Nasdaq (USD). It starts without a manual or cached quote, so click **Download prices** on Positions to fetch its first real market price. The loader only seeds listing metadata and never contacts Yahoo. Synthetic purchase amounts and historical observations remain demo data.
+- **ci** — `astro sync`, unit tests, lint, `astro check` and build.
+- **decimal-transport** — local Supabase plus `test:decimal-db`, `test:wallet-cron`, `test:recovery-db`,
+  `test:user-create-db` and `test:contract-db`.
+- **smoke** — after merge to `master` only: local Supabase, build, dev server and `npm run smoke`.
 
-Rerunning the loader also links that holding in older demos if it is still open, not deleted and unlinked, preserving any edited label or manual price. An existing selected listing is kept. If the account already has the same AAPL listing in its cache, the loader reuses it unchanged; any real quote already saved there can immediately supply the holding's effective price.
+## Contributing notes
 
-To restore the original demo fixtures explicitly:
+- Every new Supabase table needs RLS with per-operation, per-role policies. Migrations go in
+  `supabase/migrations/YYYYMMDDHHmmss_short_description.sql`.
+- Before declaring work done, follow the `verify` skill in [.claude/skills/verify/SKILL.md](.claude/skills/verify/SKILL.md).
+- Agent instructions live in [CLAUDE.md](CLAUDE.md) (`AGENTS.md` is a symlink to it).
 
-```sh
-npm run seed:demo -- --reset
-```
+## License
 
-Reset affects recognised demo fixtures only and refuses unrelated references, including positions or lookup receipts referencing the fixture listing. It restores the fixture's metadata-only cache row; independently created canonical cache rows are preserved. See [wallet observations](context/deployment/deploy-plan.md#wallet-observations-and-cron) for daily capture, scheduler verification and further setup details.
-
-Run `npm run test:decimal-db` (snapshot values and pagination) and `npm run test:demo-db` against local Supabase; `npm run test:contract-db` checks that snapshots, like every table, are readable only by their owner. The versioned scheduler migration activates daily capture when applied. Verify it locally with `npm run test:wallet-cron`; production migration deployment remains a separate authorised step.
-
-## Script guide
-
-See [Project scripts](scripts/README.md) for the categorized inventory, commands, prerequisites, automatic callers and data effects. Existing npm commands remain unchanged.
+MIT

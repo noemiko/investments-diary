@@ -1,0 +1,23 @@
+Command: /var/folders/2n/qsxhjgcs3ygd3mbjx48w0dph0000gn/T/django-c1-hsem_1_5/venv/bin/python tests/runtests.py update_only_fields.UpdateOnlyFieldsTests.test_update_fields_fk_expression update_only_fields.UpdateOnlyFieldsTests.test_update_fields_fk_expression_no_returning --parallel=1 --verbosity=2 --settings=refactor_opportunities_postgres
+UpdateOnlyFieldsTests (unittest.loader._FailedTest.UpdateOnlyFieldsTests) ... ERROR
+
+======================================================================
+ERROR: UpdateOnlyFieldsTests (unittest.loader._FailedTest.UpdateOnlyFieldsTests)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: UpdateOnlyFieldsTests
+Traceback (most recent call last):
+  File "/opt/homebrew/Cellar/python@3.12/3.12.13_4/Frameworks/Python.framework/Versions/3.12/lib/python3.12/unittest/loader.py", line 137, in loadTestsFromName
+    module = __import__(module_name)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'update_only_fields.UpdateOnlyFieldsTests'
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)
+Testing against Django installed in '/Users/noemi.kowalewska/Documents/django-10x/django/django'
+Importing application update_only_fields
+Found 1 test(s).
+Skipping setup of unused database(s): default, other.
+System check identified no issues (0 silenced).

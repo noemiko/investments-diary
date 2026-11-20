@@ -1,0 +1,20 @@
+asgiref==3.13.0
+black==26.5.1
+click==8.5.0
+-e git+https://github.com/django/django.git@b501b8493f31cf8cba31211d59b3b78642b8cb02#egg=Django
+flake8==7.3.0
+isort==8.0.1
+mccabe==0.7.0
+mypy_extensions==1.2.0
+packaging==26.3
+pathspec==1.1.1
+pillow==13.0.0
+platformdirs==4.14.5
+psycopg==3.3.8
+psycopg-binary==3.3.8
+psycopg-pool==3.3.3
+pycodestyle==2.14.0
+pyflakes==3.4.0
+pytokens==0.4.1
+sqlparse==0.6.1
+typing_extensions==4.16.0
