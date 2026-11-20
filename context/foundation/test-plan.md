@@ -69,7 +69,7 @@ Vocabulary: `not started` → `change opened` → `researched` → `planned` →
 | #   | Phase name                                   | Goal                                                                                                                                            | Risks covered | Test types                                     | Status       | Change folder                                  |
 | --- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ---------------------------------------------- | ------------ | ---------------------------------------------- |
 | 1   | Result correctness                           | Preserve shipped exact-decimal arithmetic, transport and result rendering protection                                                            | #3            | unit, SSR, real database                       | complete     | context/archive/2026-10-19-result-correctness/ |
-| 2   | Private decision history                     | Protect hydrated past-reason display while retaining existing privacy contracts; remote PR confirmation remains pending                         | #1, #2        | browser; existing DB/HTTP privacy protection   | implementing | test-plan-refresh-2026-11-20                   |
+| 2   | Private decision history                     | Protect hydrated past-reason display while retaining existing privacy contracts; remote CI passed; human confirmation remains pending           | #1, #2        | browser; existing DB/HTTP privacy protection   | implementing | test-plan-refresh-2026-11-20                   |
 | 3   | Environment evidence and accepted-gap review | Reconcile remaining hosted/manual evidence; explicitly decide whether any previously accepted financial/persistence omission warrants reopening | #3, #4, #5    | manual checklist; targeted DB only if selected | not started  | —                                              |
 | 4   | Quality gates and cookbook                   | Retain the configured focused browser gate and cookbook; separately scope remaining hook/gate decisions                                         | cross-cutting | CI gate, documentation; test hook if justified | not started  | —                                              |
 
@@ -78,7 +78,7 @@ remote CI items; it is not a new test run. Phases 2–4 were previously labelled
 “not started” broadly, despite shipped ownership, migration and auth tests.
 Those existing components are credited in §4–§6; the refreshed rows describe what remains.
 The approved refresh plan is being implemented. The local history scenario and focused CI job exist;
-Phase 2 remains implementing until its pending remote PR confirmation is recorded. The focused
+Phase 2 remains implementing pending human confirmation of the recorded PR result. The focused
 browser gate contributes to Phase 4 without completing its remaining scope.
 
 Order: prioritize the author's requested browser behavior, retain shipped privacy
@@ -222,7 +222,7 @@ Do not treat automated AI review workflows as substitutes for executable test ga
   preserves browser reports/failure diagnostics for seven days, and always stops Supabase.
   Qualifying PR/master triggers and docs-only exclusions match the existing workflow.
 - The browser scenario passed twice locally without shared E2E credentials. CI job
-  configuration is implemented and syntax-checked; no remote passing run is claimed.
+  configuration is implemented and syntax-checked; the remote result is recorded in §6.6.
 
 ### 6.6 Evidence and maintenance
 
@@ -235,11 +235,17 @@ Local implementation evidence on 2026-11-20: `npm test` passed 548 tests in 40 f
 whole-repo lint passed; `astro check` examined 184 files with zero errors, warnings or
 hints. The focused browser scenario passed twice consecutively with shared E2E credentials
 empty. Discovery selected its single scenario and retained the existing Chromium
-project's 23 discovered tests including setup. These results do not establish a remote
-CI pass, hosted parity or branch protection; the PR confirmation remains pending.
+project's 23 discovered tests including setup. These local results do not establish hosted parity or branch protection.
+Remote CI evidence is recorded separately below; human confirmation remains pending.
 The production build and the focused browser run with CI settings also passed. Removing
 the panel deliberately failed the expected two-entry assertion; the source was restored
 byte-for-byte before the passing CI-mode run. See the change verification log for details.
+
+Remote evidence: [PR #40 CI run](https://github.com/noemiko/investments-diary/actions/runs/44743252626)
+passed for code commit `0be31f0`: main static/unit checks, local database contracts and
+the focused history job. The browser log records one test and one pass; report upload
+and Supabase teardown succeeded. HTTP smoke was skipped for the PR. The private-history
+rollout remains implementing until the plan’s manual confirmation is recorded.
 
 ## 7. What We Deliberately Don't Test
 
@@ -268,7 +274,7 @@ independent oracle it buys.
 - Local implementation checks: 2026-11-20; unit/SSR, lint, Astro check, build, deliberate-break and focused browser runs passed as bounded in §6.6. Broader database/browser suites were not rerun.
 - Manifest declarations checked: 2026-11-20; installed tool versions not freshly verified.
 - Current-session tool availability checked: 2026-11-20; Playwright CI/project guidance is linked in the approved implementation plan.
-- Hosted settings, branch protection and current remote runs: not checked.
+- Remote CI: PR #40 run 44743252626 passed for code commit 0be31f0 on 2026-11-20. Hosted settings and branch protection: not checked.
 - Related documentation follow-up: `test-stack.md` contains an outdated sign-in landing
   note; current auth setup expects `/dashboard`. Update through its owning E2E setup
   workflow when that document is next maintained.

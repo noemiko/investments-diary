@@ -176,16 +176,16 @@ No migration or production-data change. Reverting the test, project, workflow an
 
 #### Automated
 
-- [x] 1.1 The focused scenario passes twice consecutively without shared E2E credentials, fixture collisions or cleanup failures.
-- [x] 1.2 Test discovery selects only the new scenario for `decision-history`; existing Chromium specs retain their setup dependency.
-- [x] 1.3 Temporarily removing the form’s confrontation-panel rendering makes the scenario fail on missing history; restore the source and confirm the scenario passes.
+- [x] 1.1 The focused scenario passes twice consecutively without shared E2E credentials, fixture collisions or cleanup failures. — 0be31f0
+- [x] 1.2 Test discovery selects only the new scenario for `decision-history`; existing Chromium specs retain their setup dependency. — 0be31f0
+- [x] 1.3 Temporarily removing the form’s confrontation-panel rendering makes the scenario fail on missing history; restore the source and confirm the scenario passes. — 0be31f0
 
 ### Phase 2: Add focused PR protection
 
 #### Automated
 
-- [x] 2.1 The CI-equivalent local invocation passes with local configuration and shared E2E credentials absent.
-- [x] 2.2 Changed files pass targeted formatting checks and `git diff --check`.
+- [x] 2.1 The CI-equivalent local invocation passes with local configuration and shared E2E credentials absent. — 0be31f0
+- [x] 2.2 Changed files pass targeted formatting checks and `git diff --check`. — 0be31f0
 
 #### Manual
 
@@ -195,5 +195,5 @@ No migration or production-data change. Reverting the test, project, workflow an
 
 #### Automated
 
-- [x] 3.1 Repository checks pass in the required order: `npx astro sync`, `npm run lint`, `npx astro check`, `npm run build`; `npm test` also passes.
-- [x] 3.2 Documentation formatting and diff checks pass; recorded commands, scope and completion claims agree with actual results.
+- [x] 3.1 Repository checks pass in the required order: `npx astro sync`, `npm run lint`, `npx astro check`, `npm run build`; `npm test` also passes. — 0be31f0
+- [x] 3.2 Documentation formatting and diff checks pass; recorded commands, scope and completion claims agree with actual results. — 0be31f0
