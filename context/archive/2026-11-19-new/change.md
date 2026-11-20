@@ -1,10 +1,10 @@
 ---
 change_id: new
 title: Investment Diary login page
-status: impl_reviewed
+status: archived
 created: 2026-11-19
 updated: 2026-11-20
-archived_at: null
+archived_at: 2026-11-20T15:11:49Z
 ---
 
 ## Notes

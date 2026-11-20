@@ -1,10 +1,10 @@
 ---
 change_id: test-plan-refresh-2026-11-20
 title: Refresh test strategy for privacy and past investment reasons
-status: implementing
+status: archived
 created: 2026-11-20
 updated: 2026-11-20
-archived_at: null
+archived_at: 2026-11-20T15:11:49Z
 ---
 
 ## Notes
