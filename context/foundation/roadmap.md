@@ -255,7 +255,7 @@ which is exactly what this roadmap avoids.
 | S-07       | reason-lock-editing           | Edit investment facts with a locked reason                   | no                    | Waits on S-01                                                                               |
 | S-08       | evolve-reason-categories      | Rename and soft-remove reason categories                     | no                    | Waits on S-01                                                                               |
 | S-09       | named-wallets                 | Group investments into named wallets with transparent totals | yes                   | Prerequisites S-01, S-02, S-05 are done; resolve assignment and total rules during planning |
-| S-10       | close-public-signup           | Close public sign-up; owner-created accounts only            | yes                   | done        |
+| S-10       | close-public-signup           | Close public sign-up; owner-created accounts only            | yes                   | Amend PRD FR-001 first; run `/10x-plan close-public-signup`                                 |
 | F-01       | consolidate-db-contract-tests | Consolidate database contract tests on the current schema    | no                    | Waits on automatic-stock-prices Phase 6 acceptance                                          |
 
 ## Open Roadmap Questions
