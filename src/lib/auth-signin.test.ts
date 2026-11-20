@@ -69,6 +69,15 @@ describe("native signin endpoint", () => {
     expect(location.searchParams.get("returnTo")).toBe("/dashboard/wallets?range=30");
     expect(location.href).not.toContain("private");
   });
+  it("revalidates forged return destinations after failed authentication", async () => {
+    signIn.mockResolvedValue({ error: new AuthApiError("private", 400, "invalid_credentials") });
+    const result = await POST(
+      context(new URLSearchParams({ email: "investor@example.test", password: "secret", returnTo: "//evil.test" })),
+    );
+    const location = new URL(result.headers.get("location") ?? "", "http://localhost");
+    expect(location.searchParams.get("returnTo")).toBe("/dashboard");
+    expect(location.searchParams.get("error")).toBe("signin_failed");
+  });
   it("reports thrown failures without exposing details", async () => {
     const failure = new Error("private");
     signIn.mockRejectedValue(failure);
@@ -91,6 +100,14 @@ describe("email callback", () => {
   it("preserves the successful callback destination", async () => {
     expect((await callback(callbackContext("?code=local-test"))).headers.get("location")).toBe("/dashboard");
     expect(exchange).toHaveBeenCalledExactlyOnceWith("local-test");
+  });
+  it("reports thrown callback failures and returns only the fixed error", async () => {
+    const error = new Error("private provider detail");
+    exchange.mockRejectedValue(error);
+    expect((await callback(callbackContext("?code=local-test"))).headers.get("location")).toBe(
+      "/auth/signin?error=link_failed",
+    );
+    expect(reportAuthError).toHaveBeenCalledExactlyOnceWith(error, "auth.exchangeCode");
   });
   it("uses the same fixed error for a rejected link", async () => {
     exchange.mockResolvedValue({ error: new AuthApiError("private", 400, "otp_expired") });

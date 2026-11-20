@@ -29,10 +29,17 @@ describe("dashboard return destinations", () => {
     "/dashboard/%2f..%2f..%2fauth",
     "/dashboard/%5cevil",
     "/dashboard/%255cevil",
+    "/dashboard/%25252f..%25252f..%25252fauth",
+    "/dashboard/%7f",
     "/dashboard/%00foo",
     "/dashboard/%",
   ])("falls back for unsafe input %j", (value) => {
     expect(safeReturnTo(value)).toBe("/dashboard");
+  });
+  it("keeps dashboard query values as data and discards only the fragment", () => {
+    expect(safeReturnTo("/dashboard/wallets?next=https%3A%2F%2Fexample.test&label=a%20b#discard")).toBe(
+      "/dashboard/wallets?next=https%3A%2F%2Fexample.test&label=a%20b",
+    );
   });
   it("preserves only validated destinations across a failed login", () => {
     const safe = new URL(signInLocation("/dashboard/wallets?range=30", "signin_failed"), "http://localhost");

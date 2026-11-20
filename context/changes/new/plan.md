@@ -234,26 +234,26 @@ No database migration or hosted setting change is required. Existing sessions sh
 
 #### Manual
 
-- [ ] 1.2 Desktop, tablet and mobile layouts show the required content without clipping or horizontal scrolling.
+- [x] 1.2 Desktop, tablet and mobile layouts show the required content without clipping or horizontal scrolling.
 
 ### Phase 2: Form behavior and server security
 
 #### Automated
 
-- [x] 2.1 Unit tests pass for server validation, fixed errors, return-destination validation and cookie options.
-- [x] 2.2 Static verification passes in the prescribed order.
+- [x] 2.1 Unit tests pass for server validation, fixed errors, return-destination validation and cookie options. — 76737f9
+- [x] 2.2 Static verification passes in the prescribed order. — 76737f9
 
 #### Manual
 
-- [ ] 2.3 Keyboard submission, invalid-field focus, error announcements, password visibility and pending feedback work without disrupting native POST navigation.
+- [x] 2.3 Keyboard submission, invalid-field focus, error announcements, password visibility and pending feedback work without disrupting native POST navigation.
 
 ### Phase 3: Regression and visual verification
 
 #### Automated
 
-- [ ] 3.1 `npm test` passes.
-- [ ] 3.2 Static verification passes: sync → lint → Astro check → build.
-- [ ] 3.3 Local HTTP smoke and targeted Playwright auth/session tests pass.
+- [x] 3.1 `npm test` passes.
+- [x] 3.2 Static verification passes: sync → lint → Astro check → build.
+- [x] 3.3 Local HTTP smoke and targeted Playwright auth/session tests pass.
 
 #### Manual
 

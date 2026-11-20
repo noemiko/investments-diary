@@ -85,6 +85,7 @@ it.each(handlers)(
     const response = await handler(context);
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toMatch(target);
+    expect(response.headers.get("location")).not.toContain("private");
     expect(reportUnexpected).toHaveBeenCalledExactlyOnceWith(error, { operation });
   },
 );
