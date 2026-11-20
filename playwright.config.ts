@@ -19,9 +19,14 @@ export default defineConfig({
     { name: "setup", testMatch: /.*\.setup\.ts/ },
     {
       name: "chromium",
-      testIgnore: /.*\.setup\.ts/,
+      testIgnore: [/.*\.setup\.ts/, /decision-history\.spec\.ts/],
       use: { ...devices["Desktop Chrome"], storageState: "playwright/.auth/user.json" },
       dependencies: ["setup"],
+    },
+    {
+      name: "decision-history",
+      testMatch: /decision-history\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"], storageState: { cookies: [], origins: [] } },
     },
   ],
   webServer: {

@@ -1,0 +1,5 @@
+Checked 7278 pre-existing tracked/untracked files.
+Changed existing files: context/changes/refactor-opportunities/change.md, django/db/models/base.py, tests/update_only_fields/tests.py
+All other pre-existing file bytes unchanged.
+Git index patch byte-identical to pre-task snapshot.
+git diff --check: PASS

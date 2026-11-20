@@ -1,0 +1,4 @@
+Removed task-owned container django-c1-38a6bce8 and its anonymous volume using docker rm -f -v.
+Verified container absent afterward.
+Task-owned Python environment, settings, credentials, and test wrapper removed after verification.
+Other task containers and resources were not removed.

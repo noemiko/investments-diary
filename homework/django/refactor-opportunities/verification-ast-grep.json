@@ -1,0 +1,895 @@
+{
+  "source_commit": "b501b8493f31cf8cba31211d59b3b78642b8cb02",
+  "ast_grep_version": "ast-grep 0.51.1",
+  "checks": [
+    {
+      "id": "S01",
+      "claim": "N1: both forced-failure tests enumerate three exception classes",
+      "path": "tests",
+      "pattern": "exceptions = [DatabaseError, ObjectNotUpdated, $TYPE.NotUpdated]",
+      "grep": "exceptions = .*DatabaseError",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "tests/force_insert_update/tests.py",
+          "line": 55,
+          "text": "exceptions = [DatabaseError, ObjectNotUpdated, WithCustomPK.NotUpdated]"
+        },
+        {
+          "file": "tests/update_only_fields/tests.py",
+          "line": 304,
+          "text": "exceptions = [DatabaseError, ObjectNotUpdated, Person.NotUpdated]"
+        }
+      ]
+    },
+    {
+      "id": "S02",
+      "claim": "N1: both loops assert DatabaseError rather than the loop variable",
+      "path": "tests",
+      "pattern": "self.assertRaisesMessage(DatabaseError, msg)",
+      "grep": "assertRaisesMessage\\(DatabaseError, msg\\)",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "tests/queries/test_qs_combinators.py",
+          "line": 712,
+          "text": "self.assertRaisesMessage(DatabaseError, msg)"
+        },
+        {
+          "file": "tests/queries/test_qs_combinators.py",
+          "line": 715,
+          "text": "self.assertRaisesMessage(DatabaseError, msg)"
+        },
+        {
+          "file": "tests/queries/test_qs_combinators.py",
+          "line": 717,
+          "text": "self.assertRaisesMessage(DatabaseError, msg)"
+        },
+        {
+          "file": "tests/queries/test_qs_combinators.py",
+          "line": 748,
+          "text": "self.assertRaisesMessage(DatabaseError, msg)"
+        },
+        {
+          "file": "tests/queries/test_qs_combinators.py",
+          "line": 751,
+          "text": "self.assertRaisesMessage(DatabaseError, msg)"
+        },
+        {
+          "file": "tests/queries/test_qs_combinators.py",
+          "line": 753,
+          "text": "self.assertRaisesMessage(DatabaseError, msg)"
+        },
+        {
+          "file": "tests/queries/test_qs_combinators.py",
+          "line": 755,
+          "text": "self.assertRaisesMessage(DatabaseError, msg)"
+        },
+        {
+          "file": "tests/queries/test_qs_combinators.py",
+          "line": 763,
+          "text": "self.assertRaisesMessage(DatabaseError, msg)"
+        },
+        {
+          "file": "tests/queries/test_qs_combinators.py",
+          "line": 765,
+          "text": "self.assertRaisesMessage(DatabaseError, msg)"
+        },
+        {
+          "file": "tests/queries/test_qs_combinators.py",
+          "line": 767,
+          "text": "self.assertRaisesMessage(DatabaseError, msg)"
+        },
+        {
+          "file": "tests/basic/tests.py",
+          "line": 912,
+          "text": "self.assertRaisesMessage(DatabaseError, msg)"
+        },
+        {
+          "file": "tests/force_insert_update/tests.py",
+          "line": 59,
+          "text": "self.assertRaisesMessage(DatabaseError, msg)"
+        },
+        {
+          "file": "tests/update_only_fields/tests.py",
+          "line": 308,
+          "text": "self.assertRaisesMessage(DatabaseError, msg)"
+        }
+      ]
+    },
+    {
+      "id": "S03",
+      "claim": "C1: field metadata includes name and attname",
+      "path": "django/db/models/options.py",
+      "pattern": "names.append($FIELD)",
+      "grep": "names.append",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/options.py",
+          "line": 1025,
+          "text": "names.append(field.name)"
+        },
+        {
+          "file": "django/db/models/options.py",
+          "line": 1027,
+          "text": "names.append(field.attname)"
+        }
+      ]
+    },
+    {
+      "id": "S04",
+      "claim": "C1: save validates update_fields against that metadata",
+      "path": "django/db/models/base.py",
+      "pattern": "update_fields.difference(field_names)",
+      "grep": "update_fields.difference",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/base.py",
+          "line": 884,
+          "text": "update_fields.difference(field_names)"
+        }
+      ]
+    },
+    {
+      "id": "S05",
+      "claim": "C1: table selection accepts both spellings",
+      "path": "django/db/models/base.py",
+      "pattern": "f.name in update_fields or f.attname in update_fields",
+      "grep": "f.name in update_fields or f.attname in update_fields",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/base.py",
+          "line": 1100,
+          "text": "f.name in update_fields or f.attname in update_fields"
+        }
+      ]
+    },
+    {
+      "id": "S06",
+      "claim": "C1: write tuples use selected fields and pre_save",
+      "path": "django/db/models/base.py",
+      "pattern": "getattr(self, f.attname) if raw else f.pre_save(self, False)",
+      "grep": "f.pre_save",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/base.py",
+          "line": 1129,
+          "text": "getattr(self, f.attname) if raw else f.pre_save(self, False)"
+        }
+      ]
+    },
+    {
+      "id": "S07",
+      "claim": "C1: readback rechecks only field.name",
+      "path": "django/db/models/base.py",
+      "pattern": "update_fields is None or field.name in update_fields",
+      "grep": "field.name in update_fields",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/base.py",
+          "line": 1144,
+          "text": "update_fields is None or field.name in update_fields"
+        }
+      ]
+    },
+    {
+      "id": "S08",
+      "claim": "C1: expression detection appends the selected field",
+      "path": "django/db/models/base.py",
+      "pattern": "returning_fields.append(field)",
+      "grep": "returning_fields.append",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/base.py",
+          "line": 1147,
+          "text": "returning_fields.append(field)"
+        },
+        {
+          "file": "django/db/models/base.py",
+          "line": 1200,
+          "text": "returning_fields.append(field)"
+        }
+      ]
+    },
+    {
+      "id": "S09",
+      "claim": "C1: both save signals receive original update_fields",
+      "path": "django/db/models/base.py",
+      "pattern": "$SIGNAL.send($$$ARGS, update_fields=update_fields, $$$REST)",
+      "grep": "update_fields=update_fields",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/base.py",
+          "line": 982,
+          "text": "pre_save.send(\n                sender=origin,\n                instance=self,\n                raw=raw,\n                using=using,\n                update_fields=update_fields,\n            )"
+        },
+        {
+          "file": "django/db/models/base.py",
+          "line": 1017,
+          "text": "post_save.send(\n                sender=origin,\n                instance=self,\n                created=(not updated),\n                update_fields=update_fields,\n                raw=raw,\n                using=using,\n            )"
+        }
+      ]
+    },
+    {
+      "id": "S10",
+      "claim": "N3: scalar FK attname is tested independently",
+      "path": "tests/update_only_fields/tests.py",
+      "pattern": "$OBJ.save(update_fields=[\"profile_id\"])",
+      "grep": "profile_id",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "tests/update_only_fields/tests.py",
+          "line": 172,
+          "text": "e3.save(update_fields=[\"profile_id\"])"
+        }
+      ]
+    },
+    {
+      "id": "S11",
+      "claim": "N3: expression test separates selected and excluded pid",
+      "path": "tests/update_only_fields/tests.py",
+      "pattern": "obj.save(update_fields={$FIELD})",
+      "grep": "obj.save\\(update_fields=",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "tests/update_only_fields/tests.py",
+          "line": 317,
+          "text": "obj.save(update_fields={\"gender\"})"
+        },
+        {
+          "file": "tests/update_only_fields/tests.py",
+          "line": 319,
+          "text": "obj.save(update_fields={\"pid\"})"
+        }
+      ]
+    },
+    {
+      "id": "S12",
+      "claim": "C2: private _update defaults returning_fields to None",
+      "path": "django/db/models/query.py",
+      "pattern": "def _update(self, values, returning_fields=None):\n    $$$BODY",
+      "grep": "def _update",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/query.py",
+          "line": 1492,
+          "text": "def _update(self, values, returning_fields=None):\n        \"\"\"\n        A version of update() that accepts field objects instead of field\n        names. Used primarily for model saving and not intended for use by\n        general code (it requires too much poking around at model internals to\n        be useful at that level).\n        \"\"\"\n        if self.query.is_sliced:\n            raise TypeError(\"Cannot update a query once a slice has been taken.\")\n        query = self.query.chain(sql.UpdateQuery)\n        query.add_update_fields(values)\n        # Clear any annotations so that they won't be present in subqueries.\n        query.annotations = {}\n        self._result_cache = None\n        if returning_fields is None:\n            return query.get_compiler(self.db).execute_sql(ROW_COUNT)\n        return query.get_compiler(self.db).execute_returning_sql(returning_fields)"
+        }
+      ]
+    },
+    {
+      "id": "S13",
+      "claim": "C2: None chooses count; other values choose returning",
+      "path": "django/db/models/query.py",
+      "pattern": "if returning_fields is None:\n    return query.get_compiler(self.db).execute_sql(ROW_COUNT)",
+      "grep": "if returning_fields is None",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/query.py",
+          "line": 1506,
+          "text": "if returning_fields is None:\n            return query.get_compiler(self.db).execute_sql(ROW_COUNT)"
+        }
+      ]
+    },
+    {
+      "id": "S14",
+      "claim": "C2: private returning path calls compiler",
+      "path": "django/db/models/query.py",
+      "pattern": "query.get_compiler(self.db).execute_returning_sql(returning_fields)",
+      "grep": "execute_returning_sql",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/query.py",
+          "line": 1508,
+          "text": "query.get_compiler(self.db).execute_returning_sql(returning_fields)"
+        }
+      ]
+    },
+    {
+      "id": "S15",
+      "claim": "C2: compiler fallback covers empty fields and unsupported returning",
+      "path": "django/db/models/sql/compiler.py",
+      "pattern": "not returning_fields or not self.connection.features.can_return_rows_from_update",
+      "grep": "can_return_rows_from_update",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/sql/compiler.py",
+          "line": 2170,
+          "text": "not returning_fields\n            or not self.connection.features.can_return_rows_from_update"
+        }
+      ]
+    },
+    {
+      "id": "S16",
+      "claim": "C2: compiler converts row count to empty tuples",
+      "path": "django/db/models/sql/compiler.py",
+      "pattern": "return [()] * row_count",
+      "grep": "return \\[\\(\\)\\] \\* row_count",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/sql/compiler.py",
+          "line": 2174,
+          "text": "return [()] * row_count"
+        }
+      ]
+    },
+    {
+      "id": "S17",
+      "claim": "C2: skipped table produces [()]",
+      "path": "django/db/models/base.py",
+      "pattern": "return [()]",
+      "grep": "return \\[\\(\\)\\]",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/base.py",
+          "line": 1237,
+          "text": "return [()]"
+        }
+      ]
+    },
+    {
+      "id": "S18",
+      "claim": "C2: existence recheck can produce [()]",
+      "path": "django/db/models/base.py",
+      "pattern": "return [()] if filtered.exists() else []",
+      "grep": "return \\[\\(\\)\\] if filtered.exists",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/base.py",
+          "line": 1251,
+          "text": "return [()] if filtered.exists() else []"
+        }
+      ]
+    },
+    {
+      "id": "S19",
+      "claim": "C2: model uses collection truthiness",
+      "path": "django/db/models/base.py",
+      "pattern": "bool(results)",
+      "grep": "bool\\(results\\)",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/base.py",
+          "line": 1157,
+          "text": "bool(results)"
+        }
+      ]
+    },
+    {
+      "id": "S20",
+      "claim": "C2: model consumes first returned row",
+      "path": "django/db/models/base.py",
+      "pattern": "self._assign_returned_values(results[0], returning_fields)",
+      "grep": "self._assign_returned_values",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/base.py",
+          "line": 1158,
+          "text": "self._assign_returned_values(results[0], returning_fields)"
+        },
+        {
+          "file": "django/db/models/base.py",
+          "line": 1211,
+          "text": "self._assign_returned_values(results[0], returning_fields)"
+        }
+      ]
+    },
+    {
+      "id": "S21",
+      "claim": "C2: public update uses count path",
+      "path": "django/db/models/query.py",
+      "pattern": "query.get_compiler(self.db).execute_sql(ROW_COUNT)",
+      "grep": "execute_sql\\(ROW_COUNT\\)",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/query.py",
+          "line": 1481,
+          "text": "query.get_compiler(self.db).execute_sql(ROW_COUNT)"
+        },
+        {
+          "file": "django/db/models/query.py",
+          "line": 1507,
+          "text": "query.get_compiler(self.db).execute_sql(ROW_COUNT)"
+        }
+      ]
+    },
+    {
+      "id": "S22",
+      "claim": "C2: test override runs real _update then returns integer zero",
+      "path": "tests/basic/tests.py",
+      "pattern": "def _update(self, *args, **kwargs):\n    FakeQuerySet.called = True\n    super()._update(*args, **kwargs)\n    return 0",
+      "grep": "def _update|super\\(\\)._update|return 0",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "tests/basic/tests.py",
+          "line": 890,
+          "text": "def _update(self, *args, **kwargs):\n                FakeQuerySet.called = True\n                super()._update(*args, **kwargs)\n                return 0"
+        }
+      ]
+    },
+    {
+      "id": "S23",
+      "claim": "C2: returned values assigned and unreturned fields deferred",
+      "path": "django/db/models/base.py",
+      "pattern": "self.__dict__.pop(field.attname, None)",
+      "grep": "self.__dict__.pop",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/base.py",
+          "line": 1274,
+          "text": "self.__dict__.pop(field.attname, None)"
+        }
+      ]
+    },
+    {
+      "id": "S24",
+      "claim": "C3: save_base owns transaction boundary",
+      "path": "django/db/models/base.py",
+      "pattern": "transaction.atomic(using=using, savepoint=False)",
+      "grep": "transaction.atomic",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/base.py",
+          "line": 991,
+          "text": "transaction.atomic(using=using, savepoint=False)"
+        }
+      ]
+    },
+    {
+      "id": "S25",
+      "claim": "C3: save_base writes state",
+      "path": "django/db/models/base.py",
+      "pattern": "self._state.adding = False",
+      "grep": "self._state.adding = False",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/base.py",
+          "line": 1013,
+          "text": "self._state.adding = False"
+        }
+      ]
+    },
+    {
+      "id": "S26",
+      "claim": "C3: parent method recurses",
+      "path": "django/db/models/base.py",
+      "pattern": "self._save_parents($$$ARGS)",
+      "grep": "self._save_parents",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/base.py",
+          "line": 999,
+          "text": "self._save_parents(\n                    cls, using, update_fields, force_insert\n                )"
+        },
+        {
+          "file": "django/db/models/base.py",
+          "line": 1045,
+          "text": "self._save_parents(\n                    cls=parent,\n                    using=using,\n                    update_fields=update_fields,\n                    force_insert=force_insert,\n                    updated_parents=updated_parents,\n                )"
+        }
+      ]
+    },
+    {
+      "id": "S27",
+      "claim": "C3: save_base and parent method call table write",
+      "path": "django/db/models/base.py",
+      "pattern": "self._save_table($$$ARGS)",
+      "grep": "self._save_table",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/base.py",
+          "line": 1002,
+          "text": "self._save_table(\n                raw,\n                cls,\n                force_insert or parent_inserted,\n                force_update,\n                using,\n                update_fields,\n            )"
+        },
+        {
+          "file": "django/db/models/base.py",
+          "line": 1052,
+          "text": "self._save_table(\n                    cls=parent,\n                    using=using,\n                    update_fields=update_fields,\n                    force_insert=parent_inserted or issubclass(parent, force_insert),\n                )"
+        }
+      ]
+    },
+    {
+      "id": "S28",
+      "claim": "C3: parent links are synchronized",
+      "path": "django/db/models/base.py",
+      "pattern": "setattr(self, field.attname, self._get_pk_val(parent._meta))",
+      "grep": "setattr\\(self, field.attname",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/base.py",
+          "line": 1065,
+          "text": "setattr(self, field.attname, self._get_pk_val(parent._meta))"
+        }
+      ]
+    },
+    {
+      "id": "S29",
+      "claim": "C3: fixture deserializer bypasses save via Model.save_base",
+      "path": "django/core/serializers/base.py",
+      "pattern": "models.Model.save_base(self.object, using=using, raw=True, **kwargs)",
+      "grep": "models.Model.save_base",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/core/serializers/base.py",
+          "line": 294,
+          "text": "models.Model.save_base(self.object, using=using, raw=True, **kwargs)"
+        }
+      ]
+    },
+    {
+      "id": "S30",
+      "claim": "C3: fields define pre_save hooks",
+      "path": "django/db/models/fields",
+      "pattern": "def pre_save($$$ARGS):\n    $$$BODY",
+      "grep": "def pre_save",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/fields/files.py",
+          "line": 328,
+          "text": "def pre_save(self, model_instance, add):\n        file = super().pre_save(model_instance, add)\n        if file.name is None and file._file is not None:\n            exc = FieldError(\n                f\"File for {self.name} must have \"\n                \"the name attribute specified to be saved.\"\n            )\n            if isinstance(file._file, ContentFile):\n                exc.add_note(\"Pass a 'name' argument to ContentFile.\")\n            raise exc\n\n        if file and not file._committed:\n            # Commit the file to storage prior to saving the model\n            file.save(file.name, file.file, save=False)\n        return file"
+        },
+        {
+          "file": "django/db/models/fields/__init__.py",
+          "line": 1027,
+          "text": "def pre_save(self, model_instance, add):\n        \"\"\"Return field's value just before saving.\"\"\"\n        return getattr(model_instance, self.attname)"
+        },
+        {
+          "file": "django/db/models/fields/__init__.py",
+          "line": 1551,
+          "text": "def pre_save(self, model_instance, add):\n        if self.auto_now or (self.auto_now_add and add):\n            value = datetime.date.today()\n            setattr(model_instance, self.attname, value)\n            return value\n        else:\n            return super().pre_save(model_instance, add)"
+        },
+        {
+          "file": "django/db/models/fields/__init__.py",
+          "line": 1691,
+          "text": "def pre_save(self, model_instance, add):\n        if self.auto_now or (self.auto_now_add and add):\n            value = timezone.now()\n            setattr(model_instance, self.attname, value)\n            return value\n        else:\n            return super().pre_save(model_instance, add)"
+        },
+        {
+          "file": "django/db/models/fields/__init__.py",
+          "line": 2682,
+          "text": "def pre_save(self, model_instance, add):\n        if self.auto_now or (self.auto_now_add and add):\n            value = datetime.datetime.now().time()\n            setattr(model_instance, self.attname, value)\n            return value\n        else:\n            return super().pre_save(model_instance, add)"
+        }
+      ]
+    },
+    {
+      "id": "S31",
+      "claim": "C3: backend operations select compiler",
+      "path": "django/db/backends/base/operations.py",
+      "pattern": "def compiler($$$ARGS):\n    $$$BODY",
+      "grep": "def compiler",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/backends/base/operations.py",
+          "line": 406,
+          "text": "def compiler(self, compiler_name):\n        \"\"\"\n        Return the SQLCompiler class corresponding to the given name,\n        in the namespace corresponding to the `compiler_module` attribute\n        on this backend.\n        \"\"\"\n        if self._cache is None:\n            self._cache = import_module(self.compiler_module)\n        return getattr(self._cache, compiler_name)"
+        }
+      ]
+    },
+    {
+      "id": "S32",
+      "claim": "C3: admin saves model separately",
+      "path": "django/contrib/admin/options.py",
+      "pattern": "def save_model($$$ARGS):\n    $$$BODY",
+      "grep": "def save_model",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/contrib/admin/options.py",
+          "line": 1471,
+          "text": "def save_model(self, request, obj, form, change):\n        \"\"\"\n        Given a model instance save it to the database.\n        \"\"\"\n        obj.save()"
+        }
+      ]
+    },
+    {
+      "id": "S33",
+      "claim": "C3: admin saves related objects separately",
+      "path": "django/contrib/admin/options.py",
+      "pattern": "def save_related($$$ARGS):\n    $$$BODY",
+      "grep": "def save_related",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/contrib/admin/options.py",
+          "line": 1493,
+          "text": "def save_related(self, request, form, formsets, change):\n        \"\"\"\n        Given the ``HttpRequest``, the parent ``ModelForm`` instance, the\n        list of inline formsets and a boolean value based on whether the\n        parent is being added or changed, save the related objects to the\n        database. Note that at this point save_form() and save_model() have\n        already been called.\n        \"\"\"\n        form.save_m2m()\n        for formset in formsets:\n            self.save_formset(request, form, formset, change=change)"
+        }
+      ]
+    },
+    {
+      "id": "S34",
+      "claim": "C4: Manager is built from QuerySet at module load",
+      "path": "django/db/models/manager.py",
+      "pattern": "class Manager(BaseManager.from_queryset(QuerySet)):\n    $$$BODY",
+      "grep": "class Manager",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/manager.py",
+          "line": 176,
+          "text": "class Manager(BaseManager.from_queryset(QuerySet)):\n    pass"
+        }
+      ]
+    },
+    {
+      "id": "S35",
+      "claim": "C4: manager module imports QuerySet",
+      "path": "django/db/models/manager.py",
+      "pattern": "from django.db.models.query import QuerySet",
+      "grep": "from django.db.models.query import QuerySet",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/manager.py",
+          "line": 7,
+          "text": "from django.db.models.query import QuerySet"
+        }
+      ]
+    },
+    {
+      "id": "S36",
+      "claim": "C4: QuerySet imports Manager inside as_manager",
+      "path": "django/db/models/query.py",
+      "pattern": "def as_manager(cls):\n    $$$BEFORE\n    from django.db.models.manager import Manager\n    $$$AFTER",
+      "grep": "from django.db.models.manager import Manager",
+      "verdict": "confirmed",
+      "matches": [],
+      "zero_match_grep": {
+        "command": [
+          "grep",
+          "-RnE",
+          "from django.db.models.manager import Manager",
+          "django/db/models/query.py"
+        ],
+        "returncode": 0,
+        "stdout": "django/db/models/query.py:410:        from django.db.models.manager import Manager\n"
+      }
+    },
+    {
+      "id": "S37",
+      "claim": "C4: as_manager constructs and marks generated manager",
+      "path": "django/db/models/query.py",
+      "pattern": "manager._built_with_as_manager = True",
+      "grep": "_built_with_as_manager",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/query.py",
+          "line": 413,
+          "text": "manager._built_with_as_manager = True"
+        }
+      ]
+    },
+    {
+      "id": "S38",
+      "claim": "C4: deconstruction reads generated-manager marker",
+      "path": "django/db/models/manager.py",
+      "pattern": "getattr(self, \"_built_with_as_manager\", False)",
+      "grep": "_built_with_as_manager",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/manager.py",
+          "line": 50,
+          "text": "getattr(self, \"_built_with_as_manager\", False)"
+        }
+      ]
+    },
+    {
+      "id": "S39",
+      "claim": "C4: migration serializer emits as_manager expression",
+      "path": "django/db/migrations/serializer.py",
+      "pattern": "return \"%s.as_manager()\" % name, imports",
+      "grep": "as_manager\\(\\)",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/migrations/serializer.py",
+          "line": 269,
+          "text": "return \"%s.as_manager()\" % name, imports"
+        }
+      ]
+    },
+    {
+      "id": "S40",
+      "claim": "C4: factory forwards QuerySet methods",
+      "path": "django/db/models/manager.py",
+      "pattern": "new_methods[name] = create_method(name, method)",
+      "grep": "new_methods\\[name\\]",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/manager.py",
+          "line": 104,
+          "text": "new_methods[name] = create_method(name, method)"
+        }
+      ]
+    },
+    {
+      "id": "S41",
+      "claim": "N2: adding flag selects INSERT for default-bearing PK",
+      "path": "django/db/models/base.py",
+      "pattern": "all(f.has_default() or f.has_db_default() for f in meta.pk_fields)",
+      "grep": "has_db_default",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/base.py",
+          "line": 1118,
+          "text": "all(f.has_default() or f.has_db_default() for f in meta.pk_fields)"
+        }
+      ]
+    },
+    {
+      "id": "S42",
+      "claim": "N5: named async save test structure",
+      "path": "tests/async/test_async_model_methods.py",
+      "pattern": "await $OBJ.asave($$$ARGS)",
+      "grep": "asave",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "tests/async/test_async_model_methods.py",
+          "line": 13,
+          "text": "await self.s1.asave()"
+        }
+      ]
+    },
+    {
+      "id": "S43",
+      "claim": "N6: inherited forced-save test only calls saves",
+      "path": "tests/force_insert_update/tests.py",
+      "pattern": "def test_force_update_on_inherited_model(self):\n    $$$BODY",
+      "grep": "test_force_update_on_inherited_model",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "tests/force_insert_update/tests.py",
+          "line": 66,
+          "text": "def test_force_update_on_inherited_model(self):\n        a = InheritedCounter(name=\"count\", value=1, tag=\"spam\")\n        a.save()\n        a.save(force_update=True)"
+        }
+      ]
+    },
+    {
+      "id": "S44",
+      "claim": "C4: local Manager import (fallback after S36 pattern miss)",
+      "path": "django/db/models/query.py",
+      "pattern": "from django.db.models.manager import Manager",
+      "grep": "from django.db.models.manager import Manager",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/query.py",
+          "line": 410,
+          "text": "from django.db.models.manager import Manager"
+        }
+      ]
+    },
+    {
+      "id": "S45",
+      "claim": "N5: entire named async save test has update/refetch assertions",
+      "path": "tests/async/test_async_model_methods.py",
+      "pattern": "async def test_asave(self):\n    $$$BODY",
+      "grep": "test_asave",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "tests/async/test_async_model_methods.py",
+          "line": 11,
+          "text": "async def test_asave(self):\n        self.s1.field = 10\n        await self.s1.asave()\n        refetched = await SimpleModel.objects.aget()\n        self.assertEqual(refetched.field, 10)"
+        }
+      ]
+    },
+    {
+      "id": "S46",
+      "claim": "N6: named admin smoke test asserts redirect",
+      "path": "tests/admin_views/tests.py",
+      "pattern": "def test_basic_edit_POST(self):\n    $$$BODY",
+      "grep": "test_basic_edit_POST",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "tests/admin_views/tests.py",
+          "line": 641,
+          "text": "def test_basic_edit_POST(self):\n        \"\"\"\n        A smoke test to ensure POST on edit_view works.\n        \"\"\"\n        url = reverse(\"admin:admin_views_section_change\", args=(self.s1.pk,))\n        response = self.client.post(url, self.inline_post_data)\n        self.assertEqual(response.status_code, 302)  # redirect somewhere"
+        }
+      ]
+    },
+    {
+      "id": "S47",
+      "claim": "N4: ordinary deferred peer tests protect edits and deleted peers",
+      "path": "tests/defer/tests.py",
+      "pattern": "def test_fetch_peers_preserves_local_modification(self):\n    $$$BODY",
+      "grep": "def test",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "tests/defer/tests.py",
+          "line": 263,
+          "text": "def test_fetch_peers_preserves_local_modification(self):\n        p1, p2 = Primary.objects.fetch_mode(FETCH_PEERS).defer(\"value\")\n        # Modify the deferred field on one peer without saving.\n        p1.value = \"local modification\"\n        # Trigger the peer fetch by accessing the field on another peer.\n        with self.assertNumQueries(1):\n            _ = p2.value\n        # The local modification should be preserved.\n        self.assertEqual(p1.value, \"local modification\")\n        # The other peer should receive its database value.\n        self.assertEqual(p2.value, \"yy\")"
+        }
+      ]
+    },
+    {
+      "id": "S48",
+      "claim": "C2: compiler applies converters before returning rows",
+      "path": "django/db/models/sql/compiler.py",
+      "pattern": "self.apply_converters(rows, converters)",
+      "grep": "apply_converters",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/sql/compiler.py",
+          "line": 1604,
+          "text": "self.apply_converters(rows, converters)"
+        },
+        {
+          "file": "django/db/models/sql/compiler.py",
+          "line": 1992,
+          "text": "self.apply_converters(rows, converters)"
+        },
+        {
+          "file": "django/db/models/sql/compiler.py",
+          "line": 2187,
+          "text": "self.apply_converters(rows, converters)"
+        }
+      ]
+    },
+    {
+      "id": "S49",
+      "claim": "C4: manager factory retains QuerySet class for deconstruction",
+      "path": "django/db/models/manager.py",
+      "pattern": "{\"_queryset_class\": queryset_class, **cls._get_queryset_methods(queryset_class)}",
+      "grep": "_queryset_class",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "django/db/models/manager.py",
+          "line": 114,
+          "text": "{\n                \"_queryset_class\": queryset_class,\n                **cls._get_queryset_methods(queryset_class),\n            }"
+        }
+      ]
+    },
+    {
+      "id": "S50",
+      "claim": "N4: deferred deleted-peer test is ordinary loading",
+      "path": "tests/defer/tests.py",
+      "pattern": "def test_fetch_peers_deleted_peer_does_not_cause_keyerror(self):\n    $$$BODY",
+      "grep": "test_fetch_peers_deleted_peer",
+      "verdict": "confirmed",
+      "matches": [
+        {
+          "file": "tests/defer/tests.py",
+          "line": 275,
+          "text": "def test_fetch_peers_deleted_peer_does_not_cause_keyerror(self):\n        p1, p2 = Primary.objects.fetch_mode(FETCH_PEERS).defer(\"value\").order_by(\"pk\")\n        # Delete one peer's database row after queryset evaluation.\n        Primary.objects.filter(pk=p1.pk).delete()\n        # Accessing another peer's deferred field should not raise KeyError.\n        with self.assertNumQueries(1):\n            _ = p2.value\n        # The surviving peer should receive the correct value.\n        self.assertEqual(p2.value, \"yy\")"
+        }
+      ]
+    }
+  ]
+}

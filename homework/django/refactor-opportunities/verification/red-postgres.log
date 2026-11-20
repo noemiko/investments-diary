@@ -1,0 +1,54 @@
+Command: /var/folders/2n/qsxhjgcs3ygd3mbjx48w0dph0000gn/T/django-c1-hsem_1_5/venv/bin/python tests/runtests.py update_only_fields.tests.UpdateOnlyFieldsTests.test_update_fields_fk_expression update_only_fields.tests.UpdateOnlyFieldsTests.test_update_fields_fk_expression_no_returning --parallel=1 --verbosity=2 --settings=refactor_opportunities_postgres
+Creating test database for alias 'default' ('test_c1_default')...
+Testing against Django installed in '/Users/noemi.kowalewska/Documents/django-10x/django/django'
+Importing application update_only_fields
+Found 2 test(s).
+Skipping setup of unused database(s): other.
+Operations to perform:
+  Synchronize unmigrated apps: auth, contenttypes, messages, sessions, staticfiles, update_only_fields
+  Apply all migrations: admin, sites
+Synchronizing apps without migrations:
+  Creating tables...
+    Creating table django_content_type
+    Creating table auth_permission
+    Creating table auth_group
+    Creating table auth_user
+    Creating table django_session
+    Creating table update_only_fields_account
+    Creating table update_only_fields_person
+    Creating table update_only_fields_employee
+    Creating table update_only_fields_profile
+    Running deferred SQL...
+Running migrations:
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying sites.0001_initial... OK
+  Applying sites.0002_alter_domain_unique...test_update_fields_fk_expression (update_only_fields.tests.UpdateOnlyFieldsTests.test_update_fields_fk_expression) ... 
+  test_update_fields_fk_expression (update_only_fields.tests.UpdateOnlyFieldsTests.test_update_fields_fk_expression) (field_name='profile_id') ... FAIL
+test_update_fields_fk_expression_no_returning (update_only_fields.tests.UpdateOnlyFieldsTests.test_update_fields_fk_expression_no_returning) ... 
+  test_update_fields_fk_expression_no_returning (update_only_fields.tests.UpdateOnlyFieldsTests.test_update_fields_fk_expression_no_returning) (field_name='profile_id') ... FAIL
+
+======================================================================
+FAIL: test_update_fields_fk_expression (update_only_fields.tests.UpdateOnlyFieldsTests.test_update_fields_fk_expression) (field_name='profile_id')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/noemi.kowalewska/Documents/django-10x/django/tests/update_only_fields/tests.py", line 380, in _test_update_fields_fk_expression
+    self.assertEqual(employee.profile_id, target.pk)
+AssertionError: <CombinedExpression: F(profile_id) + Value(1)> != 2
+
+======================================================================
+FAIL: test_update_fields_fk_expression_no_returning (update_only_fields.tests.UpdateOnlyFieldsTests.test_update_fields_fk_expression_no_returning) (field_name='profile_id')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/noemi.kowalewska/Documents/django-10x/django/tests/update_only_fields/tests.py", line 378, in _test_update_fields_fk_expression
+    self.assertIn("profile_id", employee.get_deferred_fields())
+AssertionError: 'profile_id' not found in set()
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.015s
+
+FAILED (failures=2)
+Destroying test database for alias 'default' ('test_c1_default')...
+ OK
+System check identified no issues (0 silenced).
