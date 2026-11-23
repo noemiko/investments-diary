@@ -29,9 +29,13 @@ jobs:
         run: npm ci
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GH_PKG_TOKEN }}
+      - name: Audit application dependencies
+        run: npm audit --audit-level=high --registry=https://registry.npmjs.org
       - run: npx astro sync
       - run: npm test
       - run: npm ci --prefix scripts/review --ignore-scripts
+      - name: Audit reviewer dependencies
+        run: npm audit --prefix scripts/review --audit-level=high --registry=https://registry.npmjs.org
       - run: node --test scripts/review/review.test.mjs
       - run: npm run lint
       - run: npx astro check
