@@ -1,4 +1,4 @@
-import type { Database } from "@/db/database.types";
+import type { Database, Json } from "@/db/database.types";
 
 // PostgREST accepts JSON strings for numeric columns. Keep generated Row types unchanged:
 // reads must explicitly select ::text before their values are safe to consume as strings.
@@ -45,6 +45,7 @@ export type ApiDatabase = Omit<Database, "public"> & {
       Functions,
       "finish_market_quote_refresh" | "claim_market_quote_refresh" | "claim_listing_lookup"
     > & {
+      portfolio_export_snapshot: { Args: never; Returns: Json };
       claim_listing_lookup: Omit<Functions["claim_listing_lookup"], "Returns"> & { Returns: string | null };
       claim_market_quote_refresh: Omit<Functions["claim_market_quote_refresh"], "Returns"> & { Returns: string | null };
       finish_market_quote_refresh: Omit<Functions["finish_market_quote_refresh"], "Args"> & {

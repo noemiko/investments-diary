@@ -88,6 +88,9 @@ export default defineConfig({
     schema: {
       SUPABASE_URL: envField.string({ context: "server", access: "secret", optional: false }),
       SUPABASE_KEY: envField.string({ context: "server", access: "secret", optional: false }),
+      SUPABASE_SERVICE_ROLE_KEY: envField.string({ context: "server", access: "secret", optional: true }),
+      PORTFOLIO_DEPLOYMENT_ID: envField.string({ context: "server", access: "secret", optional: true }),
+      PORTFOLIO_RECOVERY_KEYS: envField.string({ context: "server", access: "secret", optional: true }),
       PUBLIC_SENTRY_DSN: envField.string({ context: "client", access: "public", optional: true }),
     },
   },
