@@ -1,0 +1,35 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { Card } from "@/components/ui/card";
+import { PortfolioTransfer } from "@/components/portfolio/PortfolioTransfer";
+import { portfolioTransferConfig } from "@/lib/portfolio-transfer/config";
+import { TransferError } from "@/lib/portfolio-transfer/signing";
+import { reportUnexpected } from "@/lib/observability/reporter";
+if (Astro.request.method !== "GET") {
+  Astro.response.status = 405;
+  Astro.response.headers.set("Allow", "GET");
+}
+Astro.response.headers.set("cache-control", "no-store");
+let available = false;
+try {
+  portfolioTransferConfig();
+  available = true;
+} catch (error) {
+  if (!(error instanceof TransferError))
+    reportUnexpected(error, { operation: "portfolioRecovery", route: "/dashboard/portfolio" });
+}
+---
+
+<Layout title="Export and recover portfolio">
+  <div class="bg-cosmic min-h-screen p-4">
+    <Card className="mx-auto max-w-4xl min-w-0 space-y-6 p-4 sm:p-8">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h1 class="text-gradient-heading text-3xl font-bold">Export and recover portfolio</h1>
+        <a href="/dashboard" class="text-sm text-primary underline underline-offset-4">
+          Back to your positions
+        </a>
+      </div>
+      <PortfolioTransfer available={available} client:load />
+    </Card>
+  </div>
+</Layout>
