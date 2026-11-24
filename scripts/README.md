@@ -127,3 +127,18 @@ npm run user:create -- --production --db-url 'postgresql://postgres.<ref>@<regio
 `npm run test:recovery-db` runs `testing/database/test-market-price-recovery.mjs`; CI's local decimal-transport job calls it. It seeds legacy fixtures part-way through the migration chain, replays the rest, and needs the running local Supabase PostgreSQL container. Exact quote RPC/PostgREST transport is covered by `tests/database/market-prices.test.ts` through `npm run test:decimal-db`.
 
 The recovery runner applies the [operator template](../context/deployment/automatic-stock-prices-manual-selection.sql) only in its disposable database. It proves retained cache/selection/position/observation facts, exact manual/sale application and future-capture parity, unchanged view columns/security/grants and unchanged capture definition/privileges, then restores normal selection without rewriting observations. Cron is verified separately. See the [release/recovery runbook](../context/deployment/deploy-plan.md#stock-price-release-and-recovery) for human-controlled hosted rollout, failure handling and compatible recovery. The template is not in the forward migration chain and is never automatically applied to diary data.
+
+### Personal portfolio export and recovery acceptance
+
+`npm run test:contract-db -- --only portfolio-export` verifies the consistent owner-scoped export projection.
+`npm run test:contract-db -- --only portfolio-recovery` verifies atomic replacement/undo, exact valuation and
+history, access restrictions, concurrency and rejection of an old in-flight quote job. Both use the existing
+local disposable-database harness and drop that database afterward.
+
+The `portfolio-transfer` Playwright project exercises the real app and PostgREST with unique temporary local
+accounts, deleting those accounts and their fixtures in `finally`. It needs local migrations and the server's
+transfer configuration, but not the shared `E2E_USERNAME`/`E2E_PASSWORD` account. Run
+`npx playwright test --project=portfolio-transfer`; choose an unused `E2E_PORT` when another dev server is open.
+It retains screenshots and synthetic XLSX attachments in the ignored Playwright output directories.
+See [portfolio transfer operations](../docs/portfolio-transfer.md) for configuration, original-file guarantees,
+limits, signing-key rotation, private undo retention and disabling the feature.

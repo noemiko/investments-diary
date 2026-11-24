@@ -108,6 +108,12 @@ export default async function portfolioRecovery(db) {
       values('${id(5)}','${owner}','AAPL',10,'2026-01-01','${id(2)}','${id(1)}','${id(4)}'),
       ('${id(5, 2)}','${owner}','AAPL',20,'2026-01-01','${id(2)}','${id(1)}','${id(4)}');
     update public.positions set deleted_at=statement_timestamp() where id='${id(5, 2)}';
+    insert into public.market_quote_cache(id,user_id,provider,symbol,exchange,currency,timezone,listing_name,
+      exchange_name,instrument_type,price,market_at,market_date,fetched_at,market_state,refresh_outcome)
+      values('${id(6)}','${owner}','yahoo','AAPL','NMS','USD','America/New_York','Apple','Nasdaq','EQUITY',
+        9,'2026-01-01T21:00:00Z','2026-01-01','2026-01-01T21:05:00Z','CLOSED','success');
+    update public.market_listing_targets set cache_id='${id(6)}' where id='${id(3)}';
+    update public.positions set market_listing_id='${id(6)}' where id='${id(5)}';
     insert into public.wallet_snapshots(wallet_id,user_id,observation_day,captured_at,starting_value,value,realised_change,
       open_change,realised_count,open_count,not_counted,currency)
       values('${id(1)}','${owner}','2026-01-01','2026-01-01T00:00:00Z',0,
@@ -123,6 +129,8 @@ export default async function portfolioRecovery(db) {
     ${expectFailure("42501", `perform public.portfolio_recovery_preview('${owner}')`, "anonymous preview exposed")}
   `);
   const foreignBefore = db.sql(`${asPrivileged()} select portfolio_recovery.owner_state('${other}')::text;`);
+  const oldQuoteToken = db.sql(`${asUser(owner)} select public.claim_market_quote_refresh('${id(6)}');`);
+  if (!/^[a-f0-9-]{36}$/.test(oldQuoteToken)) throw new Error("could not create in-flight quote fixture");
   const original = fingerprint(db);
   const bad = imported();
   bad.positions[0].buy_price = "-1"; // Check failure happens after the destructive statements, proving rollback.
@@ -139,6 +147,15 @@ export default async function portfolioRecovery(db) {
   db.sql(
     `${service} ${expectFailure("22023", replace(empty(), original, id(20, 2)), "operation id reused for a different payload")}`,
   );
+  // A provider request claimed before recovery must not finish into the new portfolio.
+  db.sql(`${asUser(owner)}
+    ${assert(
+      `not public.finish_market_quote_refresh('${id(6)}','${oldQuoteToken}','success',999,
+      '2026-01-06T21:00:00Z','2026-01-06','2026-01-06T21:05:00Z','CLOSED',15,1,'Yahoo',null)`,
+      "old in-flight quote job was accepted after replacement",
+    )}
+    ${assert(`not exists(select 1 from public.market_quote_cache where id='${id(6)}')`, "replacement reused the old quote cache identity")}
+    ${assert(`(select selected_price::text='123.12345678' from public.position_effective_prices where user_id='${owner}' and broker_label='automatic')`, "old in-flight quote changed restored valuation")}`);
   const after = fingerprint(db);
   db.sql(`${asPrivileged()}
     ${assert(`not exists(select 1 from public.wallets where id='${id(1)}')`, "replacement retained old wallet")}

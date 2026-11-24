@@ -73,6 +73,27 @@ describe("original portfolio workbook", () => {
     expect(recoveryPayloadSchema.safeParse(value).success).toBe(false);
   });
 
+  it("preserves database text containing XML-unfriendly characters", async () => {
+    const value = examplePortfolio();
+    value.data.positions[0].reason_text = "Recorded text: \u0001 \u007f \ufffe \uffff";
+    const bytes = await encodeWorkbook(value, keys);
+    expect(await decodeWorkbook(bytes, keys, deployment)).toEqual(value);
+  });
+
+  it("bounds escaped display text without truncating original recovery details", async () => {
+    const value = examplePortfolio();
+    value.data.positions[0].reason_text = "\u0001".repeat(10_000);
+    const bytes = await encodeWorkbook(value, keys);
+    expect(await decodeWorkbook(bytes, keys, deployment)).toEqual(value);
+    const book = new ExcelJS.Workbook();
+    await book.xlsx.load(Uint8Array.from(bytes).buffer);
+    const displayed = book.getWorksheet("Investments")?.getCell("Q2").value;
+    if (typeof displayed !== "string") throw new Error("Expected literal spreadsheet text");
+    expect(displayed.length).toBeLessThanOrEqual(32_767);
+    expect(displayed).toContain("\\u0001");
+    expect(displayed).toContain("[display shortened]");
+  });
+
   it("does not treat visible-sheet edits or formulas as recovery data", async () => {
     const bytes = await changedWorkbook((book) => {
       const cell = book.getWorksheet("Wallets")?.getCell("C2");

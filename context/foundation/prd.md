@@ -3,7 +3,7 @@ project: "Investments Diary"
 version: 1
 status: draft
 created: 2026-09-20
-updated: 2026-11-09
+updated: 2026-11-24
 context_type: greenfield
 product_type: web-app
 target_scale:
@@ -170,7 +170,7 @@ already own and why they bought it.
 
 ### Wallets
 
-- FR-013: User can keep several named wallets, each with an editable starting value, and assign every investment to one wallet. Live value is starting value plus realised results from closed positions and unrealised results from open positions, excluding deleted records. Missing quantity or an open position's missing quote is explicitly counted as incomplete valuation. Paid opening commissions still reduce open results immediately, even without a quote, without making valuation coverage complete. Live results and future snapshots use net profit after paid commissions. Freshness uses the oldest counted open quote only. Wallets can be created and edited but not deleted.
+- FR-013: User can keep several named wallets, each with an editable starting value, and assign every investment to one wallet. Live value is starting value plus realised results from closed positions and unrealised results from open positions, excluding deleted records. Missing quantity or an open position's missing quote is explicitly counted as incomplete valuation. Paid opening commissions still reduce open results immediately, even without a quote, without making valuation coverage complete. Live results and future snapshots use net profit after paid commissions. Freshness uses the oldest counted open quote only. Wallets can be created and edited but not deleted through ordinary wallet operations; FR-017 separately defines confirmed whole-portfolio replacement with retained undo.
   A wallet dashboard shows current realised/open results and immutable daily wallet-value observations captured at midnight UTC. Future observations use the same effective manual/automatic price selection as the application, retaining currency, source coverage and quote-time context. Capture uses the cached values available then and performs no provider downloads; prices may be old when the user has not downloaded prices recently. Users can inspect 30/90/365-day or all-time ranges and point details. Earlier unavailable values and missed days are not backfilled; later edits, sales, delete/restore and reassignment do not rewrite saved observations. Observations without a denomination inherit their wallet currency by explicit owner decision; their recorded amounts, dates and results remain unchanged and use the ordinary denominated history view. These are observations of recorded diary value, not reconstructed market-price or cash-balance history. Priority: should-have
 
 ### Automatic prices and denomination
@@ -213,6 +213,11 @@ already own and why they bought it.
   amounts and dates. Conflicting denominations are rejected. Reassignment changes
   current/future wallet membership and observations; it does not convert historical
   amounts or require a legacy currency attestation. Priority: should-have
+
+### Personal portfolio export and recovery
+
+- FR-017: The signed-in owner can download an Excel workbook for personal analysis and keep the original download to recreate their wallets and nondeleted open/closed investments, including recorded details, referenced retired categories and export-time manual/automatic valuation evidence. Exact amounts and timestamp precedence are preserved. Analysis copies may be opened in Google Sheets; direct Google access, synchronization and importing edited readable cells are outside this workflow. The original app download is the supported recovery file. Recovery previews source and destination counts, requires the exact `REPLACE PORTFOLIO` phrase within ten minutes, then atomically replaces the signed-in destination account's portfolio. It preserves one private pre-replacement copy including deleted entries, unused categories and historical observations; undo applies the same reviewed replacement and retains the state it replaces. Failed or stale recovery leaves current data and the prior undo copy unchanged. Exports omit deleted entries and historical charts; no quotes are downloaded during export or recovery. Recovery creates fresh database identities and selection receipts without changing ordinary stock-selection, currency or deletion restrictions. Accounts are created separately. Original exports can be restored into another owned signed-in account on the same installation, with destination ownership bound to the session. Priority: should-have
+  > Approved for the Excel export/import change on 2026-11-23: personal spreadsheet editing is for analysis; recovery uses original exported data. Confirmed replacement and retained undo are an explicit portfolio-level operation, not a general wallet-delete or investment-edit interface. Limits and operator setup are documented in `docs/portfolio-transfer.md`.
 
 ## Non-Functional Requirements
 
@@ -279,7 +284,7 @@ protection does — to be confirmed when that work is planned.
   own named groupings of investments, not broker accounts. Their USD/PLN/EUR denomination
   exists to prevent invalid mixed-currency totals (FR-015), not to model broker accounts.
 - **No sharing with anyone else.** No read-only links, no advisor access, no export for
-  another person to read. The diary is single-tenant and private by construction, which is
+  another person to read. FR-017 adds owner-controlled personal analysis/recovery files, without public links or account sharing. The diary is single-tenant and private by construction, which is
   what the honesty the product depends on requires.
 
 ## Open Questions

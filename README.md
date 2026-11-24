@@ -18,6 +18,8 @@ The app never writes or suggests the reason text, and every position is visible 
   captured at 00:00 UTC.
 - **Prices** — quotes download only when you click **Download prices** (Yahoo via `yahoo-finance2`); manual prices
   remain available as a fallback.
+- **Excel analysis and recovery** — download a readable portfolio workbook, keep its original for confirmed portfolio
+  replacement, and undo the latest recovery. See [portfolio transfer](docs/portfolio-transfer.md).
 - **Owner-created accounts only** — public sign-up is closed.
 
 Requirements live in [context/foundation/prd.md](context/foundation/prd.md); the stack rationale is in
@@ -189,8 +191,8 @@ Every script's prerequisites and data effects are documented in [scripts/README.
 ```
 
 Routes: `/auth/signin` (sign-in), `/dashboard` (positions), `/dashboard/new` (record an investment),
-`/dashboard/positions/[id]`, `/dashboard/wallets`, `/dashboard/deleted`. Protection is in `src/middleware.ts` — add
-paths to `PROTECTED_ROUTES` to require authentication.
+`/dashboard/positions/[id]`, `/dashboard/wallets`, `/dashboard/deleted`, `/dashboard/portfolio`. Protection is in
+`src/middleware.ts` — add paths to `PROTECTED_ROUTES` to require authentication.
 
 ## Configuration
 
@@ -202,6 +204,10 @@ Environment variables are declared in the `astro:env` schema in `astro.config.mj
 | `SUPABASE_URL`, `SUPABASE_KEY`                            | Required. Local stack in dev; hosted project in Vercel |
 | `PUBLIC_SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN` | Optional error tracking                |
 | `E2E_USERNAME`, `E2E_PASSWORD`                            | Credentials for end-to-end tests                     |
+
+Portfolio transfer adds optional server-only `SUPABASE_SERVICE_ROLE_KEY`, `PORTFOLIO_DEPLOYMENT_ID` and
+`PORTFOLIO_RECOVERY_KEYS`. Missing transfer settings leave the ordinary diary working. Setup, key retention,
+limits and replacement/undo behavior are in [the portfolio transfer guide](docs/portfolio-transfer.md).
 
 ## End-to-end tests
 
@@ -240,6 +246,9 @@ How it works:
   already running. Set `E2E_PORT` if port 4321 is taken.
 - A `setup` project ([tests/e2e/auth.setup.ts](tests/e2e/auth.setup.ts)) signs in once with `E2E_USERNAME` and
   `E2E_PASSWORD` and saves the session to `playwright/.auth/user.json` (gitignored); the `chromium` project reuses it.
+- The isolated `portfolio-transfer` project creates its own local accounts and needs transfer settings, not the shared
+  E2E credentials: `npx playwright test --project=portfolio-transfer`. It checks original-file recovery and exact
+  multi-currency valuation/undo fidelity.
 - Failures keep screenshots, and traces are recorded on the first retry, in `test-results/` and `playwright-report/`.
 - The build is served through Astro dev because the Vercel adapter has no preview server, so these tests don't prove
   parity with the deployed runtime. Details: [context/foundation/test-stack.md](context/foundation/test-stack.md).

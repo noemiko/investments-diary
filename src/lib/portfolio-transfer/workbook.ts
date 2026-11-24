@@ -3,13 +3,31 @@ import { TRANSFER_LIMITS, type RecoveryPayload } from "./schema";
 import { signRecovery, verifyRecovery, TransferError, type SigningKeyRing } from "./signing";
 import { inspectWorkbookZip } from "./zip";
 
+/** Spreadsheet XML cannot represent these characters; the authenticated payload keeps the originals. */
+function displayText(value: string | null): string | null {
+  if (value === null) return null;
+  const escaped = Array.from(value, (character) => {
+    const code = character.charCodeAt(0);
+    const unsupportedControl = code < 0x20 && code !== 0x09 && code !== 0x0a && code !== 0x0d;
+    return unsupportedControl || code === 0x7f || code === 0xfffe || code === 0xffff
+      ? `\\u${code.toString(16).padStart(4, "0")}`
+      : character;
+  }).join("");
+  if (escaped.length <= 32_767) return escaped;
+  const suffix = "… [display shortened]";
+  let end = 32_767 - suffix.length;
+  const last = escaped.charCodeAt(end - 1);
+  if (last >= 0xd800 && last <= 0xdbff) end--;
+  return escaped.slice(0, end) + suffix;
+}
+
 function dataSheet(book: ExcelJS.Workbook, name: string, headers: string[], rows: (string | null)[][]) {
   const sheet = book.addWorksheet(name, { views: [{ state: "frozen", ySplit: 1 }] });
   sheet.columns = headers.map((header) => ({ header, width: header.includes("reason") ? 60 : 24 }));
   sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
   sheet.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF17324D" } };
   for (const values of rows) {
-    const row = sheet.addRow(values);
+    const row = sheet.addRow(values.map(displayText));
     row.eachCell((cell) => {
       cell.numFmt = "@";
       cell.alignment = { vertical: "top", wrapText: true };
@@ -38,6 +56,7 @@ export async function encodeWorkbook(payload: RecoveryPayload, keyRing: SigningK
     "Dates and timestamps are ISO text. Blank optional cells represent missing values, not zero.",
     "Valuations are recorded at export time and may be old. Export does not download prices.",
     "Deleted investments and historical wallet charts are not included.",
+    "Characters unsupported by spreadsheet XML are shown as \\uXXXX. Long escaped displays are shortened; recovery keeps the exact original text.",
   ])
     help.addRow([line]);
   help.getRow(1).font = { bold: true, size: 16 };

@@ -21,7 +21,13 @@ export class TransferError extends Error {
 
 /** Object keys are sorted; array order and decimal/date strings remain untouched. */
 export function canonicalJson(value: unknown): string {
-  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (value === null || typeof value !== "object") {
+    // JSON permits DEL/noncharacters that spreadsheet XML strips or rejects.
+    return JSON.stringify(value).replace(
+      /[\u007f\ufffe\uffff]/g,
+      (character) => `\\u${character.charCodeAt(0).toString(16).padStart(4, "0")}`,
+    );
+  }
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
   const object = value as Record<string, unknown>;
   return `{${Object.keys(object)
