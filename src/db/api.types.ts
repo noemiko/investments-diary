@@ -46,6 +46,15 @@ export type ApiDatabase = Omit<Database, "public"> & {
       "finish_market_quote_refresh" | "claim_market_quote_refresh" | "claim_listing_lookup"
     > & {
       portfolio_export_snapshot: { Args: never; Returns: Json };
+      portfolio_recovery_preview: { Args: { in_user_id: string }; Returns: Json };
+      portfolio_replace: {
+        Args: { in_user_id: string; in_data: Json; in_fingerprint: string; in_operation_id: string };
+        Returns: Json;
+      };
+      portfolio_undo: {
+        Args: { in_user_id: string; in_fingerprint: string; in_operation_id: string; in_snapshot_id: string };
+        Returns: Json;
+      };
       claim_listing_lookup: Omit<Functions["claim_listing_lookup"], "Returns"> & { Returns: string | null };
       claim_market_quote_refresh: Omit<Functions["claim_market_quote_refresh"], "Returns"> & { Returns: string | null };
       finish_market_quote_refresh: Omit<Functions["finish_market_quote_refresh"], "Args"> & {

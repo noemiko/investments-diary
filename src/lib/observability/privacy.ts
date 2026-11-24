@@ -2,6 +2,8 @@ import type { ErrorEvent, Event, StackFrame } from "@sentry/astro";
 
 const OPERATIONS = new Set([
   "marketPrices",
+  "portfolioExport",
+  "portfolioRecovery",
   "movePosition",
   "listPositions",
   "listCategories",

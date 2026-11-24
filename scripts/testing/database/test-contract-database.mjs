@@ -6,12 +6,14 @@ import { disposableDatabase, migrationFiles } from "./lib/db-harness.mjs";
 import grants from "./contract/grants.mjs";
 import access from "./contract/access.mjs";
 import portfolioExport from "./contract/portfolio-export.mjs";
+import portfolioRecovery from "./contract/portfolio-recovery.mjs";
 
 // Fixed order; later domains are appended here as they are ported.
 const domains = [
   ["grants", grants],
   ["access", access],
   ["portfolio-export", portfolioExport],
+  ["portfolio-recovery", portfolioRecovery],
 ];
 
 const onlyIndex = process.argv.indexOf("--only");
